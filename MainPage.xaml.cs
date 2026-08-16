@@ -1,9 +1,11 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Navigation;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.ApplicationModel.DataTransfer.DragDrop;
@@ -47,6 +49,12 @@ public sealed partial class MainPage : Page
     private readonly Dictionary<TreeViewNode, NavigationLocation> _treeLocations = [];
     private readonly List<MenuFlyoutItemBase> _generatedPluginMenuItems = [];
     private int _tabSelectionVersion;
+    private double _dragSizeStart;
+    private double _dragTypeStart;
+    private double _dragModifiedStart;
+    private double _dragSplitSizeStart;
+    private double _dragSplitTypeStart;
+    private int _dragPointerStartX;
 
     public MainPageViewModel ViewModel { get; } = new();
     public MainPageViewModel SplitViewModel { get; } = new();
@@ -94,6 +102,7 @@ public sealed partial class MainPage : Page
         ViewModel.ShowSizeColumn = session.ShowSizeColumn;
         ViewModel.ShowTypeColumn = session.ShowTypeColumn;
         ViewModel.ShowModifiedColumn = session.ShowModifiedColumn;
+        ViewModel.SetColumnWidths(session.SizeColumnWidth, session.TypeColumnWidth, session.ModifiedColumnWidth);
         _usePathBar = session.UsePathBar;
         _singleClickActivation = session.SingleClickActivation;
         _rememberFolderViews = session.RememberFolderViews;
@@ -121,6 +130,7 @@ public sealed partial class MainPage : Page
         SplitViewModel.ShowSizeColumn = ViewModel.ShowSizeColumn;
         SplitViewModel.ShowTypeColumn = ViewModel.ShowTypeColumn;
         SplitViewModel.ShowModifiedColumn = ViewModel.ShowModifiedColumn;
+        SplitViewModel.SetColumnWidths(session.SplitSizeColumnWidth, session.SplitTypeColumnWidth, session.ModifiedColumnWidth);
         UpdateViewMenu();
         SetTreeSidePane(_treeSidePane);
         ApplyColumnVisibility();
@@ -183,6 +193,11 @@ public sealed partial class MainPage : Page
 
     private async void Up_Click(object sender, RoutedEventArgs e)
     {
+        if (ActiveBrowser.IsRecycleBinView)
+        {
+            return;
+        }
+
         if (Directory.GetParent(ActiveBrowser.CurrentPath) is { } parent)
         {
             await NavigateActivePaneAsync(parent.FullName);
@@ -283,6 +298,11 @@ public sealed partial class MainPage : Page
     private async void SplitUp_Click(object sender, RoutedEventArgs e)
     {
         SetActivePane(BrowserPane.Secondary);
+        if (SplitViewModel.IsRecycleBinView)
+        {
+            return;
+        }
+
         if (Directory.GetParent(SplitViewModel.CurrentPath) is { } parent)
         {
             await NavigateSplitPaneAsync(parent.FullName);
@@ -650,9 +670,128 @@ public sealed partial class MainPage : Page
 
     private void ApplyColumnVisibility()
     {
-        SizeColumn.Width = new GridLength(ViewModel.ShowSizeColumn ? 110 : 0);
-        TypeColumn.Width = new GridLength(ViewModel.ShowTypeColumn ? 140 : 0);
-        ModifiedColumn.Width = new GridLength(ViewModel.ShowModifiedColumn ? 160 : 0);
+        SizeColumn.MinWidth = ViewModel.ShowSizeColumn ? 55 : 0;
+        TypeColumn.MinWidth = ViewModel.ShowTypeColumn ? 70 : 0;
+        ModifiedColumn.MinWidth = ViewModel.ShowModifiedColumn ? 100 : 0;
+        SizeColumn.Width = new GridLength(ViewModel.ShowSizeColumn ? ViewModel.SizeColumnWidth : 0);
+        TypeColumn.Width = new GridLength(ViewModel.ShowTypeColumn ? ViewModel.TypeColumnWidth : 0);
+        ModifiedColumn.Width = new GridLength(ViewModel.ShowModifiedColumn ? ViewModel.ModifiedColumnWidth : 0);
+        NameSizeGripColumn.Width = new GridLength(ViewModel.ShowSizeColumn ? 7 : 0);
+        SizeTypeGripColumn.Width = new GridLength(ViewModel.ShowSizeColumn && ViewModel.ShowTypeColumn ? 7 : 0);
+        TypeModifiedGripColumn.Width = new GridLength(ViewModel.ShowTypeColumn && ViewModel.ShowModifiedColumn ? 7 : 0);
+        NameSizeColumnGrip.Visibility = ViewModel.ShowSizeColumn ? Visibility.Visible : Visibility.Collapsed;
+        SizeTypeColumnGrip.Visibility = ViewModel.ShowSizeColumn && ViewModel.ShowTypeColumn ? Visibility.Visible : Visibility.Collapsed;
+        TypeModifiedColumnGrip.Visibility = ViewModel.ShowTypeColumn && ViewModel.ShowModifiedColumn ? Visibility.Visible : Visibility.Collapsed;
+
+        SplitSizeColumn.MinWidth = SplitViewModel.ShowSizeColumn ? 55 : 0;
+        SplitTypeColumn.MinWidth = SplitViewModel.ShowTypeColumn ? 70 : 0;
+        SplitSizeColumn.Width = new GridLength(SplitViewModel.ShowSizeColumn ? SplitViewModel.SizeColumnWidth : 0);
+        SplitTypeColumn.Width = new GridLength(SplitViewModel.ShowTypeColumn ? SplitViewModel.TypeColumnWidth : 0);
+        SplitNameSizeGripColumn.Width = new GridLength(SplitViewModel.ShowSizeColumn ? 7 : 0);
+        SplitSizeTypeGripColumn.Width = new GridLength(SplitViewModel.ShowSizeColumn && SplitViewModel.ShowTypeColumn ? 7 : 0);
+        SplitNameSizeColumnGrip.Visibility = SplitViewModel.ShowSizeColumn ? Visibility.Visible : Visibility.Collapsed;
+        SplitSizeTypeColumnGrip.Visibility = SplitViewModel.ShowSizeColumn && SplitViewModel.ShowTypeColumn
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+    }
+
+    private void ColumnGrip_DragStarted(object sender, DragStartedEventArgs e)
+    {
+        _dragSizeStart = SizeColumn.ActualWidth;
+        _dragTypeStart = TypeColumn.ActualWidth;
+        _dragModifiedStart = ModifiedColumn.ActualWidth;
+        _dragSplitSizeStart = SplitSizeColumn.ActualWidth;
+        _dragSplitTypeStart = SplitTypeColumn.ActualWidth;
+        if (GetCursorPos(out var point))
+        {
+            _dragPointerStartX = point.X;
+        }
+    }
+
+    private void ColumnGrip_DragDelta(object sender, DragDeltaEventArgs e)
+    {
+        if (sender is FrameworkElement grip)
+        {
+            var delta = e.HorizontalChange;
+            if (GetCursorPos(out var point))
+            {
+                var scale = XamlRoot?.RasterizationScale ?? 1;
+                delta = (point.X - _dragPointerStartX) / scale;
+            }
+
+            ApplyColumnGripDelta(grip, delta);
+        }
+    }
+
+    private void ColumnGrip_DragCompleted(object sender, DragCompletedEventArgs e)
+    {
+        ViewModel.SetColumnWidths(SizeColumn.ActualWidth, TypeColumn.ActualWidth, ModifiedColumn.ActualWidth);
+        SplitViewModel.SetColumnWidths(SplitSizeColumn.ActualWidth, SplitTypeColumn.ActualWidth, ViewModel.ModifiedColumnWidth);
+        SaveSession();
+    }
+
+    private void ApplyColumnGripDelta(FrameworkElement grip, double delta)
+    {
+        if (Math.Abs(delta) < double.Epsilon)
+        {
+            return;
+        }
+
+        if (ReferenceEquals(grip, NameSizeColumnGrip))
+        {
+            ResizeRightColumn(SizeColumn, _dragSizeStart, delta, 55, 420);
+        }
+        else if (ReferenceEquals(grip, SizeTypeColumnGrip))
+        {
+            ResizeColumnPair(SizeColumn, TypeColumn, _dragSizeStart, _dragTypeStart, delta, 55, 70);
+        }
+        else if (ReferenceEquals(grip, TypeModifiedColumnGrip))
+        {
+            ResizeColumnPair(TypeColumn, ModifiedColumn, _dragTypeStart, _dragModifiedStart, delta, 70, 100);
+        }
+        else if (ReferenceEquals(grip, SplitNameSizeColumnGrip))
+        {
+            ResizeRightColumn(SplitSizeColumn, _dragSplitSizeStart, delta, 55, 420);
+        }
+        else if (ReferenceEquals(grip, SplitSizeTypeColumnGrip))
+        {
+            ResizeColumnPair(SplitSizeColumn, SplitTypeColumn, _dragSplitSizeStart, _dragSplitTypeStart, delta, 55, 70);
+        }
+    }
+
+    private static void ResizeRightColumn(
+        ColumnDefinition right,
+        double startWidth,
+        double delta,
+        double minimum,
+        double maximum)
+    {
+        right.Width = new GridLength(Math.Clamp(startWidth - delta, minimum, maximum));
+    }
+
+    private static void ResizeColumnPair(
+        ColumnDefinition left,
+        ColumnDefinition right,
+        double leftStart,
+        double rightStart,
+        double delta,
+        double leftMinimum,
+        double rightMinimum)
+    {
+        var total = leftStart + rightStart;
+        var leftWidth = Math.Clamp(leftStart + delta, leftMinimum, total - rightMinimum);
+        left.Width = new GridLength(leftWidth);
+        right.Width = new GridLength(total - leftWidth);
+    }
+
+    [DllImport("user32.dll")]
+    private static extern bool GetCursorPos(out NativePoint point);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativePoint
+    {
+        public int X;
+        public int Y;
     }
 
     private void InitializeDirectoryTree()
@@ -836,6 +975,11 @@ public sealed partial class MainPage : Page
 
     private async void CreateFolder_Click(object sender, RoutedEventArgs e)
     {
+        if (RejectRecycleBinMutation("Create Folder"))
+        {
+            return;
+        }
+
         var name = await PromptForNameAsync("Create Folder", "Enter the new folder name:", "New Folder");
         if (name is null)
         {
@@ -854,6 +998,11 @@ public sealed partial class MainPage : Page
 
     private async void CreateDocument_Click(object sender, RoutedEventArgs e)
     {
+        if (RejectRecycleBinMutation("Create Document"))
+        {
+            return;
+        }
+
         var templatesFolder = Environment.GetFolderPath(Environment.SpecialFolder.Templates);
         if (string.IsNullOrWhiteSpace(templatesFolder))
         {
@@ -926,6 +1075,11 @@ public sealed partial class MainPage : Page
 
     private async void Paste_Click(object sender, RoutedEventArgs e)
     {
+        if (RejectRecycleBinMutation("Paste"))
+        {
+            return;
+        }
+
         try
         {
             var content = Clipboard.GetContent();
@@ -965,6 +1119,11 @@ public sealed partial class MainPage : Page
 
     private async void Duplicate_Click(object sender, RoutedEventArgs e)
     {
+        if (RejectRecycleBinMutation("Duplicate"))
+        {
+            return;
+        }
+
         var selected = SelectedEntries();
         if (selected.Count == 0)
         {
@@ -984,6 +1143,11 @@ public sealed partial class MainPage : Page
 
     private async void Rename_Click(object sender, RoutedEventArgs e)
     {
+        if (RejectRecycleBinMutation("Rename"))
+        {
+            return;
+        }
+
         var selected = SelectedEntries();
         if (selected.Count > 1)
         {
@@ -1134,6 +1298,12 @@ public sealed partial class MainPage : Page
 
     private async void MoveToTrash_Click(object sender, RoutedEventArgs e)
     {
+        if (ActiveBrowser.IsRecycleBinView)
+        {
+            ViewModel.StatusText = "Items are already in Trash.";
+            return;
+        }
+
         var selected = SelectedEntries();
         if (selected.Count == 0)
         {
@@ -1165,6 +1335,11 @@ public sealed partial class MainPage : Page
 
     private async void DeletePermanently_Click(object sender, RoutedEventArgs e)
     {
+        if (RejectRecycleBinMutation("Delete Permanently"))
+        {
+            return;
+        }
+
         var selected = SelectedEntries();
         if (selected.Count == 0)
         {
@@ -1276,6 +1451,11 @@ public sealed partial class MainPage : Page
 
     private async void MakeLink_Click(object sender, RoutedEventArgs e)
     {
+        if (RejectRecycleBinMutation("Make Link"))
+        {
+            return;
+        }
+
         var entry = SelectedEntries().FirstOrDefault();
         if (entry is null)
         {
@@ -2092,7 +2272,8 @@ public sealed partial class MainPage : Page
 
     private void RememberCurrentFolderView()
     {
-        if (!_rememberFolderViews || string.IsNullOrWhiteSpace(ViewModel.CurrentPath))
+        if (!_rememberFolderViews || string.IsNullOrWhiteSpace(ViewModel.CurrentPath) ||
+            !Directory.Exists(ViewModel.CurrentPath))
         {
             return;
         }
@@ -2149,7 +2330,7 @@ public sealed partial class MainPage : Page
     {
         if (e.ClickedItem is NavigationLocation location)
         {
-            if (location.Kind is NavigationLocationKind.RecycleBin or NavigationLocationKind.NetworkBrowser)
+            if (location.Kind == NavigationLocationKind.NetworkBrowser)
             {
                 ShellIntegrationService.OpenShellLocation(location.Path);
             }
@@ -2259,6 +2440,22 @@ public sealed partial class MainPage : Page
         }
     }
 
+    private void FileList_RightTapped(object sender, RightTappedRoutedEventArgs e)
+    {
+        if (sender is not ListViewBase list ||
+            EntryFromInteractionSource(e.OriginalSource) is not { } entry)
+        {
+            return;
+        }
+
+        SetActivePaneForList(sender);
+        if (!list.SelectedItems.Contains(entry))
+        {
+            list.SelectedItems.Clear();
+            list.SelectedItems.Add(entry);
+        }
+    }
+
     private void FileList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (sender is ListViewBase list && list.SelectedItems.Count > 0)
@@ -2305,12 +2502,12 @@ public sealed partial class MainPage : Page
 
         try
         {
-            PreviewImage.Source = await _shellImageService.GetImageAsync(
+            var image = await _shellImageService.GetPreviewAsync(
                 entry.FullPath,
-                false,
-                true,
                 512,
                 cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            PreviewImage.Source = image;
         }
         catch (OperationCanceledException)
         {
@@ -2318,38 +2515,49 @@ public sealed partial class MainPage : Page
         }
     }
 
-    private async void FileRow_DragStarting(UIElement sender, DragStartingEventArgs args)
+    private void FileList_DragItemsStarting(object sender, DragItemsStartingEventArgs args)
     {
-        var deferral = args.GetDeferral();
+        SetActivePaneForList(sender);
+        if (ActiveBrowser.IsRecycleBinView)
+        {
+            args.Cancel = true;
+            ActiveBrowser.StatusText = "Drag is not available while viewing Trash.";
+            return;
+        }
+
+        var dragEntries = args.Items.OfType<FileSystemEntry>().ToArray();
+        if (dragEntries.Length == 0)
+        {
+            args.Cancel = true;
+            return;
+        }
+
+        ActiveBrowser.StatusText = $"Dragging {dragEntries.Length} item{(dragEntries.Length == 1 ? string.Empty : "s")}...";
+        args.Data.RequestedOperation = DataPackageOperation.Copy | DataPackageOperation.Move;
+        args.Data.SetDataProvider(
+            StandardDataFormats.StorageItems,
+            request => ProvideDragStorageItems(request, dragEntries));
+    }
+
+    private async void ProvideDragStorageItems(
+        DataProviderRequest request,
+        IReadOnlyList<FileSystemEntry> dragEntries)
+    {
+        var deferral = request.GetDeferral();
         try
         {
-            if (sender is not FrameworkElement { DataContext: FileSystemEntry draggedEntry })
-            {
-                args.Cancel = true;
-                return;
-            }
-
-            var selected = SelectedEntries();
-            var dragEntries = selected.Any(entry =>
-                string.Equals(entry.FullPath, draggedEntry.FullPath, StringComparison.OrdinalIgnoreCase))
-                ? selected
-                : [draggedEntry];
             var storageItems = await GetStorageItemsAsync(dragEntries);
             if (storageItems.Count == 0)
             {
-                args.Cancel = true;
                 return;
             }
 
-            args.AllowedOperations = DataPackageOperation.Copy | DataPackageOperation.Move;
-            args.Data.RequestedOperation = DataPackageOperation.Copy | DataPackageOperation.Move;
-            args.Data.SetStorageItems(storageItems);
-            args.DragUI.SetContentFromDataPackage();
+            request.SetData(storageItems);
         }
         catch (Exception ex)
         {
-            args.Cancel = true;
-            ViewModel.StatusText = $"Could not start drag: {ex.Message}";
+            App.DispatcherQueue.TryEnqueue(() =>
+                ViewModel.StatusText = $"Could not start drag: {ex.Message}");
         }
         finally
         {
@@ -2359,7 +2567,10 @@ public sealed partial class MainPage : Page
 
     private async void FileList_DragEnter(object sender, DragEventArgs e)
     {
-        SetActivePaneForList(sender);
+        if (IsFilePaneList(sender))
+        {
+            SetActivePaneForList(sender);
+        }
         if (!e.DataView.Contains(StandardDataFormats.StorageItems))
         {
             e.AcceptedOperation = DataPackageOperation.None;
@@ -2370,12 +2581,21 @@ public sealed partial class MainPage : Page
         try
         {
             var destination = GetDropDestination(e, sender);
+            if (destination is null)
+            {
+                e.AcceptedOperation = DataPackageOperation.None;
+                return;
+            }
             var items = await e.DataView.GetStorageItemsAsync();
             var mode = DetermineDropMode(items.Select(item => item.Path), destination, e.Modifiers);
             e.AcceptedOperation = mode == FileTransferMode.Move
                 ? DataPackageOperation.Move
                 : DataPackageOperation.Copy;
             var destinationName = Path.GetFileName(Path.TrimEndingDirectorySeparator(destination));
+            if (string.IsNullOrWhiteSpace(destinationName))
+            {
+                destinationName = destination;
+            }
             e.DragUIOverride.Caption = mode == FileTransferMode.Move
                 ? $"Move to {destinationName}"
                 : $"Copy to {destinationName}";
@@ -2393,7 +2613,10 @@ public sealed partial class MainPage : Page
 
     private async void FileList_Drop(object sender, DragEventArgs e)
     {
-        SetActivePaneForList(sender);
+        if (IsFilePaneList(sender))
+        {
+            SetActivePaneForList(sender);
+        }
         if (!e.DataView.Contains(StandardDataFormats.StorageItems))
         {
             return;
@@ -2404,6 +2627,11 @@ public sealed partial class MainPage : Page
         try
         {
             var destination = GetDropDestination(e, sender);
+            if (destination is null)
+            {
+                e.AcceptedOperation = DataPackageOperation.None;
+                return;
+            }
             var items = await e.DataView.GetStorageItemsAsync();
             var paths = items
                 .Select(item => item.Path)
@@ -2455,6 +2683,12 @@ public sealed partial class MainPage : Page
 
     private async Task CopySelectionToClipboardAsync(bool move)
     {
+        if (move && ActiveBrowser.IsRecycleBinView)
+        {
+            ViewModel.StatusText = "Cut is not available while viewing Trash.";
+            return;
+        }
+
         var selected = SelectedEntries();
         if (selected.Count == 0)
         {
@@ -2518,26 +2752,63 @@ public sealed partial class MainPage : Page
         return sameVolume ? FileTransferMode.Move : FileTransferMode.Copy;
     }
 
-    private string GetDropDestination(DragEventArgs args, object sender)
+    private string? GetDropDestination(DragEventArgs args, object sender)
     {
-        var current = args.OriginalSource as DependencyObject;
-        while (current is not null && current is not ListViewBase)
+        if (sender is UIElement dropSurface)
         {
-            if (current is FrameworkElement
-                {
-                    DataContext: FileSystemEntry { IsDirectory: true } directory
-                })
+            var pointerPosition = args.GetPosition(null!);
+            foreach (var hit in VisualTreeHelper.FindElementsInHostCoordinates(
+                         pointerPosition,
+                         dropSurface,
+                         true))
             {
-                return directory.FullPath;
-            }
+                var current = hit as DependencyObject;
+                while (current is not null && !ReferenceEquals(current, dropSurface))
+                {
+                    if (dropSurface is TreeView tree && current is TreeViewItem)
+                    {
+                        var node = tree.NodeFromContainer(current);
+                        if (node is not null && _treeLocations.TryGetValue(node, out var treeLocation))
+                        {
+                            return treeLocation.Path;
+                        }
+                    }
 
-            current = VisualTreeHelper.GetParent(current);
+                    var destination = current switch
+                    {
+                        FrameworkElement { DataContext: FileSystemEntry { IsDirectory: true } item } => item.FullPath,
+                        ContentControl { Content: FileSystemEntry { IsDirectory: true } item } => item.FullPath,
+                        FrameworkElement { DataContext: NavigationLocation { Kind: NavigationLocationKind.FileSystem } location } => location.Path,
+                        ContentControl { Content: NavigationLocation { Kind: NavigationLocationKind.FileSystem } location } => location.Path,
+                        FrameworkElement { DataContext: TreeViewNode node } when _treeLocations.TryGetValue(node, out var location) => location.Path,
+                        ContentControl { Content: TreeViewNode node } when _treeLocations.TryGetValue(node, out var location) => location.Path,
+                        _ => null
+                    };
+                    if (!string.IsNullOrWhiteSpace(destination))
+                    {
+                        return destination;
+                    }
+
+                    current = VisualTreeHelper.GetParent(current);
+                }
+            }
         }
 
-        return ReferenceEquals(sender, SecondaryFileList)
-            ? SplitViewModel.CurrentPath
-            : ViewModel.CurrentPath;
+        return sender switch
+        {
+            _ when ReferenceEquals(sender, SecondaryFileList) => SplitViewModel.CurrentPath,
+            _ when ReferenceEquals(sender, FileList) ||
+                   ReferenceEquals(sender, IconFileList) ||
+                   ReferenceEquals(sender, CompactFileList) => ViewModel.CurrentPath,
+            _ => null
+        };
     }
+
+    private bool IsFilePaneList(object sender) =>
+        ReferenceEquals(sender, FileList) ||
+        ReferenceEquals(sender, IconFileList) ||
+        ReferenceEquals(sender, CompactFileList) ||
+        ReferenceEquals(sender, SecondaryFileList);
 
     private async Task<FileOperationResult?> RunTransferAsync(
         IReadOnlyCollection<string> paths,
@@ -3248,6 +3519,11 @@ public sealed partial class MainPage : Page
                 ShowSizeColumn = ViewModel.ShowSizeColumn,
                 ShowTypeColumn = ViewModel.ShowTypeColumn,
                 ShowModifiedColumn = ViewModel.ShowModifiedColumn,
+                SizeColumnWidth = ViewModel.SizeColumnWidth,
+                TypeColumnWidth = ViewModel.TypeColumnWidth,
+                ModifiedColumnWidth = ViewModel.ModifiedColumnWidth,
+                SplitSizeColumnWidth = SplitViewModel.SizeColumnWidth,
+                SplitTypeColumnWidth = SplitViewModel.TypeColumnWidth,
                 UsePathBar = _usePathBar,
                 SingleClickActivation = _singleClickActivation,
                 RememberFolderViews = _rememberFolderViews,
@@ -3291,10 +3567,34 @@ public sealed partial class MainPage : Page
             return false;
         }
 
-        return string.Equals(
-            Path.TrimEndingDirectorySeparator(Path.GetFullPath(left)),
-            Path.TrimEndingDirectorySeparator(Path.GetFullPath(right)),
-            StringComparison.OrdinalIgnoreCase);
+        if (string.Equals(left, RecycleBinService.VirtualPath, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(right, RecycleBinService.VirtualPath, StringComparison.OrdinalIgnoreCase))
+        {
+            return string.Equals(left, right, StringComparison.OrdinalIgnoreCase);
+        }
+
+        try
+        {
+            return string.Equals(
+                Path.TrimEndingDirectorySeparator(Path.GetFullPath(left)),
+                Path.TrimEndingDirectorySeparator(Path.GetFullPath(right)),
+                StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return string.Equals(left, right, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    private bool RejectRecycleBinMutation(string action)
+    {
+        if (!ActiveBrowser.IsRecycleBinView)
+        {
+            return false;
+        }
+
+        ViewModel.StatusText = $"{action} is not available while viewing Trash.";
+        return true;
     }
 
     private enum BrowserPane

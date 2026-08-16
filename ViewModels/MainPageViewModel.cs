@@ -44,6 +44,9 @@ public partial class MainPageViewModel : ObservableObject
     public partial bool IsSearchMode { get; set; }
 
     [ObservableProperty]
+    public partial bool IsRecycleBinView { get; set; }
+
+    [ObservableProperty]
     public partial BrowserViewMode ViewMode { get; set; } = BrowserViewMode.Details;
 
     [ObservableProperty]
@@ -105,6 +108,17 @@ public partial class MainPageViewModel : ObservableObject
     public double IconImageSize => 28 + (ZoomLevel * 10);
     public double IconNameWidth => IconItemWidth - 16;
     public double CompactItemWidth => 190 + (ZoomLevel * 25);
+    public double SizeColumnWidth { get; private set; } = 110;
+    public double TypeColumnWidth { get; private set; } = 140;
+    public double ModifiedColumnWidth { get; private set; } = 160;
+
+    public void SetColumnWidths(double size, double type, double modified)
+    {
+        SizeColumnWidth = Math.Clamp(size, 55, 420);
+        TypeColumnWidth = Math.Clamp(type, 70, 500);
+        ModifiedColumnWidth = Math.Clamp(modified, 100, 420);
+        ConfigureEntryColumns();
+    }
 
     public MainPageViewModel()
     {
@@ -257,6 +271,12 @@ public partial class MainPageViewModel : ObservableObject
             return;
         }
 
+        if (string.Equals(requestedPath, RecycleBinService.VirtualPath, StringComparison.OrdinalIgnoreCase))
+        {
+            await NavigateRecycleBinAsync(navigationVersion, addToHistory, cancellationToken);
+            return;
+        }
+
         string path;
         try
         {
@@ -305,11 +325,12 @@ public partial class MainPageViewModel : ObservableObject
             foreach (var entry in entries)
             {
                 entry.ZoomLevel = ZoomLevel;
-                entry.ConfigureColumns(ShowSizeColumn, ShowTypeColumn, ShowModifiedColumn);
+                entry.ConfigureColumns(ShowSizeColumn, ShowTypeColumn, ShowModifiedColumn, SizeColumnWidth, TypeColumnWidth, ModifiedColumnWidth);
             }
 
             var entriesChanged = SynchronizeEntries(entries);
 
+            IsRecycleBinView = false;
             CurrentPath = path;
             StatusText = FormatStatus(entries, path);
             ConfigureFolderWatcher(path);
@@ -387,6 +408,11 @@ public partial class MainPageViewModel : ObservableObject
 
     public async Task GoUpAsync()
     {
+        if (IsRecycleBinView)
+        {
+            return;
+        }
+
         var parent = Directory.GetParent(CurrentPath);
         if (parent is not null)
         {
@@ -408,6 +434,12 @@ public partial class MainPageViewModel : ObservableObject
 
     public async Task SearchAsync(string query)
     {
+        if (IsRecycleBinView)
+        {
+            StatusText = "Search is not available while viewing Trash.";
+            return;
+        }
+
         var normalizedQuery = query.Trim();
         if (string.IsNullOrWhiteSpace(normalizedQuery))
         {
@@ -446,7 +478,7 @@ public partial class MainPageViewModel : ObservableObject
                 {
                     ZoomLevel = ZoomLevel
                 };
-                entry.ConfigureColumns(ShowSizeColumn, ShowTypeColumn, ShowModifiedColumn);
+                entry.ConfigureColumns(ShowSizeColumn, ShowTypeColumn, ShowModifiedColumn, SizeColumnWidth, TypeColumnWidth, ModifiedColumnWidth);
                 Entries.Add(entry);
             }
 
@@ -535,6 +567,82 @@ public partial class MainPageViewModel : ObservableObject
         if (!string.IsNullOrWhiteSpace(path) && Directory.Exists(path))
         {
             Places.Add(new NavigationLocation(name, path, glyph));
+        }
+    }
+
+    private async Task NavigateRecycleBinAsync(
+        int navigationVersion,
+        bool addToHistory,
+        CancellationToken cancellationToken)
+    {
+        CancelSearchCore();
+        IsSearchMode = false;
+        IsBusy = true;
+        StatusText = "Loading Trash...";
+        try
+        {
+            var entries = await Task.Run(() => RecycleBinService.ReadEntries(
+                SortColumn,
+                SortDescending,
+                FoldersFirst,
+                cancellationToken), cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!_navigationGeneration.IsCurrent(navigationVersion))
+            {
+                return;
+            }
+
+            foreach (var entry in entries)
+            {
+                entry.ZoomLevel = ZoomLevel;
+                entry.ConfigureColumns(ShowSizeColumn, ShowTypeColumn, ShowModifiedColumn, SizeColumnWidth, TypeColumnWidth, ModifiedColumnWidth);
+            }
+
+            SynchronizeEntries(entries);
+            _imageCancellation?.Cancel();
+            _imageCancellation?.Dispose();
+            _imageCancellation = null;
+            _folderWatcher?.Dispose();
+            _folderWatcher = null;
+            IsRecycleBinView = true;
+            CurrentPath = RecycleBinService.VirtualPath;
+            StatusText = $"{entries.Count} item{(entries.Count == 1 ? string.Empty : "s")} in Trash";
+
+            if (addToHistory)
+            {
+                if (_historyIndex < _history.Count - 1)
+                {
+                    _history.RemoveRange(_historyIndex + 1, _history.Count - _historyIndex - 1);
+                }
+
+                if (_history.Count == 0 || !PathEquals(_history[^1], RecycleBinService.VirtualPath))
+                {
+                    _history.Add(RecycleBinService.VirtualPath);
+                }
+
+                _historyIndex = _history.Count - 1;
+            }
+
+            OnPropertyChanged(nameof(CanGoBack));
+            OnPropertyChanged(nameof(CanGoForward));
+        }
+        catch (OperationCanceledException)
+        {
+            // A newer navigation owns the view now.
+        }
+        catch (Exception ex)
+        {
+            if (_navigationGeneration.IsCurrent(navigationVersion))
+            {
+                StatusText = $"Could not open Trash: {ex.Message}";
+            }
+        }
+        finally
+        {
+            if (_navigationGeneration.IsCurrent(navigationVersion))
+            {
+                IsBusy = false;
+            }
         }
     }
 
@@ -681,6 +789,12 @@ public partial class MainPageViewModel : ObservableObject
     {
         _imageCancellation?.Cancel();
         _imageCancellation?.Dispose();
+        if (IsRecycleBinView)
+        {
+            _imageCancellation = null;
+            return;
+        }
+
         _imageCancellation = new CancellationTokenSource();
         var cancellationToken = _imageCancellation.Token;
         var version = ++_imageVersion;
@@ -748,7 +862,7 @@ public partial class MainPageViewModel : ObservableObject
     {
         foreach (var entry in Entries)
         {
-            entry.ConfigureColumns(ShowSizeColumn, ShowTypeColumn, ShowModifiedColumn);
+            entry.ConfigureColumns(ShowSizeColumn, ShowTypeColumn, ShowModifiedColumn, SizeColumnWidth, TypeColumnWidth, ModifiedColumnWidth);
         }
     }
 

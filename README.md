@@ -31,7 +31,7 @@ The project is open source under the MIT License. It does not contain code copie
 - Recursive active-pane search (`Ctrl+F`) with live batched results, query cancellation, hidden-file filtering, and safe junction handling
 - Windows shell icons and content thumbnails in all folder views
 - Live folder monitoring plus free-space reporting in the status bar
-- Sortable Name, Size, Type, and Date columns; configurable column visibility; persistent zoom and folders-first ordering
+- Sortable and drag-resizable Name, Size, Type, and Date columns; configurable column visibility; persistent zoom and folders-first ordering
 - Shortcuts and expandable tree side-pane modes
 - Renameable, reorderable persistent bookmarks
 - Pathbar and editable-toolbar location selector styles
@@ -39,10 +39,10 @@ The project is open source under the MIT License. It does not contain code copie
 - Create-from-Templates, symbolic links, select-by-pattern, and invert-selection commands
 - Previewed, collision-safe bulk rename with grouped Undo/Redo
 - Preferences for thumbnails, sorting, recursive search, trash confirmation, tab restoration, and default view
-- Windows Recycle Bin browsing/restoration, confirmed Empty Trash, mapped network locations, direct UNC connections, terminal launch, and removable-drive eject
+- In-app Windows Recycle Bin browsing, confirmed Empty Trash, mapped network locations, direct UNC connections, terminal launch, and removable-drive eject
 - Customizable toolbar visibility and persistent alternate keyboard shortcuts
 - Optional image-preview side pane, single-click activation, and per-folder view/zoom/sort memory
-- Integrated PowerShell command panel (`F4`) that follows the active folder
+- Integrated PowerShell command panel (`F4`) that follows the active folder without covering the file list
 - Manifest-based plugin discovery from bundled and per-user plugin folders, with validation diagnostics and enable/disable controls
 - Selection-aware custom actions with file patterns, file/folder targeting, confirmation prompts, and argument-list execution without a command shell
 - Atomic, junction-safe bundled archive create/extract, media-tag editing, Git status/diff/log, and Windows sharing-management integrations
@@ -72,7 +72,7 @@ Developer Mode must be enabled in Windows Settings to register and launch the de
 Create a self-contained, unpackaged x64 release folder, ZIP, and SHA-256 checksum:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.1.1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.1.12
 ```
 
 The generated `artifacts\WinThunar-<version>-win-x64.zip` can be extracted and run with

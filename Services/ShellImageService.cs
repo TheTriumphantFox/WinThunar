@@ -6,6 +6,43 @@ namespace WinThunar.Services;
 
 public sealed class ShellImageService
 {
+    public async Task<BitmapImage?> GetPreviewAsync(
+        string path,
+        uint requestedSize,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        try
+        {
+            var file = await StorageFile.GetFileFromPathAsync(path);
+            using var stream = await file.OpenReadAsync();
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var image = new BitmapImage
+            {
+                DecodePixelWidth = (int)requestedSize
+            };
+            await image.SetSourceAsync(stream);
+            cancellationToken.ThrowIfCancellationRequested();
+            return image;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch
+        {
+            // Some codecs can only be rendered by the Windows shell thumbnail provider.
+            return await GetImageAsync(
+                path,
+                false,
+                true,
+                requestedSize,
+                cancellationToken);
+        }
+    }
+
     public async Task<BitmapImage?> GetImageAsync(
         string path,
         bool isDirectory,

@@ -17,6 +17,7 @@ public enum BrowserSortColumn
 
 public sealed class BrowserTabState
 {
+    private const string RecycleBinVirtualPath = "shell:RecycleBinFolder";
     private readonly List<string> _history;
     private int _historyIndex;
 
@@ -74,16 +75,29 @@ public sealed class BrowserTabState
 
     public static string GetTitle(string path)
     {
+        if (string.Equals(path, RecycleBinVirtualPath, StringComparison.OrdinalIgnoreCase))
+        {
+            return "Trash";
+        }
+
         var trimmed = System.IO.Path.TrimEndingDirectorySeparator(path);
         var title = System.IO.Path.GetFileName(trimmed);
         return string.IsNullOrWhiteSpace(title) ? path : title;
     }
 
-    private static bool PathsEqual(string left, string right) =>
-        string.Equals(
+    private static bool PathsEqual(string left, string right)
+    {
+        if (string.Equals(left, RecycleBinVirtualPath, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(right, RecycleBinVirtualPath, StringComparison.OrdinalIgnoreCase))
+        {
+            return string.Equals(left, right, StringComparison.OrdinalIgnoreCase);
+        }
+
+        return string.Equals(
             System.IO.Path.TrimEndingDirectorySeparator(System.IO.Path.GetFullPath(left)),
             System.IO.Path.TrimEndingDirectorySeparator(System.IO.Path.GetFullPath(right)),
             StringComparison.OrdinalIgnoreCase);
+    }
 }
 
 public sealed class AppSessionState
@@ -103,6 +117,11 @@ public sealed class AppSessionState
     public bool ShowSizeColumn { get; set; } = true;
     public bool ShowTypeColumn { get; set; } = true;
     public bool ShowModifiedColumn { get; set; } = true;
+    public double SizeColumnWidth { get; set; } = 110;
+    public double TypeColumnWidth { get; set; } = 140;
+    public double ModifiedColumnWidth { get; set; } = 160;
+    public double SplitSizeColumnWidth { get; set; } = 85;
+    public double SplitTypeColumnWidth { get; set; } = 105;
     public bool UsePathBar { get; set; }
     public bool SingleClickActivation { get; set; }
     public bool RememberFolderViews { get; set; }

@@ -15,6 +15,10 @@ public sealed partial class MainWindow : Window
     public MainWindow(string? initialPath = null)
     {
         InitializeComponent();
+        var version = typeof(App).Assembly.GetName().Version;
+        Title = version is null
+            ? "WinThunar"
+            : $"WinThunar {version.Major}.{version.Minor}.{version.Build}";
         AppWindow.SetIcon("Assets/AppIcon.ico");
 
         AppWindow.Resize(new Windows.Graphics.SizeInt32(1100, 720));

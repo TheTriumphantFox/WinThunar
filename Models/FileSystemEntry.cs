@@ -79,14 +79,29 @@ public sealed class FileSystemEntry : ObservableObject
     public GridLength SizeColumnWidth { get; private set; } = new(110);
     public GridLength TypeColumnWidth { get; private set; } = new(140);
     public GridLength ModifiedColumnWidth { get; private set; } = new(160);
+    public GridLength NameSizeGripWidth { get; private set; } = new(7);
+    public GridLength SizeTypeGripWidth { get; private set; } = new(7);
+    public GridLength TypeModifiedGripWidth { get; private set; } = new(7);
 
-    public void ConfigureColumns(bool showSize, bool showType, bool showModified)
+    public void ConfigureColumns(
+        bool showSize,
+        bool showType,
+        bool showModified,
+        double sizeWidth = 110,
+        double typeWidth = 140,
+        double modifiedWidth = 160)
     {
-        SizeColumnWidth = new GridLength(showSize ? 110 : 0);
-        TypeColumnWidth = new GridLength(showType ? 140 : 0);
-        ModifiedColumnWidth = new GridLength(showModified ? 160 : 0);
+        SizeColumnWidth = new GridLength(showSize ? sizeWidth : 0);
+        TypeColumnWidth = new GridLength(showType ? typeWidth : 0);
+        ModifiedColumnWidth = new GridLength(showModified ? modifiedWidth : 0);
+        NameSizeGripWidth = new GridLength(showSize ? 7 : 0);
+        SizeTypeGripWidth = new GridLength(showSize && showType ? 7 : 0);
+        TypeModifiedGripWidth = new GridLength(showType && showModified ? 7 : 0);
         OnPropertyChanged(nameof(SizeColumnWidth));
         OnPropertyChanged(nameof(TypeColumnWidth));
         OnPropertyChanged(nameof(ModifiedColumnWidth));
+        OnPropertyChanged(nameof(NameSizeGripWidth));
+        OnPropertyChanged(nameof(SizeTypeGripWidth));
+        OnPropertyChanged(nameof(TypeModifiedGripWidth));
     }
 }

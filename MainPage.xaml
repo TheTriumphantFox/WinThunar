@@ -41,6 +41,7 @@
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <MenuBar Background="#FFECECEC">
@@ -333,7 +334,8 @@
             <ScrollViewer x:Name="ShortcutsSidePane" Background="#FFE9E9E9">
                 <StackPanel Padding="6,8">
                     <TextBlock Text="DEVICES" Margin="8,6,8,4" FontSize="12" FontWeight="SemiBold" Foreground="#FF555555" />
-                    <ListView ItemsSource="{x:Bind ViewModel.Devices}" IsItemClickEnabled="True" ItemClick="Location_ItemClick" SelectionMode="None">
+                    <ListView ItemsSource="{x:Bind ViewModel.Devices}" IsItemClickEnabled="True" ItemClick="Location_ItemClick" SelectionMode="None"
+                              AllowDrop="True" DragEnter="FileList_DragEnter" DragOver="FileList_DragEnter" Drop="FileList_Drop">
                         <ListView.ItemTemplate>
                             <DataTemplate x:DataType="models:NavigationLocation">
                                 <StackPanel Orientation="Horizontal" Spacing="8" Padding="6,4">
@@ -348,7 +350,8 @@
                     </ListView>
 
                     <TextBlock Text="BOOKMARKS" Margin="8,16,8,4" FontSize="12" FontWeight="SemiBold" Foreground="#FF555555" />
-                    <ListView ItemsSource="{x:Bind ViewModel.Bookmarks}" IsItemClickEnabled="True" ItemClick="Location_ItemClick" SelectionMode="None">
+                    <ListView ItemsSource="{x:Bind ViewModel.Bookmarks}" IsItemClickEnabled="True" ItemClick="Location_ItemClick" SelectionMode="None"
+                              AllowDrop="True" DragEnter="FileList_DragEnter" DragOver="FileList_DragEnter" Drop="FileList_Drop">
                         <ListView.ItemTemplate>
                             <DataTemplate x:DataType="models:NavigationLocation">
                                 <StackPanel Orientation="Horizontal" Spacing="8" Padding="6,4">
@@ -360,7 +363,8 @@
                     </ListView>
 
                     <TextBlock Text="PLACES" Margin="8,16,8,4" FontSize="12" FontWeight="SemiBold" Foreground="#FF555555" />
-                    <ListView ItemsSource="{x:Bind ViewModel.Places}" IsItemClickEnabled="True" ItemClick="Location_ItemClick" SelectionMode="None">
+                    <ListView ItemsSource="{x:Bind ViewModel.Places}" IsItemClickEnabled="True" ItemClick="Location_ItemClick" SelectionMode="None"
+                              AllowDrop="True" DragEnter="FileList_DragEnter" DragOver="FileList_DragEnter" Drop="FileList_Drop">
                         <ListView.ItemTemplate>
                             <DataTemplate x:DataType="models:NavigationLocation">
                                 <StackPanel Orientation="Horizontal" Spacing="8" Padding="6,4">
@@ -372,7 +376,8 @@
                     </ListView>
 
                     <TextBlock Text="NETWORK" Margin="8,16,8,4" FontSize="12" FontWeight="SemiBold" Foreground="#FF555555" />
-                    <ListView ItemsSource="{x:Bind ViewModel.NetworkLocations}" IsItemClickEnabled="True" ItemClick="Location_ItemClick" SelectionMode="None">
+                    <ListView ItemsSource="{x:Bind ViewModel.NetworkLocations}" IsItemClickEnabled="True" ItemClick="Location_ItemClick" SelectionMode="None"
+                              AllowDrop="True" DragEnter="FileList_DragEnter" DragOver="FileList_DragEnter" Drop="FileList_Drop">
                         <ListView.ItemTemplate>
                             <DataTemplate x:DataType="models:NavigationLocation">
                                 <StackPanel Orientation="Horizontal" Spacing="8" Padding="6,4">
@@ -386,6 +391,10 @@
             </ScrollViewer>
             <TreeView
                 x:Name="DirectoryTree"
+                AllowDrop="True"
+                DragEnter="FileList_DragEnter"
+                DragOver="FileList_DragEnter"
+                Drop="FileList_Drop"
                 Visibility="Collapsed"
                 Expanding="DirectoryTree_Expanding"
                 ItemInvoked="DirectoryTree_ItemInvoked" />
@@ -413,17 +422,23 @@
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
 
-                <Grid Visibility="{x:Bind ViewModel.DetailsViewVisibility, Mode=OneWay}" Padding="12,0" Background="#FFF0F0F0" BorderBrush="#FFD4D4D4" BorderThickness="0,0,0,1" ColumnSpacing="8">
+                <Grid x:Name="DetailsHeader" Visibility="{x:Bind ViewModel.DetailsViewVisibility, Mode=OneWay}" Padding="12,0" Background="#FFF0F0F0" BorderBrush="#FFD4D4D4" BorderThickness="0,0,0,1">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" MinWidth="100" />
+                        <ColumnDefinition x:Name="NameSizeGripColumn" Width="7" />
                         <ColumnDefinition x:Name="SizeColumn" Width="110" />
+                        <ColumnDefinition x:Name="SizeTypeGripColumn" Width="7" />
                         <ColumnDefinition x:Name="TypeColumn" Width="140" />
+                        <ColumnDefinition x:Name="TypeModifiedGripColumn" Width="7" />
                         <ColumnDefinition x:Name="ModifiedColumn" Width="160" />
                     </Grid.ColumnDefinitions>
                     <Button Padding="0" HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0" Click="SortName_Click"><TextBlock Text="Name" FontWeight="SemiBold" /></Button>
-                    <Button Grid.Column="1" Padding="0" HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0" Click="SortSize_Click"><TextBlock Text="Size" FontWeight="SemiBold" /></Button>
-                    <Button Grid.Column="2" Padding="0" HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0" Click="SortType_Click"><TextBlock Text="Type" FontWeight="SemiBold" /></Button>
-                    <Button Grid.Column="3" Padding="0" HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0" Click="SortModified_Click"><TextBlock Text="Date Modified" FontWeight="SemiBold" /></Button>
+                    <Thumb x:Name="NameSizeColumnGrip" Grid.Column="1" Background="#FFF0F0F0" BorderBrush="#FFB8B8B8" BorderThickness="0,0,1,0" AutomationProperties.Name="Resize Name and Size columns" DragStarted="ColumnGrip_DragStarted" DragDelta="ColumnGrip_DragDelta" DragCompleted="ColumnGrip_DragCompleted" ToolTipService.ToolTip="Drag to resize columns" />
+                    <Button Grid.Column="2" Padding="0" HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0" Click="SortSize_Click"><TextBlock Text="Size" FontWeight="SemiBold" /></Button>
+                    <Thumb x:Name="SizeTypeColumnGrip" Grid.Column="3" Background="#FFF0F0F0" BorderBrush="#FFB8B8B8" BorderThickness="0,0,1,0" AutomationProperties.Name="Resize Size and Type columns" DragStarted="ColumnGrip_DragStarted" DragDelta="ColumnGrip_DragDelta" DragCompleted="ColumnGrip_DragCompleted" ToolTipService.ToolTip="Drag to resize columns" />
+                    <Button Grid.Column="4" Padding="0" HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0" Click="SortType_Click"><TextBlock Text="Type" FontWeight="SemiBold" /></Button>
+                    <Thumb x:Name="TypeModifiedColumnGrip" Grid.Column="5" Background="#FFF0F0F0" BorderBrush="#FFB8B8B8" BorderThickness="0,0,1,0" AutomationProperties.Name="Resize Type and Date Modified columns" DragStarted="ColumnGrip_DragStarted" DragDelta="ColumnGrip_DragDelta" DragCompleted="ColumnGrip_DragCompleted" ToolTipService.ToolTip="Drag to resize columns" />
+                    <Button Grid.Column="6" Padding="0" HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0" Click="SortModified_Click"><TextBlock Text="Date Modified" FontWeight="SemiBold" /></Button>
                 </Grid>
 
                 <ListView
@@ -431,6 +446,9 @@
                     Grid.Row="1"
                     Visibility="{x:Bind ViewModel.DetailsViewVisibility, Mode=OneWay}"
                     AllowDrop="True"
+                    CanDragItems="True"
+                    IsSwipeEnabled="True"
+                    DragItemsStarting="FileList_DragItemsStarting"
                     DragEnter="FileList_DragEnter"
                     DragOver="FileList_DragEnter"
                     Drop="FileList_Drop"
@@ -439,6 +457,7 @@
                     IsDoubleTapEnabled="True"
                     IsItemClickEnabled="True"
                     ItemClick="FileList_ItemClick"
+                    RightTapped="FileList_RightTapped"
                     IsMultiSelectCheckBoxEnabled="False"
                     DoubleTapped="FileList_DoubleTapped"
                     SelectionChanged="FileList_SelectionChanged"
@@ -452,20 +471,23 @@
                     </ListView.ItemContainerStyle>
                     <ListView.ItemTemplate>
                         <DataTemplate x:DataType="models:FileSystemEntry">
-                            <Grid ColumnSpacing="8" CanDrag="True" DragStarting="FileRow_DragStarting" ToolTipService.ToolTip="{x:Bind FullPath}">
+                            <Grid ToolTipService.ToolTip="{x:Bind FullPath}">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="{x:Bind SizeColumnWidth, Mode=OneWay}" />
-                                <ColumnDefinition Width="{x:Bind TypeColumnWidth, Mode=OneWay}" />
-                                <ColumnDefinition Width="{x:Bind ModifiedColumnWidth, Mode=OneWay}" />
+                                    <ColumnDefinition Width="{x:Bind NameSizeGripWidth, Mode=OneWay}" />
+                                    <ColumnDefinition Width="{x:Bind SizeColumnWidth, Mode=OneWay}" />
+                                    <ColumnDefinition Width="{x:Bind SizeTypeGripWidth, Mode=OneWay}" />
+                                    <ColumnDefinition Width="{x:Bind TypeColumnWidth, Mode=OneWay}" />
+                                    <ColumnDefinition Width="{x:Bind TypeModifiedGripWidth, Mode=OneWay}" />
+                                    <ColumnDefinition Width="{x:Bind ModifiedColumnWidth, Mode=OneWay}" />
                                 </Grid.ColumnDefinitions>
                                 <StackPanel Orientation="Horizontal" Spacing="8">
                                     <FontIcon Glyph="{x:Bind Glyph}" Width="20" Height="22" FontSize="16" VerticalAlignment="Center" />
                                     <TextBlock Text="{x:Bind Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                                 </StackPanel>
-                                <TextBlock Grid.Column="1" Text="{x:Bind Size}" VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="2" Text="{x:Bind Type}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="3" Text="{x:Bind Modified}" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="2" Text="{x:Bind Size}" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="4" Text="{x:Bind Type}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="6" Text="{x:Bind Modified}" VerticalAlignment="Center" />
                             </Grid>
                         </DataTemplate>
                     </ListView.ItemTemplate>
@@ -476,6 +498,9 @@
                     Grid.RowSpan="2"
                     Visibility="{x:Bind ViewModel.IconViewVisibility, Mode=OneWay}"
                     AllowDrop="True"
+                    CanDragItems="True"
+                    IsSwipeEnabled="True"
+                    DragItemsStarting="FileList_DragItemsStarting"
                     DragEnter="FileList_DragEnter"
                     DragOver="FileList_DragEnter"
                     Drop="FileList_Drop"
@@ -484,6 +509,7 @@
                     IsDoubleTapEnabled="True"
                     IsItemClickEnabled="True"
                     ItemClick="FileList_ItemClick"
+                    RightTapped="FileList_RightTapped"
                     DoubleTapped="FileList_DoubleTapped"
                     IsMultiSelectCheckBoxEnabled="False"
                     SelectionChanged="FileList_SelectionChanged"
@@ -495,7 +521,7 @@
                     </GridView.ItemsPanel>
                     <GridView.ItemTemplate>
                         <DataTemplate x:DataType="models:FileSystemEntry">
-                            <Grid Width="{x:Bind IconItemWidth, Mode=OneWay}" Height="{x:Bind IconItemHeight, Mode=OneWay}" CanDrag="True" DragStarting="FileRow_DragStarting" ToolTipService.ToolTip="{x:Bind FullPath}">
+                            <Grid Width="{x:Bind IconItemWidth, Mode=OneWay}" Height="{x:Bind IconItemHeight, Mode=OneWay}" ToolTipService.ToolTip="{x:Bind FullPath}">
                                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="5">
                                     <Grid Width="{x:Bind IconImageSize, Mode=OneWay}" Height="{x:Bind IconImageSize, Mode=OneWay}" HorizontalAlignment="Center">
                                         <Image Source="{Binding Thumbnail}" Visibility="{Binding ThumbnailVisibility}" Stretch="Uniform" />
@@ -513,6 +539,9 @@
                     Grid.RowSpan="2"
                     Visibility="{x:Bind ViewModel.CompactViewVisibility, Mode=OneWay}"
                     AllowDrop="True"
+                    CanDragItems="True"
+                    IsSwipeEnabled="True"
+                    DragItemsStarting="FileList_DragItemsStarting"
                     DragEnter="FileList_DragEnter"
                     DragOver="FileList_DragEnter"
                     Drop="FileList_Drop"
@@ -521,6 +550,7 @@
                     IsDoubleTapEnabled="True"
                     IsItemClickEnabled="True"
                     ItemClick="FileList_ItemClick"
+                    RightTapped="FileList_RightTapped"
                     DoubleTapped="FileList_DoubleTapped"
                     IsMultiSelectCheckBoxEnabled="False"
                     SelectionChanged="FileList_SelectionChanged"
@@ -540,7 +570,7 @@
                     </GridView.ItemsPanel>
                     <GridView.ItemTemplate>
                         <DataTemplate x:DataType="models:FileSystemEntry">
-                            <Grid Width="232" Height="36" CanDrag="True" DragStarting="FileRow_DragStarting" ToolTipService.ToolTip="{x:Bind FullPath}">
+                            <Grid Width="232" Height="36" ToolTipService.ToolTip="{x:Bind FullPath}">
                                 <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                                     <Grid Width="20" Height="24" VerticalAlignment="Center">
                                         <Image Source="{Binding Thumbnail}" Visibility="{Binding ThumbnailVisibility}" Stretch="Uniform" />
@@ -602,21 +632,28 @@
                             <Button Grid.Column="4" Content="Go" Click="SplitGo_Click" />
                         </Grid>
 
-                        <Grid Grid.Row="1" Padding="10,0" Background="#FFF0F0F0" BorderBrush="#FFD4D4D4" BorderThickness="0,0,0,1" ColumnSpacing="6">
+                        <Grid x:Name="SplitDetailsHeader" Grid.Row="1" Padding="10,0" Background="#FFF0F0F0" BorderBrush="#FFD4D4D4" BorderThickness="0,0,0,1">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="85" />
-                                <ColumnDefinition Width="105" />
+                                <ColumnDefinition Width="*" MinWidth="80" />
+                                <ColumnDefinition x:Name="SplitNameSizeGripColumn" Width="7" />
+                                <ColumnDefinition x:Name="SplitSizeColumn" Width="85" />
+                                <ColumnDefinition x:Name="SplitSizeTypeGripColumn" Width="7" />
+                                <ColumnDefinition x:Name="SplitTypeColumn" Width="105" />
                             </Grid.ColumnDefinitions>
                             <TextBlock Text="Name" VerticalAlignment="Center" FontWeight="SemiBold" />
-                            <TextBlock Grid.Column="1" Text="Size" VerticalAlignment="Center" FontWeight="SemiBold" />
-                            <TextBlock Grid.Column="2" Text="Type" VerticalAlignment="Center" FontWeight="SemiBold" />
+                            <Thumb x:Name="SplitNameSizeColumnGrip" Grid.Column="1" Background="#FFF0F0F0" BorderBrush="#FFB8B8B8" BorderThickness="0,0,1,0" AutomationProperties.Name="Resize split Name and Size columns" DragStarted="ColumnGrip_DragStarted" DragDelta="ColumnGrip_DragDelta" DragCompleted="ColumnGrip_DragCompleted" ToolTipService.ToolTip="Drag to resize columns" />
+                            <TextBlock Grid.Column="2" Text="Size" VerticalAlignment="Center" FontWeight="SemiBold" />
+                            <Thumb x:Name="SplitSizeTypeColumnGrip" Grid.Column="3" Background="#FFF0F0F0" BorderBrush="#FFB8B8B8" BorderThickness="0,0,1,0" AutomationProperties.Name="Resize split Size and Type columns" DragStarted="ColumnGrip_DragStarted" DragDelta="ColumnGrip_DragDelta" DragCompleted="ColumnGrip_DragCompleted" ToolTipService.ToolTip="Drag to resize columns" />
+                            <TextBlock Grid.Column="4" Text="Type" VerticalAlignment="Center" FontWeight="SemiBold" />
                         </Grid>
 
                         <ListView
                             x:Name="SecondaryFileList"
                             Grid.Row="2"
                             AllowDrop="True"
+                            CanDragItems="True"
+                            IsSwipeEnabled="True"
+                            DragItemsStarting="FileList_DragItemsStarting"
                             DragEnter="FileList_DragEnter"
                             DragOver="FileList_DragEnter"
                             Drop="FileList_Drop"
@@ -625,6 +662,7 @@
                             IsDoubleTapEnabled="True"
                             IsItemClickEnabled="True"
                             ItemClick="FileList_ItemClick"
+                            RightTapped="FileList_RightTapped"
                             IsMultiSelectCheckBoxEnabled="False"
                             DoubleTapped="FileList_DoubleTapped"
                             SelectionChanged="FileList_SelectionChanged"
@@ -638,11 +676,13 @@
                             </ListView.ItemContainerStyle>
                             <ListView.ItemTemplate>
                                 <DataTemplate x:DataType="models:FileSystemEntry">
-                                    <Grid ColumnSpacing="6" CanDrag="True" DragStarting="FileRow_DragStarting" ToolTipService.ToolTip="{x:Bind FullPath}">
+                                    <Grid ToolTipService.ToolTip="{x:Bind FullPath}">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="85" />
-                                            <ColumnDefinition Width="105" />
+                                            <ColumnDefinition Width="{x:Bind NameSizeGripWidth, Mode=OneWay}" />
+                                            <ColumnDefinition Width="{x:Bind SizeColumnWidth, Mode=OneWay}" />
+                                            <ColumnDefinition Width="{x:Bind SizeTypeGripWidth, Mode=OneWay}" />
+                                            <ColumnDefinition Width="{x:Bind TypeColumnWidth, Mode=OneWay}" />
                                         </Grid.ColumnDefinitions>
                                         <StackPanel Orientation="Horizontal" Spacing="7">
                                             <Grid Width="20" Height="22" VerticalAlignment="Center">
@@ -651,8 +691,8 @@
                                             </Grid>
                                             <TextBlock Text="{x:Bind Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                                         </StackPanel>
-                                        <TextBlock Grid.Column="1" Text="{x:Bind Size}" VerticalAlignment="Center" />
-                                        <TextBlock Grid.Column="2" Text="{x:Bind Type}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="2" Text="{x:Bind Size}" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="4" Text="{x:Bind Type}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                                     </Grid>
                                 </DataTemplate>
                             </ListView.ItemTemplate>
@@ -689,11 +729,9 @@
 
         <Border
             x:Name="TerminalPane"
-            Grid.Row="4"
+            Grid.Row="5"
             Height="230"
-            Margin="212,0,0,0"
             Padding="8"
-            VerticalAlignment="Bottom"
             Background="#FF202020"
             BorderBrush="#FF555555"
             BorderThickness="1,1,0,0"
@@ -736,7 +774,7 @@
         </Border>
 
         <Border
-            Grid.Row="5"
+            Grid.Row="6"
             Padding="10,7"
             Background="#FFF5F5F5"
             BorderBrush="#FFD0D0D0"
@@ -766,7 +804,7 @@
             </Grid>
         </Border>
 
-        <Border Grid.Row="6" Padding="8,5" Background="#FFECECEC" BorderBrush="#FFD0D0D0" BorderThickness="0,1,0,0">
+        <Border Grid.Row="7" Padding="8,5" Background="#FFECECEC" BorderBrush="#FFD0D0D0" BorderThickness="0,1,0,0">
             <TextBlock Text="{x:Bind ViewModel.StatusText, Mode=OneWay}" />
         </Border>
     </Grid>

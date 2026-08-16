@@ -1,0 +1,27 @@
+{
+  "id": "builtin.archive",
+  "name": "Archive Integration",
+  "version": "1.0.0",
+  "description": "Create and extract ZIP archives without an external program.",
+  "enabled": true,
+  "actions": [
+    {
+      "id": "create-zip",
+      "name": "Create ZIP Archive...",
+      "description": "Compress the selected files and folders into a ZIP archive.",
+      "command": "builtin:archive-create",
+      "filePatterns": ["*"],
+      "targets": "Mixed",
+      "minimumSelection": 1
+    },
+    {
+      "id": "extract-zip",
+      "name": "Extract Here",
+      "description": "Extract each selected ZIP archive into its own folder.",
+      "command": "builtin:archive-extract",
+      "filePatterns": ["*.zip"],
+      "targets": "Files",
+      "minimumSelection": 1
+    }
+  ]
+}

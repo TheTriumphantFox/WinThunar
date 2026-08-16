@@ -1,0 +1,17 @@
+{
+  "id": "builtin.media-tags",
+  "name": "Media Tags",
+  "version": "1.0.0",
+  "description": "Edit common Windows music metadata.",
+  "enabled": true,
+  "actions": [{
+    "id": "edit-tags",
+    "name": "Edit Media Tags...",
+    "description": "Edit title, artist, album, track, and year metadata.",
+    "command": "builtin:media-tags",
+    "filePatterns": ["*.mp3", "*.m4a", "*.wma", "*.flac", "*.wav"],
+    "targets": "Files",
+    "minimumSelection": 1,
+    "maximumSelection": 1
+  }]
+}

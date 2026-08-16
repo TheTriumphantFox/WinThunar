@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "WinThunar (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "WinThunar (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsTestProject>true</IsTestProject>
+    <IsPackable>false</IsPackable>
+    <NoWarn>$(NoWarn);xUnit1051</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\Services\FileOperationService.cs" Link="Services\FileOperationService.cs" />
+    <Compile Include="..\..\Services\FileOperationHistory.cs" Link="Services\FileOperationHistory.cs" />
+    <Compile Include="..\..\Services\FileTransferQueue.cs" Link="Services\FileTransferQueue.cs" />
+    <Compile Include="..\..\Services\AppSessionService.cs" Link="Services\AppSessionService.cs" />
+    <Compile Include="..\..\Services\FileSearchService.cs" Link="Services\FileSearchService.cs" />
+    <Compile Include="..\..\Services\BulkRenameService.cs" Link="Services\BulkRenameService.cs" />
+    <Compile Include="..\..\Services\PluginService.cs" Link="Services\PluginService.cs" />
+    <Compile Include="..\..\Services\ArchiveService.cs" Link="Services\ArchiveService.cs" />
+    <Compile Include="..\..\Services\RequestGeneration.cs" Link="Services\RequestGeneration.cs" />
+    <Compile Include="..\..\Services\ObservableCollectionReconciler.cs" Link="Services\ObservableCollectionReconciler.cs" />
+    <Compile Include="..\..\Models\FileTransferJob.cs" Link="Models\FileTransferJob.cs" />
+    <Compile Include="..\..\Models\BrowserState.cs" Link="Models\BrowserState.cs" />
+    <Compile Include="..\..\Models\PluginManifest.cs" Link="Models\PluginManifest.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.9.0" />
+    <PackageReference Include="xunit.v3" Version="3.2.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+</Project>

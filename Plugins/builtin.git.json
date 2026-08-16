@@ -1,0 +1,12 @@
+{
+  "id": "builtin.git",
+  "name": "Git Integration",
+  "version": "1.0.0",
+  "description": "Run common Git inspection commands in WinThunar's terminal panel.",
+  "enabled": true,
+  "actions": [
+    { "id": "status", "name": "Git Status", "command": "builtin:git-status", "filePatterns": ["*"], "targets": "Mixed" },
+    { "id": "diff", "name": "Git Diff", "command": "builtin:git-diff", "filePatterns": ["*"], "targets": "Files" },
+    { "id": "log", "name": "Git Log", "command": "builtin:git-log", "filePatterns": ["*"], "targets": "Mixed" }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "id": "builtin.sharing",
+  "name": "Windows Sharing",
+  "version": "1.0.0",
+  "description": "Open Windows folder properties for sharing and security management.",
+  "enabled": true,
+  "actions": [{
+    "id": "manage-sharing",
+    "name": "Manage Sharing...",
+    "description": "Open the Windows folder Properties dialog containing Sharing and Security controls.",
+    "command": "builtin:share-manage",
+    "filePatterns": ["*"],
+    "targets": "Folders",
+    "minimumSelection": 1,
+    "maximumSelection": 1
+  }]
+}

@@ -442,7 +442,7 @@
                     IsMultiSelectCheckBoxEnabled="False"
                     DoubleTapped="FileList_DoubleTapped"
                     SelectionChanged="FileList_SelectionChanged"
-                    SelectionMode="Multiple">
+                    SelectionMode="Extended">
                     <ListView.ItemContainerStyle>
                         <Style TargetType="ListViewItem">
                             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
@@ -487,7 +487,7 @@
                     DoubleTapped="FileList_DoubleTapped"
                     IsMultiSelectCheckBoxEnabled="False"
                     SelectionChanged="FileList_SelectionChanged"
-                    SelectionMode="Multiple">
+                    SelectionMode="Extended">
                     <GridView.ItemsPanel>
                         <ItemsPanelTemplate>
                             <ItemsWrapGrid Orientation="Horizontal" ItemWidth="144" ItemHeight="120" />
@@ -524,7 +524,7 @@
                     DoubleTapped="FileList_DoubleTapped"
                     IsMultiSelectCheckBoxEnabled="False"
                     SelectionChanged="FileList_SelectionChanged"
-                    SelectionMode="Multiple">
+                    SelectionMode="Extended">
                     <GridView.ItemContainerStyle>
                         <Style TargetType="GridViewItem">
                             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
@@ -628,7 +628,7 @@
                             IsMultiSelectCheckBoxEnabled="False"
                             DoubleTapped="FileList_DoubleTapped"
                             SelectionChanged="FileList_SelectionChanged"
-                            SelectionMode="Multiple">
+                            SelectionMode="Extended">
                             <ListView.ItemContainerStyle>
                                 <Style TargetType="ListViewItem">
                                     <Setter Property="HorizontalContentAlignment" Value="Stretch" />

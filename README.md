@@ -72,7 +72,7 @@ Developer Mode must be enabled in Windows Settings to register and launch the de
 Create a self-contained, unpackaged x64 release folder, ZIP, and SHA-256 checksum:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.1.0
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.1.1
 ```
 
 The generated `artifacts\WinThunar-<version>-win-x64.zip` can be extracted and run with

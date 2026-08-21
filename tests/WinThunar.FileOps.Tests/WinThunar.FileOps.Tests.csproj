@@ -19,6 +19,7 @@
     <Compile Include="..\..\Services\ArchiveService.cs" Link="Services\ArchiveService.cs" />
     <Compile Include="..\..\Services\RequestGeneration.cs" Link="Services\RequestGeneration.cs" />
     <Compile Include="..\..\Services\ObservableCollectionReconciler.cs" Link="Services\ObservableCollectionReconciler.cs" />
+    <Compile Include="..\..\Services\ShellIntegrationService.cs" Link="Services\ShellIntegrationService.cs" />
     <Compile Include="..\..\Models\FileTransferJob.cs" Link="Models\FileTransferJob.cs" />
     <Compile Include="..\..\Models\BrowserState.cs" Link="Models\BrowserState.cs" />
     <Compile Include="..\..\Models\PluginManifest.cs" Link="Models\PluginManifest.cs" />

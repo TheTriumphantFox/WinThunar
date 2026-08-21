@@ -181,6 +181,48 @@ public sealed class CoreBehaviorTests : IDisposable
         ]));
     }
 
+    [Theory]
+    [InlineData("folder.lnk", true)]
+    [InlineData("WEBSITE.URL", true)]
+    [InlineData("notes.txt", false)]
+    [InlineData("almost.lnk.txt", false)]
+    public void RecognizesWindowsShortcutFiles(string fileName, bool expected) =>
+        Assert.Equal(expected, ShellIntegrationService.IsShortcutFile(fileName));
+
+    [Fact]
+    public void ResolvesFolderShortcutTargets()
+    {
+        var target = Directory.CreateDirectory(Path.Combine(_root, "shortcut-target")).FullName;
+        var shortcutPath = Path.Combine(_root, "folder.lnk");
+        object? shellObject = null;
+        object? shortcutObject = null;
+        try
+        {
+            var shellType = Type.GetTypeFromProgID("WScript.Shell");
+            shellObject = shellType is null ? null : Activator.CreateInstance(shellType);
+            Assert.NotNull(shellObject);
+
+            dynamic shell = shellObject;
+            shortcutObject = shell.CreateShortcut(shortcutPath);
+            dynamic shortcut = shortcutObject;
+            shortcut.TargetPath = target;
+            shortcut.Save();
+        }
+        finally
+        {
+            foreach (var value in new[] { shortcutObject, shellObject })
+            {
+                if (value is not null && System.Runtime.InteropServices.Marshal.IsComObject(value))
+                {
+                    System.Runtime.InteropServices.Marshal.FinalReleaseComObject(value);
+                }
+            }
+        }
+
+        Assert.True(ShellIntegrationService.TryResolveShortcutTarget(shortcutPath, out var resolved));
+        Assert.Equal(Path.GetFullPath(target), resolved, StringComparer.OrdinalIgnoreCase);
+    }
+
     public void Dispose()
     {
         var expectedParent = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "WinThunar.FileOps.Tests"));

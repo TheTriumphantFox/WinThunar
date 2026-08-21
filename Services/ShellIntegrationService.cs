@@ -7,6 +7,76 @@ public static class ShellIntegrationService
 {
     private const uint SeeMaskInvokeIdList = 0x0000000C;
 
+    public static bool IsShortcutFile(string path) =>
+        Path.GetExtension(path) is { } extension &&
+        (extension.Equals(".lnk", StringComparison.OrdinalIgnoreCase) ||
+         extension.Equals(".url", StringComparison.OrdinalIgnoreCase));
+
+    public static bool TryResolveShortcutTarget(string shortcutPath, out string targetPath)
+    {
+        targetPath = string.Empty;
+        if (!Path.GetExtension(shortcutPath).Equals(".lnk", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        object? shellObject = null;
+        object? shortcutObject = null;
+        try
+        {
+            var shellType = Type.GetTypeFromProgID("WScript.Shell");
+            shellObject = shellType is null ? null : Activator.CreateInstance(shellType);
+            if (shellObject is null)
+            {
+                return false;
+            }
+
+            dynamic shell = shellObject;
+            shortcutObject = shell.CreateShortcut(Path.GetFullPath(shortcutPath));
+            dynamic shortcut = shortcutObject;
+            var candidate = shortcut.TargetPath as string;
+            if (string.IsNullOrWhiteSpace(candidate))
+            {
+                return false;
+            }
+
+            targetPath = Path.GetFullPath(Environment.ExpandEnvironmentVariables(candidate));
+            return true;
+        }
+        catch
+        {
+            targetPath = string.Empty;
+            return false;
+        }
+        finally
+        {
+            foreach (var value in new[] { shortcutObject, shellObject })
+            {
+                if (value is not null && Marshal.IsComObject(value))
+                {
+                    Marshal.FinalReleaseComObject(value);
+                }
+            }
+        }
+    }
+
+    public static bool OpenPath(string path)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = path,
+                UseShellExecute = true
+            });
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     public static bool ShowProperties(string path, nint ownerWindow)
     {
         var info = new ShellExecuteInfo

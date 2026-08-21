@@ -2667,6 +2667,21 @@ public sealed partial class MainPage : Page
             return;
         }
 
+        if (ShellIntegrationService.IsShortcutFile(entry.FullPath))
+        {
+            if (ShellIntegrationService.TryResolveShortcutTarget(entry.FullPath, out var targetPath) &&
+                Directory.Exists(targetPath))
+            {
+                await NavigateActivePaneAsync(targetPath);
+            }
+            else if (!ShellIntegrationService.OpenPath(entry.FullPath))
+            {
+                ViewModel.StatusText = $"Windows could not open shortcut '{entry.Name}'.";
+            }
+
+            return;
+        }
+
         try
         {
             var file = await StorageFile.GetFileFromPathAsync(entry.FullPath);

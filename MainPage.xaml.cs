@@ -55,9 +55,14 @@ public sealed partial class MainPage : Page
     private double _dragSplitSizeStart;
     private double _dragSplitTypeStart;
     private int _dragPointerStartX;
+    private bool _disposed;
 
     public MainPageViewModel ViewModel { get; } = new();
     public MainPageViewModel SplitViewModel { get; } = new();
+    public bool HasPendingTransfers =>
+        _transferQueue.ActiveJob is not null || _transferQueue.QueuedCount > 0;
+
+    public void CancelTransfersForClose() => _transferQueue.Dispose();
 
     public MainPage()
     {
@@ -80,6 +85,7 @@ public sealed partial class MainPage : Page
 
     private async void Page_Loaded(object sender, RoutedEventArgs e)
     {
+        var recovery = _fileOperations.RecoverInterruptedTransfers();
         _restoringSession = true;
         _pluginService.Reload();
         var session = _sessionService.Load();
@@ -165,6 +171,40 @@ public sealed partial class MainPage : Page
         _restoringSession = false;
         _sessionReady = true;
         SaveSession();
+        if (recovery.RecoveredOperations > 0 || recovery.Errors.Count > 0)
+        {
+            ViewModel.StatusText = recovery.Errors.Count == 0
+                ? $"Recovered {recovery.RecoveredOperations} interrupted transfer{(recovery.RecoveredOperations == 1 ? string.Empty : "s")}."
+                : $"Recovered {recovery.RecoveredOperations} interrupted transfers; {recovery.Errors.Count} need attention.";
+        }
+    }
+
+    private void Page_Unloaded(object sender, RoutedEventArgs e)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        _searchInputDelay?.Cancel();
+        _searchInputDelay?.Dispose();
+        _searchInputDelay = null;
+        _previewCancellation?.Cancel();
+        _previewCancellation?.Dispose();
+        _previewCancellation = null;
+        _transferQueue.StateChanged -= TransferQueue_StateChanged;
+        _history.Changed -= History_Changed;
+        ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
+        SplitViewModel.PropertyChanged -= SplitViewModel_PropertyChanged;
+        _transferQueue.Dispose();
+        ViewModel.Dispose();
+        SplitViewModel.Dispose();
+        foreach (var window in _ownedWindows.ToArray())
+        {
+            window.Close();
+        }
+        _ownedWindows.Clear();
     }
 
     private async void Back_Click(object sender, RoutedEventArgs e)
@@ -930,6 +970,12 @@ public sealed partial class MainPage : Page
 
     private void OpenInNewTab_Click(object sender, RoutedEventArgs e)
     {
+        if (ActiveBrowser.IsRecycleBinView)
+        {
+            ActiveBrowser.StatusText = "Restore the folder before opening it in a tab.";
+            return;
+        }
+
         var folder = SelectedEntries().FirstOrDefault(entry => entry.IsDirectory);
         if (folder is null)
         {
@@ -992,7 +1038,7 @@ public sealed partial class MainPage : Page
             async () => createdPath = await _fileOperations.CreateDirectoryAsync(ActiveBrowser.CurrentPath, name)) &&
             createdPath is not null)
         {
-            PushCreateHistory(createdPath, true);
+            await PushCreateHistoryAsync(createdPath, true);
         }
     }
 
@@ -1065,7 +1111,7 @@ public sealed partial class MainPage : Page
             }) &&
             createdPath is not null)
         {
-            PushCreateHistory(createdPath, false);
+            await PushCreateHistoryAsync(createdPath, false);
         }
     }
 
@@ -1260,8 +1306,7 @@ public sealed partial class MainPage : Page
                     preview.Text += $"{Environment.NewLine}…and {currentPlan.Count - 30} more";
                 }
 
-                dialog.IsPrimaryButtonEnabled = currentPlan.Any(item =>
-                    !string.Equals(item.SourcePath, item.DestinationPath, StringComparison.OrdinalIgnoreCase));
+                dialog.IsPrimaryButtonEnabled = BulkRenameService.HasChanges(currentPlan);
             }
             catch (Exception ex)
             {
@@ -1956,6 +2001,11 @@ public sealed partial class MainPage : Page
             return;
         }
 
+        RestoreMenuItem.Visibility = ActiveBrowser.IsRecycleBinView &&
+            SelectedEntries().Any(entry => entry.IsRecycleBinItem)
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+
         foreach (var generated in _generatedPluginMenuItems)
         {
             menu.Items.Remove(generated);
@@ -2091,7 +2141,7 @@ public sealed partial class MainPage : Page
                 $"Creating {name}...",
                 () => _archiveService.CreateAsync(selected.Select(entry => entry.FullPath).ToArray(), destination)))
         {
-            PushCreateHistory(destination, false);
+            await PushCreateHistoryAsync(destination, false);
         }
     }
 
@@ -2346,7 +2396,11 @@ public sealed partial class MainPage : Page
 
     private async void ConnectToServer_Click(object sender, RoutedEventArgs e)
     {
-        var path = await PromptForNameAsync("Connect to Server", "UNC path (for example, \\\\server\\share):", @"\\server\share");
+        var path = await PromptForNameAsync(
+            "Connect to Server",
+            "UNC path (for example, \\\\server\\share):",
+            @"\\server\share",
+            FileOperationService.ValidateUncPath);
         if (!string.IsNullOrWhiteSpace(path))
         {
             await NavigateActivePaneAsync(path);
@@ -2401,6 +2455,40 @@ public sealed partial class MainPage : Page
             var result = ShellIntegrationService.EmptyRecycleBin(App.WindowHandle);
             ViewModel.StatusText = result == 0 ? "Recycle Bin emptied." : $"Windows could not empty the Recycle Bin (error 0x{result:X8}).";
         }
+    }
+
+    private async void RestoreFromTrash_Click(object sender, RoutedEventArgs e)
+    {
+        var selected = SelectedEntries().Where(entry => entry.IsRecycleBinItem).ToArray();
+        if (selected.Length == 0)
+        {
+            ActiveBrowser.StatusText = "Select one or more Trash items to restore.";
+            return;
+        }
+
+        var restored = 0;
+        var skipped = 0;
+        var errors = new List<string>();
+        foreach (var entry in selected)
+        {
+            var result = await _fileOperations.RestoreRecycleItemAsync(
+                entry.FullPath,
+                entry.RecycleOriginalPath!,
+                entry.RecycleMetadataPath!,
+                ResolveConflictAsync);
+            restored += result.CompletedItems;
+            skipped += result.SkippedItems;
+            errors.AddRange(result.Errors);
+            if (result.Cancelled)
+            {
+                break;
+            }
+        }
+
+        await ActiveBrowser.RefreshAsync();
+        ActiveBrowser.StatusText = errors.Count > 0
+            ? $"Restored {restored}, skipped {skipped}. {errors[0]}"
+            : $"Restored {restored} item{(restored == 1 ? string.Empty : "s")}; skipped {skipped}.";
     }
 
     private async void FileList_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
@@ -2663,6 +2751,12 @@ public sealed partial class MainPage : Page
     {
         if (entry.IsDirectory)
         {
+            if (ActiveBrowser.IsRecycleBinView)
+            {
+                ActiveBrowser.StatusText = "Restore the folder before browsing it.";
+                return;
+            }
+
             await NavigateActivePaneAsync(entry.FullPath);
             return;
         }
@@ -2698,9 +2792,9 @@ public sealed partial class MainPage : Page
 
     private async Task CopySelectionToClipboardAsync(bool move)
     {
-        if (move && ActiveBrowser.IsRecycleBinView)
+        if (ActiveBrowser.IsRecycleBinView)
         {
-            ViewModel.StatusText = "Cut is not available while viewing Trash.";
+            ActiveBrowser.StatusText = "Restore the item before copying or moving it.";
             return;
         }
 
@@ -2924,14 +3018,16 @@ public sealed partial class MainPage : Page
         RedoMenuItem.Text = _history.RedoLabel;
     }
 
-    private void PushCreateHistory(string createdPath, bool isDirectory)
+    private async Task PushCreateHistoryAsync(string createdPath, bool isDirectory)
     {
         var parent = Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(createdPath))!;
         var name = Path.GetFileName(Path.TrimEndingDirectorySeparator(createdPath));
         var description = isDirectory ? $"Create Folder '{name}'" : $"Create Document '{name}'";
+        var expectedState = await FileOperationService.CapturePathStateAsync(createdPath);
+        var contents = isDirectory ? null : await File.ReadAllBytesAsync(createdPath);
         _history.Push(new FileHistoryEntry(
             description,
-            () => UndoCreateAsync(createdPath, isDirectory),
+            () => UndoCreateAsync(createdPath, isDirectory, expectedState),
             async () =>
             {
                 if (isDirectory)
@@ -2940,26 +3036,22 @@ public sealed partial class MainPage : Page
                 }
                 else
                 {
-                    await _fileOperations.CreateFileAsync(parent, name);
+                    var recreatedPath = await _fileOperations.CreateFileAsync(parent, name);
+                    if (contents is { Length: > 0 })
+                    {
+                        await File.WriteAllBytesAsync(recreatedPath, contents);
+                    }
                 }
+
+                expectedState = await FileOperationService.CapturePathStateAsync(createdPath);
             }));
     }
 
-    private async Task UndoCreateAsync(string createdPath, bool isDirectory)
-    {
-        if (isDirectory && Directory.Exists(createdPath) &&
-            Directory.EnumerateFileSystemEntries(createdPath).Any())
-        {
-            throw new IOException("The new folder is no longer empty, so WinThunar will not remove it during Undo.");
-        }
-
-        if (!isDirectory && File.Exists(createdPath) && new FileInfo(createdPath).Length > 0)
-        {
-            throw new IOException("The new document now contains data, so WinThunar will not remove it during Undo.");
-        }
-
-        await _fileOperations.DeletePermanentlyAsync([createdPath]);
-    }
+    private Task UndoCreateAsync(
+        string createdPath,
+        bool isDirectory,
+        PathStateSnapshot expectedState) =>
+        _fileOperations.DeleteCreatedPathIfUnchangedAsync(createdPath, isDirectory, expectedState);
 
     private void PushRenameHistory(string sourcePath, string destinationPath)
     {
@@ -3000,7 +3092,7 @@ public sealed partial class MainPage : Page
         foreach (var transfer in transfers)
         {
             var guardedPath = undo ? transfer.DestinationPath : transfer.SourcePath;
-            if (!FileOperationService.PathMatchesState(guardedPath, transfer.DestinationState))
+            if (!await FileOperationService.PathMatchesStateAsync(guardedPath, transfer.DestinationState))
             {
                 throw new IOException(
                     $"WinThunar will not {(undo ? "undo" : "redo")} '{Path.GetFileName(guardedPath)}' because it was changed, replaced, or now contains different items.");
@@ -3126,7 +3218,11 @@ public sealed partial class MainPage : Page
         };
     }
 
-    private async Task<string?> PromptForNameAsync(string title, string prompt, string initialName)
+    private async Task<string?> PromptForNameAsync(
+        string title,
+        string prompt,
+        string initialName,
+        Func<string?, string?>? validator = null)
     {
         var currentName = initialName;
         while (true)
@@ -3161,7 +3257,7 @@ public sealed partial class MainPage : Page
             }
 
             currentName = textBox.Text;
-            var error = FileOperationService.ValidateLeafName(currentName);
+            var error = (validator ?? FileOperationService.ValidateLeafName)(currentName);
             if (error is null)
             {
                 return currentName;

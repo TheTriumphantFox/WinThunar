@@ -27,6 +27,12 @@ public sealed record BulkRenamePlanItem(
 
 public sealed class BulkRenameService
 {
+    public static bool HasChanges(IEnumerable<BulkRenamePlanItem> plan) =>
+        plan.Any(item => !string.Equals(
+            item.SourcePath,
+            item.DestinationPath,
+            StringComparison.Ordinal));
+
     public IReadOnlyList<BulkRenamePlanItem> BuildPlan(
         IReadOnlyList<string> sourcePaths,
         BulkRenameOptions options)

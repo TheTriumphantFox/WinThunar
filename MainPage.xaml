@@ -8,11 +8,13 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     Background="#FFF5F5F5"
     Loaded="Page_Loaded"
+    Unloaded="Page_Unloaded"
     RequestedTheme="Light"
     mc:Ignorable="d">
 
     <Page.Resources>
         <MenuFlyout x:Key="FileContextMenu" Opened="FileContextMenu_Opened">
+            <MenuFlyoutItem x:Name="RestoreMenuItem" Text="Restore" Click="RestoreFromTrash_Click" Visibility="Collapsed" />
             <MenuFlyoutItem Text="Open" Click="Open_Click" />
             <MenuFlyoutItem Text="Open With..." Click="OpenWith_Click" />
             <MenuFlyoutItem Text="Open in New Tab" Click="OpenInNewTab_Click" />

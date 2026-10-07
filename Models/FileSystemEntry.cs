@@ -18,7 +18,9 @@ public sealed class FileSystemEntry : ObservableObject
         string modified,
         string glyph,
         long byteSize = 0,
-        DateTime? modifiedTime = null)
+        DateTime? modifiedTime = null,
+        string? recycleOriginalPath = null,
+        string? recycleMetadataPath = null)
     {
         Name = name;
         FullPath = fullPath;
@@ -29,6 +31,8 @@ public sealed class FileSystemEntry : ObservableObject
         Glyph = glyph;
         ByteSize = byteSize;
         ModifiedTime = modifiedTime ?? DateTime.MinValue;
+        RecycleOriginalPath = recycleOriginalPath;
+        RecycleMetadataPath = recycleMetadataPath;
     }
 
     public string Name { get; }
@@ -40,6 +44,11 @@ public sealed class FileSystemEntry : ObservableObject
     public string Glyph { get; }
     public long ByteSize { get; }
     public DateTime ModifiedTime { get; }
+    public string? RecycleOriginalPath { get; }
+    public string? RecycleMetadataPath { get; }
+    public bool IsRecycleBinItem =>
+        !string.IsNullOrWhiteSpace(RecycleOriginalPath) &&
+        !string.IsNullOrWhiteSpace(RecycleMetadataPath);
     public double IconItemWidth => 80 + (ZoomLevel * 16);
     public double IconItemHeight => 68 + (ZoomLevel * 13);
     public double IconImageSize => 28 + (ZoomLevel * 10);

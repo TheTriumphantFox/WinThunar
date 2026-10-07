@@ -12,6 +12,7 @@
     <Compile Include="..\..\Services\FileOperationService.cs" Link="Services\FileOperationService.cs" />
     <Compile Include="..\..\Services\FileOperationHistory.cs" Link="Services\FileOperationHistory.cs" />
     <Compile Include="..\..\Services\FileTransferQueue.cs" Link="Services\FileTransferQueue.cs" />
+    <Compile Include="..\..\Services\TransferRecoveryService.cs" Link="Services\TransferRecoveryService.cs" />
     <Compile Include="..\..\Services\AppSessionService.cs" Link="Services\AppSessionService.cs" />
     <Compile Include="..\..\Services\FileSearchService.cs" Link="Services\FileSearchService.cs" />
     <Compile Include="..\..\Services\BulkRenameService.cs" Link="Services\BulkRenameService.cs" />

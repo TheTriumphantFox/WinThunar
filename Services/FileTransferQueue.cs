@@ -1,13 +1,15 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using WinThunar.Models;
 
 namespace WinThunar.Services;
 
-public sealed class FileTransferQueue
+public sealed class FileTransferQueue : IDisposable
 {
     private readonly FileOperationService _fileOperations;
     private readonly Queue<FileTransferJob> _pending = new();
     private bool _isProcessing;
+    private bool _disposed;
 
     public FileTransferQueue(FileOperationService fileOperations)
     {
@@ -26,6 +28,7 @@ public sealed class FileTransferQueue
         FileTransferMode mode,
         Func<FileConflict, Task<ConflictResolution>> conflictResolver)
     {
+        ObjectDisposedException.ThrowIf(_disposed, this);
         var sources = sourcePaths
             .Where(path => !string.IsNullOrWhiteSpace(path))
             .Select(Path.GetFullPath)
@@ -51,6 +54,28 @@ public sealed class FileTransferQueue
         ActiveJob?.Cancellation.Cancel();
     }
 
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        ActiveJob?.Cancellation.Cancel();
+        while (_pending.TryDequeue(out var job))
+        {
+            var result = new FileOperationResult(0, 0, [], true, []);
+            job.Result = result;
+            job.State = FileTransferJobState.Cancelled;
+            job.StatusText = "Cancelled because WinThunar is closing";
+            job.Completion.TrySetResult(result);
+            job.Cancellation.Dispose();
+        }
+
+        StateChanged = null;
+    }
+
     private async Task ProcessQueueAsync()
     {
         if (_isProcessing)
@@ -68,11 +93,38 @@ public sealed class FileTransferQueue
                 job.StatusText = "Starting...";
                 OnStateChanged();
 
+                var progressClock = Stopwatch.StartNew();
+                string? progressItem = null;
                 var progress = new Progress<FileOperationProgress>(current =>
                 {
                     var total = Math.Max(1, current.TotalItems);
-                    job.ProgressPercent = Math.Clamp(current.CompletedItems * 100d / total, 0, 100);
-                    job.StatusText = $"{current.ItemName} ({current.CompletedItems} of {current.TotalItems})";
+                    var itemFraction = current.TotalBytes > 0
+                        ? Math.Clamp((double)current.BytesTransferred / current.TotalBytes, 0, 1)
+                        : 0;
+                    job.ProgressPercent = Math.Clamp(
+                        (current.CompletedItems + itemFraction) * 100d / total,
+                        0,
+                        100);
+                    if (current.TotalBytes > 0)
+                    {
+                        if (!string.Equals(progressItem, current.ItemName, StringComparison.Ordinal))
+                        {
+                            progressItem = current.ItemName;
+                            progressClock.Restart();
+                        }
+
+                        var seconds = Math.Max(0.001, progressClock.Elapsed.TotalSeconds);
+                        var bytesPerSecond = current.BytesTransferred / seconds;
+                        var remainingSeconds = bytesPerSecond > 0
+                            ? (current.TotalBytes - current.BytesTransferred) / bytesPerSecond
+                            : 0;
+                        job.StatusText = $"{current.ItemName} — {FormatBytes(current.BytesTransferred)} of {FormatBytes(current.TotalBytes)} — {FormatBytes((long)bytesPerSecond)}/s" +
+                            (remainingSeconds >= 1 ? $" — {FormatDuration(remainingSeconds)} remaining" : string.Empty);
+                    }
+                    else
+                    {
+                        job.StatusText = $"{current.ItemName} ({current.CompletedItems} of {current.TotalItems})";
+                    }
                     OnStateChanged();
                 });
 
@@ -111,6 +163,10 @@ public sealed class FileTransferQueue
                     _ => result.Errors.FirstOrDefault() ?? "Failed"
                 };
                 job.Completion.TrySetResult(result);
+                if (_disposed)
+                {
+                    job.Cancellation.Dispose();
+                }
                 ActiveJob = null;
                 OnStateChanged();
             }
@@ -142,4 +198,28 @@ public sealed class FileTransferQueue
     }
 
     private void OnStateChanged() => StateChanged?.Invoke(this, EventArgs.Empty);
+
+    private static string FormatBytes(long bytes)
+    {
+        string[] units = ["B", "KB", "MB", "GB", "TB"];
+        double value = Math.Max(0, bytes);
+        var unit = 0;
+        while (value >= 1024 && unit < units.Length - 1)
+        {
+            value /= 1024;
+            unit++;
+        }
+
+        return unit == 0 ? $"{bytes} B" : $"{value:0.#} {units[unit]}";
+    }
+
+    private static string FormatDuration(double seconds)
+    {
+        var duration = TimeSpan.FromSeconds(Math.Max(0, seconds));
+        return duration.TotalHours >= 1
+            ? $"{(int)duration.TotalHours}h {duration.Minutes}m"
+            : duration.TotalMinutes >= 1
+                ? $"{(int)duration.TotalMinutes}m {duration.Seconds}s"
+                : $"{Math.Max(1, duration.Seconds)}s";
+    }
 }

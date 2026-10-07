@@ -1,7 +1,9 @@
 using Microsoft.VisualBasic.FileIO;
+using Microsoft.Win32.SafeHandles;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
+using System.Text;
 
 namespace WinThunar.Services;
 
@@ -23,7 +25,12 @@ public sealed record FileConflict(string SourcePath, string DestinationPath, boo
 
 public sealed record ConflictResolution(ConflictAction Action, string? NewName = null);
 
-public sealed record FileOperationProgress(string ItemName, int CompletedItems, int TotalItems);
+public sealed record FileOperationProgress(
+    string ItemName,
+    int CompletedItems,
+    int TotalItems,
+    long BytesTransferred = 0,
+    long TotalBytes = 0);
 
 public sealed record PathStateEntry(
     string RelativePath,
@@ -54,6 +61,15 @@ public sealed record FileOperationResult(
 
 public sealed class FileOperationService
 {
+    private readonly TransferRecoveryService _recovery;
+
+    public FileOperationService(TransferRecoveryService? recovery = null)
+    {
+        _recovery = recovery ?? new TransferRecoveryService();
+    }
+
+    public TransferRecoveryResult RecoverInterruptedTransfers() => _recovery.RecoverPending();
+
     private static readonly HashSet<string> ReservedDeviceNames = new(StringComparer.OrdinalIgnoreCase)
     {
         "CON", "PRN", "AUX", "NUL",
@@ -90,6 +106,32 @@ public sealed class FileOperationService
         }
 
         return null;
+    }
+
+    public static string? ValidateUncPath(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return "Enter a network path.";
+        }
+
+        var value = path.Trim();
+        if (!value.StartsWith(@"\\", StringComparison.Ordinal))
+        {
+            return @"Enter a UNC path such as \\server\share.";
+        }
+
+        try
+        {
+            _ = Path.GetFullPath(value);
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return "The network path is not valid.";
+        }
+
+        var parts = value.TrimStart('\\').Split('\\', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length >= 2 ? null : @"Include both a server and share, such as \\server\share.";
     }
 
     public async Task<string> CreateDirectoryAsync(
@@ -210,7 +252,7 @@ public sealed class FileOperationService
                 cancellationToken.ThrowIfCancellationRequested();
                 EnsurePathExists(sourcePath);
 
-                if (Directory.Exists(sourcePath) && IsDescendantPath(destinationDirectory, sourcePath))
+                if (Directory.Exists(sourcePath) && IsSameOrDescendantPath(destinationDirectory, sourcePath))
                 {
                     throw new IOException("A folder cannot be copied or moved into itself.");
                 }
@@ -225,7 +267,14 @@ public sealed class FileOperationService
                     mode,
                     conflictResolver,
                     cancellationToken,
-                    itemJournal);
+                    itemJournal,
+                    (itemPath, bytesTransferred, totalBytes) =>
+                        progress?.Report(new FileOperationProgress(
+                            Path.GetFileName(Path.TrimEndingDirectorySeparator(itemPath)),
+                            completed + skipped,
+                            sources.Count,
+                            bytesTransferred,
+                            totalBytes)));
 
                 if (outcome.Outcome == TransferOutcome.Cancelled)
                 {
@@ -242,12 +291,14 @@ public sealed class FileOperationService
                 else
                 {
                     completed++;
+                    var capturedState = FindCapturedState(itemJournal, outcome.DestinationPath)
+                        ?? await CapturePathStateAsync(outcome.DestinationPath, cancellationToken);
                     transfers.Add(new FileTransferRecord(
                         sourcePath,
                         outcome.DestinationPath,
                         mode,
                         outcome.ReplacedExistingItem,
-                        CapturePathState(outcome.DestinationPath)));
+                        capturedState));
                 }
 
                 progress?.Report(new FileOperationProgress(
@@ -285,7 +336,7 @@ public sealed class FileOperationService
             ?? throw new InvalidOperationException("A filesystem root cannot be a transfer destination.");
         EnsureDirectoryExists(destinationDirectory);
 
-        if (Directory.Exists(sourcePath) && IsDescendantPath(destinationDirectory, sourcePath))
+        if (Directory.Exists(sourcePath) && IsSameOrDescendantPath(destinationDirectory, sourcePath))
         {
             throw new IOException("A folder cannot be copied or moved into itself.");
         }
@@ -299,10 +350,13 @@ public sealed class FileOperationService
                 mode,
                 conflictResolver,
                 cancellationToken,
-                journal);
-            return outcome.Outcome switch
+                journal,
+                null);
+            if (outcome.Outcome == TransferOutcome.Completed)
             {
-                TransferOutcome.Completed => new FileOperationResult(
+                var capturedState = FindCapturedState(journal, outcome.DestinationPath)
+                    ?? await CapturePathStateAsync(outcome.DestinationPath, cancellationToken);
+                return new FileOperationResult(
                     1,
                     0,
                     [],
@@ -312,10 +366,12 @@ public sealed class FileOperationService
                         outcome.DestinationPath,
                         mode,
                         outcome.ReplacedExistingItem,
-                        CapturePathState(outcome.DestinationPath))]),
-                TransferOutcome.Skipped => new FileOperationResult(0, 1, [], false, journal),
-                _ => new FileOperationResult(0, 0, [], true, journal)
-            };
+                        capturedState)]);
+            }
+
+            return outcome.Outcome == TransferOutcome.Skipped
+                ? new FileOperationResult(0, 1, [], false, journal)
+                : new FileOperationResult(0, 0, [], true, journal);
         }
         catch (OperationCanceledException)
         {
@@ -357,6 +413,48 @@ public sealed class FileOperationService
                 }
             }
         }, cancellationToken);
+    }
+
+    public async Task<FileOperationResult> RestoreRecycleItemAsync(
+        string recycledPath,
+        string originalPath,
+        string metadataPath,
+        Func<FileConflict, Task<ConflictResolution>> conflictResolver,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(recycledPath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(originalPath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(metadataPath);
+        ArgumentNullException.ThrowIfNull(conflictResolver);
+
+        EnsurePathExists(recycledPath);
+        var destinationDirectory = Path.GetDirectoryName(
+            Path.TrimEndingDirectorySeparator(Path.GetFullPath(originalPath)))
+            ?? throw new InvalidOperationException("A filesystem root cannot be restored from the Recycle Bin.");
+        Directory.CreateDirectory(destinationDirectory);
+
+        var result = await TransferExactAsync(
+            recycledPath,
+            originalPath,
+            FileTransferMode.Move,
+            conflictResolver,
+            cancellationToken);
+        if (result.Succeeded && result.CompletedItems == 1 && !PathExists(recycledPath))
+        {
+            try
+            {
+                File.Delete(metadataPath);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                return result with
+                {
+                    Errors = [$"The item was restored, but its Recycle Bin record could not be removed: {ex.Message}"]
+                };
+            }
+        }
+
+        return result;
     }
 
     public async Task DeletePermanentlyAsync(
@@ -406,13 +504,14 @@ public sealed class FileOperationService
         throw new IOException("No available duplicate name could be generated.");
     }
 
-    private static async Task<TransferPathResult> TransferPathAsync(
+    private async Task<TransferPathResult> TransferPathAsync(
         string sourcePath,
         string requestedDestinationPath,
         FileTransferMode mode,
         Func<FileConflict, Task<ConflictResolution>> conflictResolver,
         CancellationToken cancellationToken,
-        ICollection<FileTransferRecord> journal)
+        ICollection<FileTransferRecord> journal,
+        Action<string, long, long>? byteProgress)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var sourceIsDirectory = Directory.Exists(sourcePath);
@@ -441,13 +540,20 @@ public sealed class FileOperationService
         if (resolution.ReplacedExistingItem &&
             !(sourceIsDirectory && Directory.Exists(destinationPath)))
         {
-            await ReplacePathAsync(sourcePath, destinationPath, sourceIsDirectory, mode, cancellationToken);
+            await ReplacePathAsync(
+                sourcePath,
+                destinationPath,
+                sourceIsDirectory,
+                mode,
+                cancellationToken,
+                byteProgress);
+            var destinationState = await CapturePathStateAsync(destinationPath, cancellationToken);
             journal.Add(new FileTransferRecord(
                 sourcePath,
                 destinationPath,
                 mode,
                 true,
-                CapturePathState(destinationPath)));
+                destinationState));
             return new TransferPathResult(TransferOutcome.Completed, destinationPath, true);
         }
 
@@ -459,45 +565,54 @@ public sealed class FileOperationService
                 mode,
                 conflictResolver,
                 cancellationToken,
-                journal);
+                journal,
+                byteProgress);
             return new TransferPathResult(
                 directoryOutcome,
                 destinationPath,
                 resolution.ReplacedExistingItem);
         }
 
-        await TransferFileAsync(sourcePath, destinationPath, mode, cancellationToken);
+        await TransferFileAsync(sourcePath, destinationPath, mode, cancellationToken, byteProgress);
+        var fileState = await CapturePathStateAsync(destinationPath, cancellationToken);
         journal.Add(new FileTransferRecord(
             sourcePath,
             destinationPath,
             mode,
             resolution.ReplacedExistingItem,
-            CapturePathState(destinationPath)));
+            fileState));
         return new TransferPathResult(
             TransferOutcome.Completed,
             destinationPath,
             resolution.ReplacedExistingItem);
     }
 
-    private static async Task<TransferOutcome> TransferDirectoryAsync(
+    private async Task<TransferOutcome> TransferDirectoryAsync(
         string sourcePath,
         string destinationPath,
         FileTransferMode mode,
         Func<FileConflict, Task<ConflictResolution>> conflictResolver,
         CancellationToken cancellationToken,
-        ICollection<FileTransferRecord> journal)
+        ICollection<FileTransferRecord> journal,
+        Action<string, long, long>? byteProgress)
     {
+        var sourceAttributes = File.GetAttributes(sourcePath);
+        var sourceCreationTime = Directory.GetCreationTimeUtc(sourcePath);
+        var sourceLastAccessTime = Directory.GetLastAccessTimeUtc(sourcePath);
+        var sourceLastWriteTime = Directory.GetLastWriteTimeUtc(sourcePath);
+
         if (mode == FileTransferMode.Move && !Directory.Exists(destinationPath))
         {
             try
             {
                 Directory.Move(sourcePath, destinationPath);
+                var movedState = await CapturePathStateAsync(destinationPath, cancellationToken);
                 journal.Add(new FileTransferRecord(
                     sourcePath,
                     destinationPath,
                     mode,
                     false,
-                    CapturePathState(destinationPath)));
+                    movedState));
                 return TransferOutcome.Completed;
             }
             catch (IOException)
@@ -524,7 +639,8 @@ public sealed class FileOperationService
                 mode,
                 conflictResolver,
                 cancellationToken,
-                journal);
+                journal,
+                byteProgress);
 
             if (childOutcome.Outcome == TransferOutcome.Cancelled)
             {
@@ -537,6 +653,14 @@ public sealed class FileOperationService
             }
         }
 
+        if (destinationWasCreated)
+        {
+            Directory.SetCreationTimeUtc(destinationPath, sourceCreationTime);
+            Directory.SetLastAccessTimeUtc(destinationPath, sourceLastAccessTime);
+            Directory.SetLastWriteTimeUtc(destinationPath, sourceLastWriteTime);
+            File.SetAttributes(destinationPath, sourceAttributes);
+        }
+
         if (mode == FileTransferMode.Move && fullyMoved && !Directory.EnumerateFileSystemEntries(sourcePath).Any())
         {
             Directory.Delete(sourcePath);
@@ -544,22 +668,24 @@ public sealed class FileOperationService
 
         if (childCount == 0 && destinationWasCreated)
         {
+            var emptyDirectoryState = await CapturePathStateAsync(destinationPath, cancellationToken);
             journal.Add(new FileTransferRecord(
                 sourcePath,
                 destinationPath,
                 mode,
                 false,
-                CapturePathState(destinationPath)));
+                emptyDirectoryState));
         }
 
         return fullyMoved ? TransferOutcome.Completed : TransferOutcome.Skipped;
     }
 
-    private static async Task TransferFileAsync(
+    private async Task TransferFileAsync(
         string sourcePath,
         string destinationPath,
         FileTransferMode mode,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Action<string, long, long>? byteProgress)
     {
         if (mode == FileTransferMode.Move)
         {
@@ -575,9 +701,10 @@ public sealed class FileOperationService
         }
 
         var temporaryPath = GetTemporarySiblingPath(destinationPath, "partial");
+        var recoveryId = _recovery.Register(sourcePath, destinationPath, temporaryPath);
         try
         {
-            await CopyFilePreservingMetadataAsync(sourcePath, temporaryPath, cancellationToken);
+            await CopyFilePreservingMetadataAsync(sourcePath, temporaryPath, cancellationToken, byteProgress);
             File.Move(temporaryPath, destinationPath);
 
             if (mode == FileTransferMode.Move)
@@ -592,6 +719,7 @@ public sealed class FileOperationService
             {
                 File.Delete(temporaryPath);
             }
+            _recovery.Complete(recoveryId);
         }
     }
 
@@ -606,6 +734,11 @@ public sealed class FileOperationService
         while (PathExists(destinationPath))
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (AreSameFileSystemObject(sourcePath, destinationPath))
+            {
+                throw new IOException("The source and destination are the same filesystem item. Choose another destination.");
+            }
+
             var conflict = new FileConflict(sourcePath, destinationPath, sourceIsDirectory);
             var resolution = await conflictResolver(conflict);
 
@@ -641,18 +774,29 @@ public sealed class FileOperationService
         return new DestinationResolution(destinationPath, TransferOutcome.Completed, false);
     }
 
-    public static PathStateSnapshot CapturePathState(string path)
+    public static PathStateSnapshot CapturePathState(
+        string path,
+        CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         EnsurePathExists(path);
         var root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
         var entries = new List<PathStateEntry>();
-        CaptureStateEntry(root, root, entries);
+        CaptureStateEntry(root, root, entries, cancellationToken);
         return new PathStateSnapshot(entries
             .OrderBy(entry => entry.RelativePath, StringComparer.OrdinalIgnoreCase)
             .ToArray());
     }
 
-    public static bool PathMatchesState(string path, PathStateSnapshot expected)
+    public static Task<PathStateSnapshot> CapturePathStateAsync(
+        string path,
+        CancellationToken cancellationToken = default) =>
+        Task.Run(() => CapturePathState(path, cancellationToken), cancellationToken);
+
+    public static bool PathMatchesState(
+        string path,
+        PathStateSnapshot expected,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(expected);
         if (!PathExists(path))
@@ -662,7 +806,7 @@ public sealed class FileOperationService
 
         try
         {
-            return CapturePathState(path).Entries.SequenceEqual(expected.Entries);
+            return CapturePathState(path, cancellationToken).Entries.SequenceEqual(expected.Entries);
         }
         catch (IOException)
         {
@@ -674,11 +818,36 @@ public sealed class FileOperationService
         }
     }
 
+    public static Task<bool> PathMatchesStateAsync(
+        string path,
+        PathStateSnapshot expected,
+        CancellationToken cancellationToken = default) =>
+        Task.Run(() => PathMatchesState(path, expected, cancellationToken), cancellationToken);
+
+    public async Task DeleteCreatedPathIfUnchangedAsync(
+        string path,
+        bool expectedDirectory,
+        PathStateSnapshot expectedState,
+        CancellationToken cancellationToken = default)
+    {
+        EnsurePathExists(path);
+        if (Directory.Exists(path) != expectedDirectory ||
+            !await PathMatchesStateAsync(path, expectedState, cancellationToken))
+        {
+            throw new IOException(
+                "WinThunar will not undo creation because the item was changed or replaced.");
+        }
+
+        await DeletePermanentlyAsync([path], cancellationToken);
+    }
+
     private static void CaptureStateEntry(
         string root,
         string path,
-        ICollection<PathStateEntry> entries)
+        ICollection<PathStateEntry> entries,
+        CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var attributes = File.GetAttributes(path);
         var isDirectory = attributes.HasFlag(FileAttributes.Directory);
         var relativePath = PathsExactlyEqual(root, path) ? string.Empty : Path.GetRelativePath(root, path);
@@ -688,7 +857,7 @@ public sealed class FileOperationService
             isDirectory ? 0 : new FileInfo(path).Length,
             isDirectory ? Directory.GetLastWriteTimeUtc(path).Ticks : File.GetLastWriteTimeUtc(path).Ticks,
             attributes,
-            isDirectory ? null : ComputeFileHash(path)));
+            isDirectory ? null : ComputeFileHash(path, cancellationToken)));
 
         if (!isDirectory || attributes.HasFlag(FileAttributes.ReparsePoint))
         {
@@ -697,32 +866,49 @@ public sealed class FileOperationService
 
         foreach (var child in Directory.EnumerateFileSystemEntries(path))
         {
-            CaptureStateEntry(root, child, entries);
+            CaptureStateEntry(root, child, entries, cancellationToken);
         }
     }
 
-    private static string ComputeFileHash(string path)
+    private static string ComputeFileHash(string path, CancellationToken cancellationToken)
     {
         using var stream = new FileStream(
             path,
             FileMode.Open,
             FileAccess.Read,
-            FileShare.Read,
+            FileShare.Read | FileShare.Delete,
             1024 * 1024,
             FileOptions.SequentialScan);
-        return Convert.ToHexString(SHA256.HashData(stream));
+        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        var buffer = new byte[1024 * 1024];
+        int bytesRead;
+        while ((bytesRead = stream.Read(buffer, 0, buffer.Length)) > 0)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            hash.AppendData(buffer, 0, bytesRead);
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+        return Convert.ToHexString(hash.GetHashAndReset());
     }
 
-    private static async Task ReplacePathAsync(
+    private async Task ReplacePathAsync(
         string sourcePath,
         string destinationPath,
         bool sourceIsDirectory,
         FileTransferMode mode,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Action<string, long, long>? byteProgress)
     {
         var stagedPath = GetTemporarySiblingPath(destinationPath, "incoming");
         var backupPath = GetTemporarySiblingPath(destinationPath, "replaced");
         var sourceRecoveryPath = GetTemporarySiblingPath(sourcePath, "move-source");
+        var recoveryId = _recovery.Register(
+            sourcePath,
+            destinationPath,
+            stagedPath,
+            backupPath,
+            sourceRecoveryPath);
         var destinationBackedUp = false;
         var promoted = false;
         var sourceMovedAside = false;
@@ -731,11 +917,11 @@ public sealed class FileOperationService
         {
             if (sourceIsDirectory)
             {
-                await CopyDirectoryPreservingMetadataAsync(sourcePath, stagedPath, cancellationToken);
+                await CopyDirectoryPreservingMetadataAsync(sourcePath, stagedPath, cancellationToken, byteProgress);
             }
             else
             {
-                await CopyFilePreservingMetadataAsync(sourcePath, stagedPath, cancellationToken);
+                await CopyFilePreservingMetadataAsync(sourcePath, stagedPath, cancellationToken, byteProgress);
             }
 
             cancellationToken.ThrowIfCancellationRequested();
@@ -788,13 +974,20 @@ public sealed class FileOperationService
             {
                 TryDeletePath(sourceRecoveryPath);
             }
+            if (!PathExists(stagedPath) &&
+                !PathExists(backupPath) &&
+                !PathExists(sourceRecoveryPath))
+            {
+                _recovery.Complete(recoveryId);
+            }
         }
     }
 
     private static async Task CopyDirectoryPreservingMetadataAsync(
         string sourcePath,
         string destinationPath,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Action<string, long, long>? byteProgress = null)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var attributes = File.GetAttributes(sourcePath);
@@ -810,11 +1003,11 @@ public sealed class FileOperationService
             var destinationChild = Path.Combine(destinationPath, Path.GetFileName(child));
             if (Directory.Exists(child))
             {
-                await CopyDirectoryPreservingMetadataAsync(child, destinationChild, cancellationToken);
+                await CopyDirectoryPreservingMetadataAsync(child, destinationChild, cancellationToken, byteProgress);
             }
             else
             {
-                await CopyFilePreservingMetadataAsync(child, destinationChild, cancellationToken);
+                await CopyFilePreservingMetadataAsync(child, destinationChild, cancellationToken, byteProgress);
             }
         }
 
@@ -825,7 +1018,8 @@ public sealed class FileOperationService
     private static async Task CopyFilePreservingMetadataAsync(
         string sourcePath,
         string destinationPath,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Action<string, long, long>? byteProgress = null)
     {
         cancellationToken.ThrowIfCancellationRequested();
         await Task.Run(() =>
@@ -836,7 +1030,14 @@ public sealed class FileOperationService
                 Marshal.WriteInt32(cancelPointer, 0);
                 using var registration = cancellationToken.Register(
                     () => Marshal.WriteInt32(cancelPointer, 1));
-                if (!CopyFileEx(sourcePath, destinationPath, null, IntPtr.Zero, cancelPointer, CopyFileFlags.FailIfExists))
+                CopyProgressRoutine? callback = byteProgress is null
+                    ? null
+                    : (totalFileSize, totalBytesTransferred, _, _, _, _, _, _, _) =>
+                    {
+                        byteProgress(sourcePath, totalBytesTransferred, totalFileSize);
+                        return 0;
+                    };
+                if (!CopyFileEx(sourcePath, destinationPath, callback, IntPtr.Zero, cancelPointer, CopyFileFlags.FailIfExists))
                 {
                     var error = Marshal.GetLastWin32Error();
                     if (cancellationToken.IsCancellationRequested || error == ErrorRequestAborted)
@@ -846,6 +1047,7 @@ public sealed class FileOperationService
 
                     throw new Win32Exception(error, $"Windows could not copy '{Path.GetFileName(sourcePath)}'.");
                 }
+                GC.KeepAlive(callback);
             }
             finally
             {
@@ -918,6 +1120,98 @@ public sealed class FileOperationService
                 IsDescendantPath(candidate, parent)))
             .ToList();
     }
+
+    private static PathStateSnapshot? FindCapturedState(
+        IEnumerable<FileTransferRecord> journal,
+        string destinationPath) =>
+        journal.LastOrDefault(record => PathsEqual(record.DestinationPath, destinationPath))
+            ?.DestinationState;
+
+    private static bool IsSameOrDescendantPath(string candidatePath, string parentPath)
+    {
+        if (TryGetFinalPath(candidatePath, out var finalCandidate) &&
+            TryGetFinalPath(parentPath, out var finalParent))
+        {
+            return PathsEqual(finalCandidate, finalParent) || IsDescendantPath(finalCandidate, finalParent);
+        }
+
+        return PathsEqual(candidatePath, parentPath) || IsDescendantPath(candidatePath, parentPath);
+    }
+
+    private static bool AreSameFileSystemObject(string left, string right)
+    {
+        if (!TryGetFileIdentity(left, out var leftIdentity) ||
+            !TryGetFileIdentity(right, out var rightIdentity))
+        {
+            return PathsEqual(left, right);
+        }
+
+        return leftIdentity == rightIdentity;
+    }
+
+    private static bool TryGetFileIdentity(string path, out FileIdentity identity)
+    {
+        identity = default;
+        using var handle = OpenPathHandle(path);
+        if (handle.IsInvalid || !GetFileInformationByHandle(handle, out var information))
+        {
+            return false;
+        }
+
+        identity = new FileIdentity(
+            information.VolumeSerialNumber,
+            ((ulong)information.FileIndexHigh << 32) | information.FileIndexLow);
+        return true;
+    }
+
+    private static bool TryGetFinalPath(string path, out string finalPath)
+    {
+        finalPath = string.Empty;
+        using var handle = OpenPathHandle(path);
+        if (handle.IsInvalid)
+        {
+            return false;
+        }
+
+        var buffer = new StringBuilder(512);
+        var length = GetFinalPathNameByHandle(handle, buffer, (uint)buffer.Capacity, 0);
+        if (length == 0)
+        {
+            return false;
+        }
+        if (length >= (uint)buffer.Capacity)
+        {
+            buffer.EnsureCapacity((int)length + 1);
+            length = GetFinalPathNameByHandle(handle, buffer, (uint)buffer.Capacity, 0);
+            if (length == 0 || length >= (uint)buffer.Capacity)
+            {
+                return false;
+            }
+        }
+
+        finalPath = buffer.ToString();
+        if (finalPath.StartsWith(@"\\?\UNC\", StringComparison.OrdinalIgnoreCase))
+        {
+            finalPath = @"\\" + finalPath[8..];
+        }
+        else if (finalPath.StartsWith(@"\\?\", StringComparison.OrdinalIgnoreCase))
+        {
+            finalPath = finalPath[4..];
+        }
+
+        finalPath = Path.TrimEndingDirectorySeparator(finalPath);
+        return true;
+    }
+
+    private static SafeFileHandle OpenPathHandle(string path) =>
+        CreateFile(
+            Path.TrimEndingDirectorySeparator(Path.GetFullPath(path)),
+            0,
+            FileShareRead | FileShareWrite | FileShareDelete,
+            IntPtr.Zero,
+            OpenExisting,
+            FileFlagBackupSemantics,
+            IntPtr.Zero);
 
     private static bool IsDescendantPath(string candidatePath, string parentPath)
     {
@@ -1005,7 +1299,29 @@ public sealed class FileOperationService
         string DestinationPath,
         bool ReplacedExistingItem);
 
+    private readonly record struct FileIdentity(uint VolumeSerialNumber, ulong FileIndex);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct ByHandleFileInformation
+    {
+        public uint FileAttributes;
+        public System.Runtime.InteropServices.ComTypes.FILETIME CreationTime;
+        public System.Runtime.InteropServices.ComTypes.FILETIME LastAccessTime;
+        public System.Runtime.InteropServices.ComTypes.FILETIME LastWriteTime;
+        public uint VolumeSerialNumber;
+        public uint FileSizeHigh;
+        public uint FileSizeLow;
+        public uint NumberOfLinks;
+        public uint FileIndexHigh;
+        public uint FileIndexLow;
+    }
+
     private const int ErrorRequestAborted = 1235;
+    private const uint FileShareRead = 0x00000001;
+    private const uint FileShareWrite = 0x00000002;
+    private const uint FileShareDelete = 0x00000004;
+    private const uint OpenExisting = 3;
+    private const uint FileFlagBackupSemantics = 0x02000000;
 
     [Flags]
     private enum CopyFileFlags : uint
@@ -1033,4 +1349,27 @@ public sealed class FileOperationService
         IntPtr data,
         IntPtr cancel,
         CopyFileFlags copyFlags);
+
+    [DllImport("kernel32.dll", EntryPoint = "CreateFileW", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern SafeFileHandle CreateFile(
+        string fileName,
+        uint desiredAccess,
+        uint shareMode,
+        IntPtr securityAttributes,
+        uint creationDisposition,
+        uint flagsAndAttributes,
+        IntPtr templateFile);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetFileInformationByHandle(
+        SafeFileHandle file,
+        out ByHandleFileInformation fileInformation);
+
+    [DllImport("kernel32.dll", EntryPoint = "GetFinalPathNameByHandleW", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern uint GetFinalPathNameByHandle(
+        SafeFileHandle file,
+        StringBuilder filePath,
+        uint filePathLength,
+        uint flags);
 }

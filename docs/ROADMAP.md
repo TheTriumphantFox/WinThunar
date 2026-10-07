@@ -31,7 +31,7 @@
 
 - [x] Recursive active-pane search with live results, cancellation, filtering, and result limits
 - [x] Previewed, collision-safe bulk rename with grouped Undo/Redo
-- Custom actions with file-pattern filters (deferred with the plugin ecosystem)
+- [x] Custom actions with file-pattern filters, confirmation, and argument-list execution
 - [x] Native Windows Properties including Security/permissions
 - [x] Mapped network shares, direct UNC connections, and Windows network browser
 - [x] Removable-device eject and safe removal request
@@ -46,12 +46,15 @@
 - Optional Explorer-launch redirection, kept separate because it modifies shell behavior
 - Portable/self-contained x64 GitHub release
 - Optional installer or MSIX packaging and updates
-- Accessibility, keyboard navigation, performance, and crash-recovery pass
+- [x] Transfer crash recovery journal and bounded thumbnail loading
+- Accessibility and keyboard-navigation review
 
-## 5. Deferred plugin ecosystem
+## 5. Plugin ecosystem
 
-- Custom actions and command placeholders
-- Archive integration
-- Media-tag extensions
-- Version-control overlays and commands
-- Shared-folder management extensions
+- [x] Manifest discovery, validation diagnostics, and enable/disable controls
+- [x] Custom actions and command placeholders
+- [x] Archive integration
+- [x] Media-tag editing
+- [x] Version-control commands
+- [x] Shared-folder management commands
+- Version-control overlays

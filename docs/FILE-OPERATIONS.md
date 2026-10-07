@@ -12,6 +12,7 @@ WinThunar follows Thunar's core interaction model while mapping Linux Trash to t
 | Duplicate | `Ctrl+D` | Creates `name (copy 1)`, incrementing the number when needed. |
 | Rename | `F2` | Renames one selected item after validating Windows filename rules. |
 | Move to Trash | `Delete` | Sends selected items to the Windows Recycle Bin without a default confirmation. |
+| Restore | Trash context menu | Restores selected Recycle Bin items to their original paths with normal conflict handling. |
 | Delete Permanently | `Shift+Delete` | Bypasses the Recycle Bin only after explicit confirmation. |
 | Undo | `Ctrl+Z` | Reverses the latest safely reversible create, rename, copy, move, or duplicate operation. |
 | Redo | `Ctrl+Shift+Z` | Replays the latest undone operation. |
@@ -30,13 +31,15 @@ WinThunar follows Thunar's core interaction model while mapping Linux Trash to t
 ## Queue, history, and drag-and-drop
 
 - Copy and move requests enter a sequential queue, so another request can be queued while one runs.
-- The transfer strip shows the active item, overall item progress, queued-job count, and a Cancel button.
+- The transfer strip shows the active item, byte progress, throughput, estimated time remaining, overall item progress, queued-job count, and a Cancel button.
 - Cancel stops the active job at its next cancellation point; already completed child transfers are journaled as well as completed top-level items.
+- Closing a window with running or queued transfers asks before cancelling those jobs.
 - Undo/Redo keeps the ten most recent safely reversible operations and preserves exact destination names.
 - Before Undo or Redo, WinThunar verifies a recursive metadata-and-content snapshot and refuses to delete or move an item that changed; copy Undo uses the Recycle Bin.
-- Undo refuses to remove a newly created folder after it gains contents or a blank document after it gains data.
+- Undo removes a created folder, blank document, template document, or archive only when its recursive metadata-and-content snapshot is unchanged; Redo recreates file content exactly.
 - Replace and directory Merge are not entered into Undo history because restoring displaced content requires a backup journal.
-- Trash and permanent delete are not entered into Undo history. Trash restoration will be a separate Windows Recycle Bin feature.
+- Trash and permanent delete are not entered into Undo history. Trash items have a dedicated Restore command that removes the Recycle Bin metadata record after a successful restore.
+- In-progress staged copies and replacements have persistent recovery records. On the next launch, WinThunar removes incomplete incoming data and restores any destination backup or source recovery item left by an interrupted transfer.
 - Dropping on a visible folder row targets that folder; dropping on blank list space targets the current folder.
 - A same-volume drop moves by default, while a cross-volume drop copies. Hold `Ctrl` to force Copy or `Shift` to force Move.
 

@@ -20,8 +20,9 @@ The project is open source under the MIT License. It does not contain code copie
 - Delete moves to the Windows Recycle Bin; `Shift+Delete` requires permanent-delete confirmation
 - Destination-side staged copies and rollback-safe replacement, so a failed incoming transfer cannot destroy the existing item
 - Native Windows cross-volume copies that preserve file attributes, security metadata, extended attributes, and NTFS alternate data streams
-- Sequential transfer queue with a live progress strip and active-job cancellation
-- Ten-action Undo/Redo history for create, rename, ordinary copy, move, and duplicate operations, guarded by destination-state verification
+- Sequential transfer queue with byte progress, throughput, ETA, queued-job count, and active-job cancellation
+- Persistent recovery records for interrupted staged copies and replacements
+- Ten-action Undo/Redo history for create, template/archive creation, rename, ordinary copy, move, and duplicate operations, guarded by destination-state verification
 - Drag-and-drop into the current folder or a visible child folder
 - Thunar-style drop rules: move on the same volume, copy across volumes, `Ctrl` forces copy, and `Shift` forces move
 - Detailed, icon, and compact folder views (`Ctrl+2`, `Ctrl+1`, and `Ctrl+3`)
@@ -39,7 +40,7 @@ The project is open source under the MIT License. It does not contain code copie
 - Create-from-Templates, symbolic links, select-by-pattern, and invert-selection commands
 - Previewed, collision-safe bulk rename with grouped Undo/Redo
 - Preferences for thumbnails, sorting, recursive search, trash confirmation, tab restoration, and default view
-- In-app Windows Recycle Bin browsing, confirmed Empty Trash, mapped network locations, direct UNC connections, terminal launch, and removable-drive eject
+- In-app Windows Recycle Bin browsing, conflict-safe Restore, confirmed Empty Trash, mapped network locations, direct UNC connections, terminal launch, and removable-drive eject
 - Customizable toolbar visibility and persistent alternate keyboard shortcuts
 - Optional image-preview side pane, single-click activation, and per-folder view/zoom/sort memory
 - Integrated PowerShell command panel (`F4`) that follows the active folder without covering the file list
@@ -72,7 +73,7 @@ Developer Mode must be enabled in Windows Settings to register and launch the de
 Create a self-contained, unpackaged x64 release folder, ZIP, and SHA-256 checksum:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.1.12
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.2
 ```
 
 The generated `artifacts\WinThunar-<version>-win-x64.zip` can be extracted and run with

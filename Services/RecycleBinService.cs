@@ -74,7 +74,9 @@ public static class RecycleBinService
                         metadata.DeletedAt.ToString("g"),
                         isDirectory ? "\uE8B7" : "\uE8A5",
                         isDirectory ? 0 : metadata.OriginalSize,
-                        metadata.DeletedAt));
+                        metadata.DeletedAt,
+                        metadata.OriginalPath,
+                        metadataPath));
                 }
                 catch
                 {

@@ -6,13 +6,14 @@ using WinThunar.Services;
 
 namespace WinThunar.ViewModels;
 
-public partial class MainPageViewModel : ObservableObject
+public partial class MainPageViewModel : ObservableObject, IDisposable
 {
     private readonly List<string> _history = [];
     private readonly FileSearchService _searchService = new();
     private readonly ShellImageService _shellImageService = new();
     private readonly object _watcherRefreshLock = new();
     private readonly RequestGeneration _navigationGeneration = new();
+    private readonly SemaphoreSlim _imageLoadGate = new(6);
     private CancellationTokenSource? _searchCancellation;
     private CancellationTokenSource? _imageCancellation;
     private CancellationTokenSource? _navigationCancellation;
@@ -21,8 +22,9 @@ public partial class MainPageViewModel : ObservableObject
     private int _searchVersion;
     private int _imageVersion;
     private int _historyIndex = -1;
+    private bool _disposed;
 
-    public ObservableCollection<FileSystemEntry> Entries { get; } = [];
+    public BulkObservableCollection<FileSystemEntry> Entries { get; } = [];
     public ObservableCollection<NavigationLocation> Places { get; } = [];
     public ObservableCollection<NavigationLocation> Devices { get; } = [];
     public ObservableCollection<NavigationLocation> Bookmarks { get; } = [];
@@ -454,6 +456,7 @@ public partial class MainPageViewModel : ObservableObject
         IsSearchMode = true;
         IsBusy = true;
         Entries.Clear();
+        RestartImageLoadingScope();
         StatusText = $"Searching {CurrentPath} for '{normalizedQuery}'...";
 
         var progress = new Progress<IReadOnlyList<FileSearchMatch>>(batch =>
@@ -482,7 +485,7 @@ public partial class MainPageViewModel : ObservableObject
                 Entries.Add(entry);
             }
 
-            BeginLoadingImages(batch
+            QueueLoadingImages(batch
                 .Select(match => Entries.FirstOrDefault(entry => PathEquals(entry.FullPath, match.FullPath)))
                 .Where(entry => entry is not null)
                 .Cast<FileSystemEntry>()
@@ -787,6 +790,12 @@ public partial class MainPageViewModel : ObservableObject
 
     private void BeginLoadingImages(IReadOnlyCollection<FileSystemEntry> entries)
     {
+        RestartImageLoadingScope();
+        QueueLoadingImages(entries);
+    }
+
+    private void RestartImageLoadingScope()
+    {
         _imageCancellation?.Cancel();
         _imageCancellation?.Dispose();
         if (IsRecycleBinView)
@@ -796,8 +805,18 @@ public partial class MainPageViewModel : ObservableObject
         }
 
         _imageCancellation = new CancellationTokenSource();
+        _imageVersion++;
+    }
+
+    private void QueueLoadingImages(IReadOnlyCollection<FileSystemEntry> entries)
+    {
+        if (_imageCancellation is null || entries.Count == 0 || IsRecycleBinView)
+        {
+            return;
+        }
+
         var cancellationToken = _imageCancellation.Token;
-        var version = ++_imageVersion;
+        var version = _imageVersion;
         var requestedSize = ViewMode == BrowserViewMode.Icons
             ? (uint)Math.Clamp((int)IconImageSize, 32, 96)
             : 32u;
@@ -811,10 +830,9 @@ public partial class MainPageViewModel : ObservableObject
         int version,
         CancellationToken cancellationToken)
     {
-        using var gate = new SemaphoreSlim(6);
         var tasks = entries.Select(async entry =>
         {
-            await gate.WaitAsync(cancellationToken);
+            await _imageLoadGate.WaitAsync(cancellationToken);
             try
             {
                 var image = await _shellImageService.GetImageAsync(
@@ -831,7 +849,7 @@ public partial class MainPageViewModel : ObservableObject
             }
             finally
             {
-                gate.Release();
+                _imageLoadGate.Release();
             }
         });
 
@@ -841,7 +859,37 @@ public partial class MainPageViewModel : ObservableObject
         }
         catch (OperationCanceledException)
         {
-            // Navigation, view changes, and newer search batches supersede older image work.
+            // Navigation and view changes supersede older image work.
+        }
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        CancelSearchCore();
+        _imageCancellation?.Cancel();
+        _imageCancellation?.Dispose();
+        _imageCancellation = null;
+        _navigationCancellation?.Cancel();
+        _navigationCancellation?.Dispose();
+        _navigationCancellation = null;
+        lock (_watcherRefreshLock)
+        {
+            _watcherRefreshCancellation?.Cancel();
+            _watcherRefreshCancellation?.Dispose();
+            _watcherRefreshCancellation = null;
+        }
+
+        if (_folderWatcher is not null)
+        {
+            _folderWatcher.EnableRaisingEvents = false;
+            _folderWatcher.Dispose();
+            _folderWatcher = null;
         }
     }
 
@@ -990,6 +1038,11 @@ public partial class MainPageViewModel : ObservableObject
 
     private void FolderWatcher_Changed(object sender, FileSystemEventArgs e)
     {
+        if (_disposed)
+        {
+            return;
+        }
+
         CancellationTokenSource refreshCancellation;
         lock (_watcherRefreshLock)
         {
@@ -1009,7 +1062,7 @@ public partial class MainPageViewModel : ObservableObject
             await Task.Delay(300, cancellationToken);
             App.DispatcherQueue.TryEnqueue(async () =>
             {
-                if (!cancellationToken.IsCancellationRequested && !IsSearchMode && Directory.Exists(CurrentPath))
+                if (!_disposed && !cancellationToken.IsCancellationRequested && !IsSearchMode && Directory.Exists(CurrentPath))
                 {
                     await NavigateAsync(CurrentPath, false);
                 }

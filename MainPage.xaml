@@ -32,6 +32,14 @@
             <MenuFlyoutSeparator />
             <MenuFlyoutItem Text="Properties" Click="Properties_Click" />
         </MenuFlyout>
+        <MenuFlyout x:Key="FolderContextMenu" Opened="FolderContextMenu_Opened">
+            <MenuFlyoutItem x:Name="FolderCreateFolderMenuItem" Text="Create Folder..." Click="CreateFolder_Click" />
+            <MenuFlyoutSubItem x:Name="FolderCreateDocumentMenu" Text="Create Document" />
+            <MenuFlyoutSeparator />
+            <MenuFlyoutItem Text="Paste" Click="Paste_Click" />
+            <MenuFlyoutSeparator />
+            <MenuFlyoutItem Text="Properties" Click="Properties_Click" />
+        </MenuFlyout>
     </Page.Resources>
 
     <Grid RowSpacing="0">
@@ -60,12 +68,12 @@
                 </MenuFlyoutItem>
                 <MenuFlyoutItem Text="New Window" Click="NewWindow_Click" />
                 <MenuFlyoutSeparator />
-                <MenuFlyoutItem Text="Create Folder" Click="CreateFolder_Click">
+                <MenuFlyoutItem Text="Create Folder..." Click="CreateFolder_Click">
                     <MenuFlyoutItem.KeyboardAccelerators>
                         <KeyboardAccelerator Key="N" Modifiers="Control,Shift" />
                     </MenuFlyoutItem.KeyboardAccelerators>
                 </MenuFlyoutItem>
-                <MenuFlyoutItem Text="Create Document" Click="CreateDocument_Click" />
+                <MenuFlyoutSubItem x:Name="FileCreateDocumentMenu" Text="Create Document" />
                 <MenuFlyoutSeparator />
                 <MenuFlyoutItem Text="Properties" Click="Properties_Click" />
                 <MenuFlyoutItem Text="Empty Trash..." Click="EmptyTrash_Click" />
@@ -455,11 +463,10 @@
                     DragOver="FileList_DragEnter"
                     Drop="FileList_Drop"
                     ItemsSource="{x:Bind ViewModel.Entries}"
-                    ContextFlyout="{StaticResource FileContextMenu}"
+                    ContextRequested="FileList_ContextRequested"
                     IsDoubleTapEnabled="True"
                     IsItemClickEnabled="True"
                     ItemClick="FileList_ItemClick"
-                    RightTapped="FileList_RightTapped"
                     IsMultiSelectCheckBoxEnabled="False"
                     DoubleTapped="FileList_DoubleTapped"
                     SelectionChanged="FileList_SelectionChanged"
@@ -507,11 +514,10 @@
                     DragOver="FileList_DragEnter"
                     Drop="FileList_Drop"
                     ItemsSource="{x:Bind ViewModel.Entries}"
-                    ContextFlyout="{StaticResource FileContextMenu}"
+                    ContextRequested="FileList_ContextRequested"
                     IsDoubleTapEnabled="True"
                     IsItemClickEnabled="True"
                     ItemClick="FileList_ItemClick"
-                    RightTapped="FileList_RightTapped"
                     DoubleTapped="FileList_DoubleTapped"
                     IsMultiSelectCheckBoxEnabled="False"
                     SelectionChanged="FileList_SelectionChanged"
@@ -548,11 +554,10 @@
                     DragOver="FileList_DragEnter"
                     Drop="FileList_Drop"
                     ItemsSource="{x:Bind ViewModel.Entries}"
-                    ContextFlyout="{StaticResource FileContextMenu}"
+                    ContextRequested="FileList_ContextRequested"
                     IsDoubleTapEnabled="True"
                     IsItemClickEnabled="True"
                     ItemClick="FileList_ItemClick"
-                    RightTapped="FileList_RightTapped"
                     DoubleTapped="FileList_DoubleTapped"
                     IsMultiSelectCheckBoxEnabled="False"
                     SelectionChanged="FileList_SelectionChanged"
@@ -660,11 +665,10 @@
                             DragOver="FileList_DragEnter"
                             Drop="FileList_Drop"
                             ItemsSource="{x:Bind SplitViewModel.Entries}"
-                            ContextFlyout="{StaticResource FileContextMenu}"
+                            ContextRequested="FileList_ContextRequested"
                             IsDoubleTapEnabled="True"
                             IsItemClickEnabled="True"
                             ItemClick="FileList_ItemClick"
-                            RightTapped="FileList_RightTapped"
                             IsMultiSelectCheckBoxEnabled="False"
                             DoubleTapped="FileList_DoubleTapped"
                             SelectionChanged="FileList_SelectionChanged"

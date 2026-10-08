@@ -27,6 +27,30 @@ public sealed class FileOperationTests : IDisposable
         Assert.NotNull(FileOperationService.ValidateLeafName("trailing."));
     }
 
+    [Fact]
+    public void GeneratesAvailableNamesWithoutDroppingExtensions()
+    {
+        Directory.CreateDirectory(Path.Combine(_root, "New Folder"));
+        Directory.CreateDirectory(Path.Combine(_root, "New Folder 1"));
+        File.WriteAllText(Path.Combine(_root, "Document.txt"), "first");
+
+        Assert.Equal("New Folder 2", FileOperationService.GetAvailableLeafName(_root, "New Folder", true));
+        Assert.Equal("Document 1.txt", FileOperationService.GetAvailableLeafName(_root, "Document.txt"));
+        Assert.Equal("Unused.txt", FileOperationService.GetAvailableLeafName(_root, "Unused.txt"));
+    }
+
+    [Fact]
+    public void BrowserHistoryCanJumpAcrossMultipleEntries()
+    {
+        var browser = new BrowserTabState(@"C:\one");
+        browser.RecordNavigation(@"C:\two");
+        browser.RecordNavigation(@"C:\three");
+
+        Assert.Equal([@"C:\two", @"C:\one"], browser.BackHistory.Select(entry => entry.Path));
+        Assert.Equal(@"C:\one", browser.GoToHistoryIndex(browser.BackHistory[^1].Index));
+        Assert.Equal([@"C:\two", @"C:\three"], browser.ForwardHistory.Select(entry => entry.Path));
+    }
+
     [Theory]
     [InlineData(@"\\server\share")]
     [InlineData(@"\\server\share\folder")]
@@ -358,13 +382,15 @@ public sealed class FileOperationTests : IDisposable
     public async Task NullSessionCollectionsAreNormalized()
     {
         var path = Path.Combine(_root, "session.json");
-        await File.WriteAllTextAsync(path, """{"bookmarks":null,"bookmarkItems":null,"tabs":null,"folderViewSettings":null,"customShortcuts":null}""");
+        await File.WriteAllTextAsync(path, """{"Bookmarks":null,"BookmarkItems":null,"Tabs":null,"ToolbarOrder":null,"ToolbarCustomActions":null,"FolderViewSettings":null,"CustomShortcuts":null}""");
 
         var state = new AppSessionService(path).Load();
 
         Assert.Empty(state.Bookmarks);
         Assert.Empty(state.BookmarkItems);
         Assert.Empty(state.Tabs);
+        Assert.Empty(state.ToolbarOrder);
+        Assert.Empty(state.ToolbarCustomActions);
         Assert.Empty(state.FolderViewSettings);
         Assert.Empty(state.CustomShortcuts);
     }

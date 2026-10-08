@@ -134,6 +134,30 @@ public sealed class FileOperationService
         return parts.Length >= 2 ? null : @"Include both a server and share, such as \\server\share.";
     }
 
+    public static string GetAvailableLeafName(string parentDirectory, string preferredName, bool isDirectory = false)
+    {
+        EnsureDirectoryExists(parentDirectory);
+        EnsureValidLeafName(preferredName);
+
+        if (!PathExists(Path.Combine(parentDirectory, preferredName)))
+        {
+            return preferredName;
+        }
+
+        var extension = isDirectory ? string.Empty : Path.GetExtension(preferredName);
+        var stem = isDirectory ? preferredName : Path.GetFileNameWithoutExtension(preferredName);
+        for (var suffix = 1; suffix < int.MaxValue; suffix++)
+        {
+            var candidate = $"{stem} {suffix}{extension}";
+            if (!PathExists(Path.Combine(parentDirectory, candidate)))
+            {
+                return candidate;
+            }
+        }
+
+        throw new IOException($"Could not find an available name based on '{preferredName}'.");
+    }
+
     public async Task<string> CreateDirectoryAsync(
         string parentDirectory,
         string name,

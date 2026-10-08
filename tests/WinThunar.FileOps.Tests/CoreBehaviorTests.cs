@@ -160,6 +160,8 @@ public sealed class CoreBehaviorTests : IDisposable
             LastPath = _root,
             Bookmarks = [Path.Combine(_root, "bookmark")],
             Tabs = [_root],
+            ToolbarOrder = ["Search", "Back", "Forward", "Up", "Home", "Reload"],
+            ToolbarCustomActions = ["test.viewer/open"],
             FolderViewSettings = new Dictionary<string, FolderViewState>
             {
                 [_root] = new() { ZoomLevel = 4 }
@@ -168,6 +170,8 @@ public sealed class CoreBehaviorTests : IDisposable
         var session = sessionService.Load();
         Assert.Equal(_root, session.LastPath);
         Assert.Equal(4, session.FolderViewSettings[_root].ZoomLevel);
+        Assert.Equal("Search", session.ToolbarOrder[0]);
+        Assert.Equal(["test.viewer/open"], session.ToolbarCustomActions);
 
         var bundled = Directory.CreateDirectory(Path.Combine(_root, "plugins")).FullName;
         var user = Directory.CreateDirectory(Path.Combine(_root, "user-plugins")).FullName;

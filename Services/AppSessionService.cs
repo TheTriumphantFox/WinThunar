@@ -76,6 +76,11 @@ public sealed class AppSessionService
             .Where(bookmark => bookmark is not null && !string.IsNullOrWhiteSpace(bookmark.Path))
             .ToList();
         state.Tabs = (state.Tabs ?? []).Where(path => !string.IsNullOrWhiteSpace(path)).ToList();
+        state.ToolbarOrder = (state.ToolbarOrder ?? []).Where(name => !string.IsNullOrWhiteSpace(name)).ToList();
+        state.ToolbarCustomActions = (state.ToolbarCustomActions ?? [])
+            .Where(action => !string.IsNullOrWhiteSpace(action))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
         state.FolderViewSettings = new Dictionary<string, FolderViewState>(
             (state.FolderViewSettings ?? new Dictionary<string, FolderViewState>())
                 .Where(pair => !string.IsNullOrWhiteSpace(pair.Key) && pair.Value is not null),

@@ -15,6 +15,8 @@ public enum BrowserSortColumn
     Modified
 }
 
+public sealed record NavigationHistoryEntry(int Index, string Path);
+
 public sealed class BrowserTabState
 {
     private const string RecycleBinVirtualPath = "shell:RecycleBinFolder";
@@ -32,6 +34,17 @@ public sealed class BrowserTabState
     public string Title => GetTitle(Path);
     public bool CanGoBack => _historyIndex > 0;
     public bool CanGoForward => _historyIndex < _history.Count - 1;
+
+    public IReadOnlyList<NavigationHistoryEntry> BackHistory => _history
+        .Take(_historyIndex)
+        .Select((path, index) => new NavigationHistoryEntry(index, path))
+        .Reverse()
+        .ToArray();
+
+    public IReadOnlyList<NavigationHistoryEntry> ForwardHistory => _history
+        .Skip(_historyIndex + 1)
+        .Select((path, offset) => new NavigationHistoryEntry(_historyIndex + 1 + offset, path))
+        .ToArray();
 
     public void RecordNavigation(string path)
     {
@@ -70,6 +83,18 @@ public sealed class BrowserTabState
         }
 
         Path = _history[++_historyIndex];
+        return Path;
+    }
+
+    public string? GoToHistoryIndex(int index)
+    {
+        if (index < 0 || index >= _history.Count || index == _historyIndex)
+        {
+            return null;
+        }
+
+        _historyIndex = index;
+        Path = _history[index];
         return Path;
     }
 
@@ -133,6 +158,8 @@ public sealed class AppSessionState
     public bool ShowHomeToolbarButton { get; set; } = true;
     public bool ShowReloadToolbarButton { get; set; } = true;
     public bool ShowSearchToolbarButton { get; set; } = true;
+    public List<string> ToolbarOrder { get; set; } = ["Back", "Forward", "Up", "Home", "Reload", "Search"];
+    public List<string> ToolbarCustomActions { get; set; } = [];
     public Dictionary<string, FolderViewState> FolderViewSettings { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     public Dictionary<string, string> CustomShortcuts { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     public List<string> Bookmarks { get; set; } = [];

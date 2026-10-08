@@ -48,6 +48,11 @@ public sealed partial class MainPage : Page
     private Dictionary<string, string> _customShortcuts = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<TreeViewNode, NavigationLocation> _treeLocations = [];
     private readonly List<MenuFlyoutItemBase> _generatedPluginMenuItems = [];
+    private readonly List<MenuFlyoutItemBase> _generatedFolderPluginMenuItems = [];
+    private readonly List<Button> _generatedToolbarPluginButtons = [];
+    private FileSystemWatcher? _templatesWatcher;
+    private List<string> _toolbarOrder = ["Back", "Forward", "Up", "Home", "Reload", "Search"];
+    private HashSet<string> _toolbarCustomActionIds = new(StringComparer.OrdinalIgnoreCase);
     private int _tabSelectionVersion;
     private double _dragSizeStart;
     private double _dragTypeStart;
@@ -89,6 +94,7 @@ public sealed partial class MainPage : Page
         _restoringSession = true;
         _pluginService.Reload();
         RefreshCreateDocumentMenus();
+        StartTemplatesWatcher();
         var session = _sessionService.Load();
         ViewModel.ShowHiddenFiles = session.ShowHiddenFiles;
         ShowHiddenMenuItem.IsChecked = session.ShowHiddenFiles;
@@ -117,7 +123,10 @@ public sealed partial class MainPage : Page
         _showTerminalPanel = session.ShowTerminalPanel;
         _folderViewSettings = new Dictionary<string, FolderViewState>(session.FolderViewSettings, StringComparer.OrdinalIgnoreCase);
         _customShortcuts = new Dictionary<string, string>(session.CustomShortcuts, StringComparer.OrdinalIgnoreCase);
+        _toolbarOrder = NormalizeToolbarOrder(session.ToolbarOrder);
+        _toolbarCustomActionIds = new HashSet<string>(session.ToolbarCustomActions ?? [], StringComparer.OrdinalIgnoreCase);
         ApplyToolbarVisibility(session);
+        ApplyToolbarOrder();
         if (session.BookmarkItems.Count > 0)
         {
             ViewModel.SetBookmarks(session.BookmarkItems);
@@ -165,12 +174,14 @@ public sealed partial class MainPage : Page
         var initialPath = ActiveTab?.Path ?? ViewModel.HomePath;
         ApplyFolderViewSettings(ViewModel, initialPath);
         await ViewModel.InitializeAsync(initialPath);
+        ApplyToolbarOrder();
         if (session.SplitPaneOpen && Directory.Exists(session.SplitPath))
         {
             await OpenSplitPaneAsync(session.SplitPath!, false);
         }
         _restoringSession = false;
         _sessionReady = true;
+        UpdateCommandState();
         SaveSession();
         if (recovery.RecoveredOperations > 0 || recovery.Errors.Count > 0)
         {
@@ -194,6 +205,8 @@ public sealed partial class MainPage : Page
         _previewCancellation?.Cancel();
         _previewCancellation?.Dispose();
         _previewCancellation = null;
+        _templatesWatcher?.Dispose();
+        _templatesWatcher = null;
         _transferQueue.StateChanged -= TransferQueue_StateChanged;
         _history.Changed -= History_Changed;
         ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
@@ -230,6 +243,67 @@ public sealed partial class MainPage : Page
             ApplyFolderViewSettings(ActiveBrowser, path);
             await ActiveBrowser.NavigateAsync(path, false);
         }
+    }
+
+    private void NavigationButton_ContextRequested(UIElement sender, ContextRequestedEventArgs e)
+    {
+        if (sender is not Button { Tag: string direction } button)
+        {
+            return;
+        }
+
+        var navigation = _activePane == BrowserPane.Secondary && _splitPaneOpen ? _splitTab : ActiveTab;
+        var entries = string.Equals(direction, "Back", StringComparison.OrdinalIgnoreCase)
+            ? navigation?.BackHistory
+            : navigation?.ForwardHistory;
+        var menu = new MenuFlyout();
+        if (entries is null || entries.Count == 0)
+        {
+            menu.Items.Add(new MenuFlyoutItem { Text = $"No {direction.ToLowerInvariant()} history", IsEnabled = false });
+        }
+        else
+        {
+            foreach (var entry in entries)
+            {
+                var item = new MenuFlyoutItem
+                {
+                    Text = BrowserTabState.GetTitle(entry.Path),
+                    Tag = entry
+                };
+                ToolTipService.SetToolTip(item, entry.Path);
+                item.Click += NavigationHistoryItem_Click;
+                menu.Items.Add(item);
+            }
+        }
+
+        e.Handled = true;
+        if (e.TryGetPosition(button, out var position))
+        {
+            menu.ShowAt(button, position);
+        }
+        else
+        {
+            menu.ShowAt(button);
+        }
+    }
+
+    private async void NavigationHistoryItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuFlyoutItem { Tag: NavigationHistoryEntry entry })
+        {
+            return;
+        }
+
+        var navigation = _activePane == BrowserPane.Secondary && _splitPaneOpen ? _splitTab : ActiveTab;
+        var path = navigation?.GoToHistoryIndex(entry.Index);
+        if (path is null)
+        {
+            return;
+        }
+
+        ApplyFolderViewSettings(ActiveBrowser, path);
+        await ActiveBrowser.NavigateAsync(path, false);
+        SaveSession();
     }
 
     private async void Up_Click(object sender, RoutedEventArgs e)
@@ -658,22 +732,130 @@ public sealed partial class MainPage : Page
         SaveSession();
     }
 
+    private void DetailsHeader_ContextRequested(UIElement sender, ContextRequestedEventArgs e)
+    {
+        if (sender is not FrameworkElement header)
+        {
+            return;
+        }
+
+        var menu = new MenuFlyout();
+        foreach (var (name, visible) in new[]
+                 {
+                     ("Size", ViewModel.ShowSizeColumn),
+                     ("Type", ViewModel.ShowTypeColumn),
+                     ("Date Modified", ViewModel.ShowModifiedColumn)
+                 })
+        {
+            var item = new ToggleMenuFlyoutItem { Text = name, IsChecked = visible, Tag = name };
+            item.Click += ColumnVisibility_Click;
+            menu.Items.Add(item);
+        }
+        menu.Items.Add(new MenuFlyoutSeparator());
+        var configure = new MenuFlyoutItem { Text = "Configure Columns..." };
+        configure.Click += ConfigureColumns_Click;
+        menu.Items.Add(configure);
+
+        e.Handled = true;
+        if (e.TryGetPosition(header, out var position))
+        {
+            menu.ShowAt(header, position);
+        }
+        else
+        {
+            menu.ShowAt(header);
+        }
+    }
+
+    private void ColumnVisibility_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not ToggleMenuFlyoutItem { Tag: string column } item)
+        {
+            return;
+        }
+
+        switch (column)
+        {
+            case "Size": ViewModel.ShowSizeColumn = item.IsChecked; break;
+            case "Type": ViewModel.ShowTypeColumn = item.IsChecked; break;
+            case "Date Modified": ViewModel.ShowModifiedColumn = item.IsChecked; break;
+        }
+        SplitViewModel.ShowSizeColumn = ViewModel.ShowSizeColumn;
+        SplitViewModel.ShowTypeColumn = ViewModel.ShowTypeColumn;
+        SplitViewModel.ShowModifiedColumn = ViewModel.ShowModifiedColumn;
+        ApplyColumnVisibility();
+        SaveSession();
+    }
+
     private async void ConfigureToolbar_Click(object sender, RoutedEventArgs e)
     {
-        var choices = new[]
+        var list = new ListView
         {
-            new CheckBox { Content = "Back", IsChecked = BackToolbarButton.Visibility == Visibility.Visible },
-            new CheckBox { Content = "Forward", IsChecked = ForwardToolbarButton.Visibility == Visibility.Visible },
-            new CheckBox { Content = "Up", IsChecked = UpToolbarButton.Visibility == Visibility.Visible },
-            new CheckBox { Content = "Home", IsChecked = HomeToolbarButton.Visibility == Visibility.Visible },
-            new CheckBox { Content = "Reload", IsChecked = ReloadToolbarButton.Visibility == Visibility.Visible },
-            new CheckBox { Content = "Search", IsChecked = SearchToolbarButton.Visibility == Visibility.Visible }
+            SelectionMode = ListViewSelectionMode.Single,
+            MinHeight = 230
         };
-        var content = new StackPanel { Spacing = 7, MinWidth = 300 };
-        content.Children.Add(new TextBlock { Text = "Choose the commands shown on the toolbar:" });
-        foreach (var choice in choices)
+        foreach (var name in _toolbarOrder)
         {
-            content.Children.Add(choice);
+            var button = GetToolbarButton(name);
+            list.Items.Add(new CheckBox
+            {
+                Content = name,
+                Tag = name,
+                IsChecked = button?.Visibility == Visibility.Visible,
+                HorizontalAlignment = HorizontalAlignment.Stretch
+            });
+        }
+
+        var moveUp = new Button { Content = "Move Up", IsEnabled = false };
+        var moveDown = new Button { Content = "Move Down", IsEnabled = false };
+        void UpdateMoveButtons()
+        {
+            moveUp.IsEnabled = list.SelectedIndex > 0;
+            moveDown.IsEnabled = list.SelectedIndex >= 0 && list.SelectedIndex < list.Items.Count - 1;
+        }
+        list.SelectionChanged += (_, _) => UpdateMoveButtons();
+        moveUp.Click += (_, _) => MoveToolbarChoice(-1);
+        moveDown.Click += (_, _) => MoveToolbarChoice(1);
+        void MoveToolbarChoice(int offset)
+        {
+            var oldIndex = list.SelectedIndex;
+            var newIndex = oldIndex + offset;
+            if (oldIndex < 0 || newIndex < 0 || newIndex >= list.Items.Count)
+            {
+                return;
+            }
+            var item = list.Items[oldIndex];
+            list.Items.RemoveAt(oldIndex);
+            list.Items.Insert(newIndex, item);
+            list.SelectedIndex = newIndex;
+        }
+
+        var controls = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        controls.Children.Add(moveUp);
+        controls.Children.Add(moveDown);
+        var content = new StackPanel { Spacing = 8, MinWidth = 360 };
+        content.Children.Add(new TextBlock { Text = "Choose visible commands and arrange their order:" });
+        content.Children.Add(list);
+        content.Children.Add(controls);
+        var customActionChoices = GetCurrentFolderPluginActions()
+            .Select(available => (Available: available, Choice: new CheckBox
+            {
+                Content = available.Action.Name,
+                IsChecked = _toolbarCustomActionIds.Contains(GetPluginActionKey(available))
+            }))
+            .ToArray();
+        if (customActionChoices.Length > 0)
+        {
+            content.Children.Add(new TextBlock
+            {
+                Text = "Folder custom actions",
+                Margin = new Thickness(0, 8, 0, 0),
+                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold
+            });
+            foreach (var (_, choice) in customActionChoices)
+            {
+                content.Children.Add(choice);
+            }
         }
 
         var dialog = new ContentDialog
@@ -690,12 +872,22 @@ public sealed partial class MainPage : Page
             return;
         }
 
-        BackToolbarButton.Visibility = choices[0].IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
-        ForwardToolbarButton.Visibility = choices[1].IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
-        UpToolbarButton.Visibility = choices[2].IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
-        HomeToolbarButton.Visibility = choices[3].IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
-        ReloadToolbarButton.Visibility = choices[4].IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
-        SearchToolbarButton.Visibility = choices[5].IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        _toolbarOrder = list.Items
+            .OfType<CheckBox>()
+            .Select(item => (string)item.Tag)
+            .ToList();
+        foreach (var item in list.Items.OfType<CheckBox>())
+        {
+            if (GetToolbarButton((string)item.Tag) is { } button)
+            {
+                button.Visibility = item.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+            }
+        }
+        _toolbarCustomActionIds = customActionChoices
+            .Where(pair => pair.Choice.IsChecked == true)
+            .Select(pair => GetPluginActionKey(pair.Available))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        ApplyToolbarOrder();
         SaveSession();
     }
 
@@ -707,6 +899,71 @@ public sealed partial class MainPage : Page
         HomeToolbarButton.Visibility = session.ShowHomeToolbarButton ? Visibility.Visible : Visibility.Collapsed;
         ReloadToolbarButton.Visibility = session.ShowReloadToolbarButton ? Visibility.Visible : Visibility.Collapsed;
         SearchToolbarButton.Visibility = session.ShowSearchToolbarButton ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private static List<string> NormalizeToolbarOrder(IEnumerable<string>? order)
+    {
+        string[] defaults = ["Back", "Forward", "Up", "Home", "Reload", "Search"];
+        var normalized = (order ?? [])
+            .Where(name => defaults.Contains(name, StringComparer.OrdinalIgnoreCase))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        normalized.AddRange(defaults.Where(name => !normalized.Contains(name, StringComparer.OrdinalIgnoreCase)));
+        return normalized;
+    }
+
+    private Button? GetToolbarButton(string name) => name switch
+    {
+        "Back" => BackToolbarButton,
+        "Forward" => ForwardToolbarButton,
+        "Up" => UpToolbarButton,
+        "Home" => HomeToolbarButton,
+        "Reload" => ReloadToolbarButton,
+        "Search" => SearchToolbarButton,
+        _ => null
+    };
+
+    private void ApplyToolbarOrder()
+    {
+        ToolbarPanel.Children.Clear();
+        _generatedToolbarPluginButtons.Clear();
+        for (var index = 0; index < _toolbarOrder.Count; index++)
+        {
+            if (index == 4)
+            {
+                ToolbarPanel.Children.Add(ToolbarSeparator);
+            }
+            if (GetToolbarButton(_toolbarOrder[index]) is { } button)
+            {
+                ToolbarPanel.Children.Add(button);
+            }
+        }
+        foreach (var available in GetCurrentFolderPluginActions()
+                     .Where(available => _toolbarCustomActionIds.Contains(GetPluginActionKey(available))))
+        {
+            var button = new Button
+            {
+                Content = available.Action.Name,
+                Tag = available,
+                Background = new SolidColorBrush(Windows.UI.Color.FromArgb(0, 0, 0, 0)),
+                BorderThickness = new Thickness(0),
+                Padding = new Thickness(8, 5, 8, 5)
+            };
+            ToolTipService.SetToolTip(button, available.Action.Description);
+            button.Click += PluginAction_Click;
+            ToolbarPanel.Children.Add(button);
+            _generatedToolbarPluginButtons.Add(button);
+        }
+        var visibleBeforeSeparator = _toolbarOrder.Take(4)
+            .Select(GetToolbarButton)
+            .Any(button => button?.Visibility == Visibility.Visible);
+        var visibleAfterSeparator = _toolbarOrder.Skip(4)
+            .Select(GetToolbarButton)
+            .Any(button => button?.Visibility == Visibility.Visible) ||
+            _generatedToolbarPluginButtons.Count > 0;
+        ToolbarSeparator.Visibility = visibleBeforeSeparator && visibleAfterSeparator
+            ? Visibility.Visible
+            : Visibility.Collapsed;
     }
 
     private void ApplyColumnVisibility()
@@ -969,6 +1226,27 @@ public sealed partial class MainPage : Page
         window.Activate();
     }
 
+    private void OpenSelectedInNewWindow_Click(object sender, RoutedEventArgs e)
+    {
+        if (SelectedEntries() is not [{ IsDirectory: true } folder])
+        {
+            return;
+        }
+
+        var window = new MainWindow(folder.FullPath);
+        _ownedWindows.Add(window);
+        window.Closed += (_, _) => _ownedWindows.Remove(window);
+        window.Activate();
+    }
+
+    private void OpenSelectedTerminal_Click(object sender, RoutedEventArgs e)
+    {
+        if (SelectedEntries() is [{ IsDirectory: true } folder])
+        {
+            ShellIntegrationService.OpenTerminal(folder.FullPath);
+        }
+    }
+
     private void OpenInNewTab_Click(object sender, RoutedEventArgs e)
     {
         if (ActiveBrowser.IsRecycleBinView)
@@ -1022,12 +1300,17 @@ public sealed partial class MainPage : Page
 
     private async void CreateFolder_Click(object sender, RoutedEventArgs e)
     {
-        if (RejectRecycleBinMutation("Create Folder"))
+        if (RejectDestinationMutation("Create Folder"))
         {
             return;
         }
 
-        var name = await PromptForNameAsync("Create Folder", "Enter the new folder name:", "New Folder");
+        var suggestedName = FileOperationService.GetAvailableLeafName(ActiveBrowser.CurrentPath, "New Folder", true);
+        var name = await PromptForNameAsync(
+            "Create Folder",
+            "Enter the new folder name:",
+            suggestedName,
+            value => ValidateNewItemName(ActiveBrowser.CurrentPath, value));
         if (name is null)
         {
             return;
@@ -1051,16 +1334,21 @@ public sealed partial class MainPage : Page
 
     private async Task CreateDocumentAsync(string? selectedTemplate)
     {
-        if (RejectRecycleBinMutation("Create Document"))
+        if (RejectDestinationMutation("Create Document"))
         {
             return;
         }
 
-        var suggestedName = selectedTemplate is null ? "New Empty File" : Path.GetFileName(selectedTemplate);
+        var preferredName = selectedTemplate is null ? "New Empty File" : Path.GetFileName(selectedTemplate);
+        var suggestedName = FileOperationService.GetAvailableLeafName(ActiveBrowser.CurrentPath, preferredName);
         var title = selectedTemplate is null
             ? "Create Empty File"
             : $"Create Document from Template '{Path.GetFileName(selectedTemplate)}'";
-        var name = await PromptForNameAsync(title, "Enter the new document name:", suggestedName);
+        var name = await PromptForNameAsync(
+            title,
+            "Enter the new document name:",
+            suggestedName,
+            value => ValidateNewItemName(ActiveBrowser.CurrentPath, value));
         if (name is null)
         {
             return;
@@ -1094,14 +1382,49 @@ public sealed partial class MainPage : Page
 
     private void RefreshCreateDocumentMenus()
     {
-        var templatesFolder = Environment.GetFolderPath(Environment.SpecialFolder.Templates);
-        if (string.IsNullOrWhiteSpace(templatesFolder))
-        {
-            templatesFolder = Path.Combine(ViewModel.HomePath, "Templates");
-        }
+        var templatesFolder = GetTemplatesFolder();
 
         PopulateCreateDocumentMenu(FileCreateDocumentMenu, templatesFolder);
         PopulateCreateDocumentMenu(FolderCreateDocumentMenu, templatesFolder);
+    }
+
+    private string GetTemplatesFolder()
+    {
+        var templatesFolder = Environment.GetFolderPath(Environment.SpecialFolder.Templates);
+        return string.IsNullOrWhiteSpace(templatesFolder)
+            ? Path.Combine(ViewModel.HomePath, "Templates")
+            : templatesFolder;
+    }
+
+    private void StartTemplatesWatcher()
+    {
+        _templatesWatcher?.Dispose();
+        _templatesWatcher = null;
+        var templatesFolder = GetTemplatesFolder();
+        if (!Directory.Exists(templatesFolder))
+        {
+            return;
+        }
+
+        try
+        {
+            _templatesWatcher = new FileSystemWatcher(templatesFolder)
+            {
+                IncludeSubdirectories = true,
+                NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.LastWrite
+            };
+            FileSystemEventHandler refresh = (_, _) => DispatcherQueue.TryEnqueue(RefreshCreateDocumentMenus);
+            RenamedEventHandler renamed = (_, _) => DispatcherQueue.TryEnqueue(RefreshCreateDocumentMenus);
+            _templatesWatcher.Created += refresh;
+            _templatesWatcher.Deleted += refresh;
+            _templatesWatcher.Changed += refresh;
+            _templatesWatcher.Renamed += renamed;
+            _templatesWatcher.EnableRaisingEvents = true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            ViewModel.StatusText = $"Templates will refresh when their menu is reopened: {ex.Message}";
+        }
     }
 
     private void PopulateCreateDocumentMenu(MenuFlyoutSubItem menu, string templatesFolder)
@@ -1185,7 +1508,20 @@ public sealed partial class MainPage : Page
 
     private async void Paste_Click(object sender, RoutedEventArgs e)
     {
-        if (RejectRecycleBinMutation("Paste"))
+        await PasteIntoAsync(ActiveBrowser.CurrentPath);
+    }
+
+    private async void PasteIntoSelectedFolder_Click(object sender, RoutedEventArgs e)
+    {
+        if (SelectedEntries() is [{ IsDirectory: true } folder])
+        {
+            await PasteIntoAsync(folder.FullPath);
+        }
+    }
+
+    private async Task PasteIntoAsync(string destinationPath)
+    {
+        if (RejectDestinationMutation("Paste", destinationPath))
         {
             return;
         }
@@ -1215,7 +1551,7 @@ public sealed partial class MainPage : Page
                 ? FileTransferMode.Move
                 : FileTransferMode.Copy;
 
-            var result = await RunTransferAsync(paths, ActiveBrowser.CurrentPath, mode);
+            var result = await RunTransferAsync(paths, destinationPath, mode);
             if (mode == FileTransferMode.Move && result is { Succeeded: true })
             {
                 Clipboard.Clear();
@@ -1229,7 +1565,7 @@ public sealed partial class MainPage : Page
 
     private async void Duplicate_Click(object sender, RoutedEventArgs e)
     {
-        if (RejectRecycleBinMutation("Duplicate"))
+        if (RejectDestinationMutation("Duplicate"))
         {
             return;
         }
@@ -1272,7 +1608,11 @@ public sealed partial class MainPage : Page
         }
 
         var entry = selected[0];
-        var newName = await PromptForNameAsync("Rename", "Enter the new name:", entry.Name);
+        var newName = await PromptForNameAsync(
+            "Rename",
+            "Enter the new name:",
+            entry.Name,
+            value => ValidateRenameName(entry.FullPath, value));
         if (newName is null || string.Equals(newName, entry.Name, StringComparison.Ordinal))
         {
             return;
@@ -1444,11 +1784,6 @@ public sealed partial class MainPage : Page
 
     private async void DeletePermanently_Click(object sender, RoutedEventArgs e)
     {
-        if (RejectRecycleBinMutation("Delete Permanently"))
-        {
-            return;
-        }
-
         var selected = SelectedEntries();
         if (selected.Count == 0)
         {
@@ -1477,16 +1812,25 @@ public sealed partial class MainPage : Page
             return;
         }
 
+        var pathsToDelete = selected
+            .SelectMany(entry => entry.IsRecycleBinItem
+                ? new[] { entry.FullPath, entry.RecycleMetadataPath! }
+                : new[] { entry.FullPath })
+            .ToArray();
         await RunFileOperationAsync(
             $"Permanently deleting {selected.Count} item{(selected.Count == 1 ? string.Empty : "s")}...",
-            () => _fileOperations.DeletePermanentlyAsync(selected.Select(entry => entry.FullPath)));
+            () => _fileOperations.DeletePermanentlyAsync(pathsToDelete));
     }
 
     private void SelectAll_Click(object sender, RoutedEventArgs e) => ActiveFileList.SelectAll();
 
     private async void SelectPattern_Click(object sender, RoutedEventArgs e)
     {
-        var pattern = await PromptForNameAsync("Select by Pattern", "Wildcard pattern:", "*.txt");
+        var pattern = await PromptForNameAsync(
+            "Select by Pattern",
+            "Wildcard pattern:",
+            "*.txt",
+            value => string.IsNullOrWhiteSpace(value) ? "Enter a pattern." : null);
         if (string.IsNullOrWhiteSpace(pattern))
         {
             return;
@@ -1560,7 +1904,7 @@ public sealed partial class MainPage : Page
 
     private async void MakeLink_Click(object sender, RoutedEventArgs e)
     {
-        if (RejectRecycleBinMutation("Make Link"))
+        if (RejectDestinationMutation("Make Link"))
         {
             return;
         }
@@ -1573,7 +1917,11 @@ public sealed partial class MainPage : Page
         }
 
         var defaultName = $"{Path.GetFileNameWithoutExtension(entry.Name)} - Link{(entry.IsDirectory ? string.Empty : Path.GetExtension(entry.Name))}";
-        var linkName = await PromptForNameAsync("Make Link", "Link name:", defaultName);
+        var linkName = await PromptForNameAsync(
+            "Make Link",
+            "Link name:",
+            FileOperationService.GetAvailableLeafName(ActiveBrowser.CurrentPath, defaultName, entry.IsDirectory),
+            value => ValidateNewItemName(ActiveBrowser.CurrentPath, value));
         if (string.IsNullOrWhiteSpace(linkName))
         {
             return;
@@ -1595,12 +1943,87 @@ public sealed partial class MainPage : Page
 
     private async void Properties_Click(object sender, RoutedEventArgs e)
     {
-        var entry = SelectedEntries().FirstOrDefault();
-        var path = entry?.FullPath ?? ActiveBrowser.CurrentPath;
+        var selected = SelectedEntries();
+        if (selected.Count > 1)
+        {
+            await ShowCombinedPropertiesAsync(selected);
+            return;
+        }
+
+        var path = selected.FirstOrDefault()?.FullPath ?? ActiveBrowser.CurrentPath;
         if (!ShellIntegrationService.ShowProperties(path, App.WindowHandle))
         {
             await ShowMessageAsync("Properties", "Windows could not open the Properties dialog for this item.");
         }
+    }
+
+    private async Task ShowCombinedPropertiesAsync(IReadOnlyList<FileSystemEntry> selected)
+    {
+        var fileCount = selected.Count(entry => !entry.IsDirectory);
+        var folderCount = selected.Count - fileCount;
+        long totalFileBytes = 0;
+        foreach (var entry in selected.Where(entry => !entry.IsDirectory))
+        {
+            try
+            {
+                totalFileBytes += new FileInfo(entry.FullPath).Length;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // A changing selection should not prevent the remaining common properties from being shown.
+            }
+        }
+
+        var parents = selected
+            .Select(entry => Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(entry.FullPath)) ?? string.Empty)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        var extensions = selected
+            .Where(entry => !entry.IsDirectory)
+            .Select(entry => Path.GetExtension(entry.Name))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        var type = folderCount == selected.Count
+            ? "Folders"
+            : fileCount == selected.Count && extensions.Length == 1
+                ? string.IsNullOrWhiteSpace(extensions[0]) ? "Files" : $"{extensions[0]} files"
+                : "Mixed files and folders";
+        var details = new StackPanel { Spacing = 8, MinWidth = 420 };
+        details.Children.Add(new TextBlock { Text = $"{selected.Count} selected items", FontSize = 18, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+        details.Children.Add(new TextBlock { Text = $"Type: {type}" });
+        details.Children.Add(new TextBlock { Text = $"Files: {fileCount}\nFolders: {folderCount}" });
+        if (fileCount > 0)
+        {
+            details.Children.Add(new TextBlock { Text = $"Combined file size: {FormatByteCount(totalFileBytes)}" });
+        }
+        details.Children.Add(new TextBlock
+        {
+            Text = parents.Length == 1 ? $"Location: {parents[0]}" : "Location: Multiple folders",
+            TextWrapping = TextWrapping.Wrap
+        });
+
+        var dialog = new ContentDialog
+        {
+            XamlRoot = XamlRoot,
+            Title = "Properties",
+            Content = details,
+            CloseButtonText = "Close"
+        };
+        await dialog.ShowAsync();
+    }
+
+    private static string FormatByteCount(long bytes)
+    {
+        string[] units = ["bytes", "KB", "MB", "GB", "TB"];
+        var value = (double)Math.Max(0, bytes);
+        var unit = 0;
+        while (value >= 1024 && unit < units.Length - 1)
+        {
+            value /= 1024;
+            unit++;
+        }
+
+        return unit == 0 ? $"{bytes:N0} {units[unit]}" : $"{value:N1} {units[unit]}";
     }
 
     private async void Preferences_Click(object sender, RoutedEventArgs e)
@@ -2051,6 +2474,7 @@ public sealed partial class MainPage : Page
             }
             _pluginService.Reload();
             ViewModel.StatusText = "Plugin settings updated.";
+            ApplyToolbarOrder();
         }
         catch (Exception ex)
         {
@@ -2065,16 +2489,18 @@ public sealed partial class MainPage : Page
             return;
         }
 
-        RestoreMenuItem.Visibility = ActiveBrowser.IsRecycleBinView &&
-            SelectedEntries().Any(entry => entry.IsRecycleBinItem)
-            ? Visibility.Visible
-            : Visibility.Collapsed;
+        UpdateCommandState();
 
         foreach (var generated in _generatedPluginMenuItems)
         {
             menu.Items.Remove(generated);
         }
         _generatedPluginMenuItems.Clear();
+
+        if (ActiveBrowser.IsRecycleBinView)
+        {
+            return;
+        }
 
         var actions = _pluginService.GetApplicableActions(SelectedEntries()
             .Select(entry => new PluginSelectionItem(entry.Name, entry.FullPath, entry.IsDirectory))
@@ -2104,19 +2530,78 @@ public sealed partial class MainPage : Page
     private void FolderContextMenu_Opened(object sender, object e)
     {
         RefreshCreateDocumentMenus();
-        var canCreate = !ActiveBrowser.IsRecycleBinView;
-        FolderCreateFolderMenuItem.IsEnabled = canCreate;
-        FolderCreateDocumentMenu.IsEnabled = canCreate;
+        UpdateCommandState();
+        if (sender is not MenuFlyout menu)
+        {
+            return;
+        }
+
+        foreach (var generated in _generatedFolderPluginMenuItems)
+        {
+            menu.Items.Remove(generated);
+        }
+        _generatedFolderPluginMenuItems.Clear();
+
+        if (ActiveBrowser.IsRecycleBinView)
+        {
+            return;
+        }
+
+        var actions = GetCurrentFolderPluginActions();
+        if (actions.Count == 0)
+        {
+            return;
+        }
+
+        var separator = new MenuFlyoutSeparator();
+        menu.Items.Add(separator);
+        _generatedFolderPluginMenuItems.Add(separator);
+        foreach (var available in actions)
+        {
+            var item = new MenuFlyoutItem { Text = available.Action.Name, Tag = available };
+            ToolTipService.SetToolTip(item, available.Action.Description);
+            item.Click += PluginAction_Click;
+            menu.Items.Add(item);
+            _generatedFolderPluginMenuItems.Add(item);
+        }
     }
+
+    private void FileMenu_PointerEntered(object sender, PointerRoutedEventArgs e)
+    {
+        RefreshCreateDocumentMenus();
+        UpdateCommandState();
+    }
+
+    private void FileMenu_GettingFocus(UIElement sender, GettingFocusEventArgs args)
+    {
+        RefreshCreateDocumentMenus();
+        UpdateCommandState();
+    }
+
+    private void FileMenu_AccessKeyInvoked(UIElement sender, AccessKeyInvokedEventArgs args)
+    {
+        RefreshCreateDocumentMenus();
+        UpdateCommandState();
+    }
+
+    private void EditMenu_PointerEntered(object sender, PointerRoutedEventArgs e) => UpdateCommandState();
+
+    private void EditMenu_GettingFocus(UIElement sender, GettingFocusEventArgs args) => UpdateCommandState();
+
+    private void EditMenu_AccessKeyInvoked(UIElement sender, AccessKeyInvokedEventArgs args) => UpdateCommandState();
 
     private async void PluginAction_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is not MenuFlyoutItem { Tag: AvailablePluginAction available })
+        if (sender is not FrameworkElement { Tag: AvailablePluginAction available })
         {
             return;
         }
 
         var selected = SelectedEntries();
+        if ((sender is Button || selected.Count == 0) && !ActiveBrowser.IsRecycleBinView)
+        {
+            selected = [CreateCurrentFolderEntry()];
+        }
         if (available.Action.RequiresConfirmation)
         {
             var dialog = new ContentDialog
@@ -2155,6 +2640,33 @@ public sealed partial class MainPage : Page
             await ShowMessageAsync($"{available.Action.Name} Failed", ex.Message);
         }
     }
+
+    private IReadOnlyList<AvailablePluginAction> GetCurrentFolderPluginActions()
+    {
+        if (ActiveBrowser.IsRecycleBinView || !Directory.Exists(ActiveBrowser.CurrentPath))
+        {
+            return [];
+        }
+
+        return _pluginService.GetApplicableActions([
+            new PluginSelectionItem(
+                BrowserTabState.GetTitle(ActiveBrowser.CurrentPath),
+                ActiveBrowser.CurrentPath,
+                true)
+        ]);
+    }
+
+    private FileSystemEntry CreateCurrentFolderEntry() => new(
+        BrowserTabState.GetTitle(ActiveBrowser.CurrentPath),
+        ActiveBrowser.CurrentPath,
+        true,
+        string.Empty,
+        "Folder",
+        string.Empty,
+        "\uE8B7");
+
+    private static string GetPluginActionKey(AvailablePluginAction available) =>
+        $"{available.Plugin.Id}/{available.Action.Id}";
 
     private async Task ExecuteBuiltInPluginActionAsync(
         PluginActionManifest action,
@@ -2654,6 +3166,7 @@ public sealed partial class MainPage : Page
             SetActivePaneForList(sender);
         }
         ActiveBrowser.SetSelectionStatus(SelectedEntries());
+        UpdateCommandState();
         if (_activePane == BrowserPane.Secondary)
         {
             ViewModel.StatusText = SplitViewModel.StatusText;
@@ -3327,47 +3840,87 @@ public sealed partial class MainPage : Page
         string initialName,
         Func<string?, string?>? validator = null)
     {
-        var currentName = initialName;
-        while (true)
+        var validate = validator ?? FileOperationService.ValidateLeafName;
+        var textBox = new TextBox
         {
-            var textBox = new TextBox
-            {
-                Text = currentName,
-                MinWidth = 360
-            };
-            textBox.Loaded += (_, _) =>
-            {
-                textBox.Focus(FocusState.Programmatic);
-                textBox.SelectAll();
-            };
-            var content = new StackPanel { Spacing = 8 };
-            content.Children.Add(new TextBlock { Text = prompt, TextWrapping = TextWrapping.Wrap });
-            content.Children.Add(textBox);
+            Text = initialName,
+            MinWidth = 360
+        };
+        var validationMessage = new TextBlock
+        {
+            Foreground = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 180, 32, 32)),
+            TextWrapping = TextWrapping.Wrap,
+            Visibility = Visibility.Collapsed
+        };
+        textBox.Loaded += (_, _) =>
+        {
+            textBox.Focus(FocusState.Programmatic);
+            textBox.SelectAll();
+        };
+        var content = new StackPanel { Spacing = 8 };
+        content.Children.Add(new TextBlock { Text = prompt, TextWrapping = TextWrapping.Wrap });
+        content.Children.Add(textBox);
+        content.Children.Add(validationMessage);
 
-            var dialog = new ContentDialog
-            {
-                XamlRoot = XamlRoot,
-                Title = title,
-                Content = content,
-                PrimaryButtonText = "OK",
-                CloseButtonText = "Cancel",
-                DefaultButton = ContentDialogButton.Primary
-            };
-
-            if (await dialog.ShowAsync() != ContentDialogResult.Primary)
-            {
-                return null;
-            }
-
-            currentName = textBox.Text;
-            var error = (validator ?? FileOperationService.ValidateLeafName)(currentName);
-            if (error is null)
-            {
-                return currentName;
-            }
-
-            await ShowMessageAsync("Invalid Name", error);
+        var dialog = new ContentDialog
+        {
+            XamlRoot = XamlRoot,
+            Title = title,
+            Content = content,
+            PrimaryButtonText = "OK",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary
+        };
+        void UpdateValidation()
+        {
+            var error = validate(textBox.Text);
+            dialog.IsPrimaryButtonEnabled = error is null;
+            validationMessage.Text = error ?? string.Empty;
+            validationMessage.Visibility = error is null ? Visibility.Collapsed : Visibility.Visible;
         }
+        textBox.TextChanged += (_, _) => UpdateValidation();
+        UpdateValidation();
+
+        return await dialog.ShowAsync() == ContentDialogResult.Primary ? textBox.Text : null;
+    }
+
+    private static string? ValidateNewItemName(string parentDirectory, string? name)
+    {
+        var validationError = FileOperationService.ValidateLeafName(name);
+        if (validationError is not null)
+        {
+            return validationError;
+        }
+
+        var path = Path.Combine(parentDirectory, name!);
+        return File.Exists(path) || Directory.Exists(path)
+            ? $"An item named '{name}' already exists."
+            : null;
+    }
+
+    private static string? ValidateRenameName(string sourcePath, string? name)
+    {
+        var validationError = FileOperationService.ValidateLeafName(name);
+        if (validationError is not null)
+        {
+            return validationError;
+        }
+
+        var parent = Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(sourcePath));
+        if (string.IsNullOrWhiteSpace(parent))
+        {
+            return "The filesystem root cannot be renamed here.";
+        }
+
+        var destination = Path.Combine(parent, name!);
+        if (PathEquals(sourcePath, destination))
+        {
+            return null;
+        }
+
+        return File.Exists(destination) || Directory.Exists(destination)
+            ? $"An item named '{name}' already exists."
+            : null;
     }
 
     private async Task<bool> RunFileOperationAsync(string status, Func<Task> operation)
@@ -3431,6 +3984,107 @@ public sealed partial class MainPage : Page
 
     private IReadOnlyList<FileSystemEntry> SelectedEntries() =>
         ActiveFileList.SelectedItems.Cast<FileSystemEntry>().ToArray();
+
+    private void UpdateCommandState()
+    {
+        var selected = SelectedEntries();
+        var hasSelection = selected.Count > 0;
+        var singleSelection = selected.Count == 1;
+        var singleFolder = singleSelection && selected[0].IsDirectory;
+        var singleFile = singleSelection && !selected[0].IsDirectory;
+        var inTrash = ActiveBrowser.IsRecycleBinView;
+        var canCreate = CanWriteToCurrentFolder();
+        var canModifySelection = hasSelection && !inTrash && CanWriteSelectionParents(selected);
+        var hasClipboardItems = ClipboardContainsStorageItems();
+        var canPaste = canCreate && hasClipboardItems;
+        var canPasteIntoFolder = singleFolder &&
+            !inTrash &&
+            !ActiveBrowser.IsSearchMode &&
+            IsDirectoryPotentiallyWritable(selected[0].FullPath) &&
+            hasClipboardItems;
+
+        RestoreMenuItem.Visibility = inTrash && selected.Any(entry => entry.IsRecycleBinItem)
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        ContextOpenMenuItem.Visibility = singleSelection && !inTrash ? Visibility.Visible : Visibility.Collapsed;
+        ContextOpenWithMenuItem.Visibility = singleFile && !inTrash ? Visibility.Visible : Visibility.Collapsed;
+        ContextOpenInNewTabMenuItem.Visibility = singleFolder && !inTrash ? Visibility.Visible : Visibility.Collapsed;
+        ContextOpenInNewWindowMenuItem.Visibility = singleFolder && !inTrash ? Visibility.Visible : Visibility.Collapsed;
+        ContextOpenTerminalMenuItem.Visibility = singleFolder && !inTrash ? Visibility.Visible : Visibility.Collapsed;
+        ContextPasteIntoMenuItem.Visibility = singleFolder && !inTrash ? Visibility.Visible : Visibility.Collapsed;
+        ContextPasteIntoMenuItem.IsEnabled = canPasteIntoFolder;
+        ContextCutMenuItem.Visibility = inTrash ? Visibility.Collapsed : Visibility.Visible;
+        ContextCopyMenuItem.Visibility = inTrash ? Visibility.Collapsed : Visibility.Visible;
+        ContextCutMenuItem.IsEnabled = canModifySelection;
+        ContextCopyMenuItem.IsEnabled = hasSelection && !inTrash;
+        ContextDuplicateMenuItem.Visibility = inTrash ? Visibility.Collapsed : Visibility.Visible;
+        ContextDuplicateMenuItem.IsEnabled = hasSelection && canCreate;
+        ContextRenameMenuItem.Visibility = inTrash ? Visibility.Collapsed : Visibility.Visible;
+        ContextRenameMenuItem.IsEnabled = canModifySelection;
+        ContextMakeLinkMenuItem.Visibility = inTrash ? Visibility.Collapsed : Visibility.Visible;
+        ContextMakeLinkMenuItem.IsEnabled = singleSelection && canCreate;
+        ContextMoveToTrashMenuItem.Visibility = inTrash ? Visibility.Collapsed : Visibility.Visible;
+        ContextMoveToTrashMenuItem.IsEnabled = canModifySelection;
+        ContextDeletePermanentlyMenuItem.IsEnabled = hasSelection;
+
+        FileOpenMenuItem.Visibility = singleSelection && !inTrash ? Visibility.Visible : Visibility.Collapsed;
+        FileOpenWithMenuItem.Visibility = singleFile && !inTrash ? Visibility.Visible : Visibility.Collapsed;
+        FileOpenInNewTabMenuItem.Visibility = singleFolder && !inTrash ? Visibility.Visible : Visibility.Collapsed;
+        FileOpenInNewWindowMenuItem.Visibility = singleFolder && !inTrash ? Visibility.Visible : Visibility.Collapsed;
+        FileOpenTerminalMenuItem.Visibility = singleFolder && !inTrash ? Visibility.Visible : Visibility.Collapsed;
+        FileSelectionSeparator.Visibility = singleSelection && !inTrash ? Visibility.Visible : Visibility.Collapsed;
+        FileCreateFolderMenuItem.IsEnabled = canCreate;
+        FileCreateDocumentMenu.IsEnabled = canCreate;
+        FileEmptyTrashMenuItem.Visibility = inTrash ? Visibility.Visible : Visibility.Collapsed;
+
+        FolderCreateFolderMenuItem.IsEnabled = canCreate;
+        FolderCreateDocumentMenu.IsEnabled = canCreate;
+        FolderPasteMenuItem.IsEnabled = canPaste;
+
+        EditCutMenuItem.IsEnabled = canModifySelection;
+        EditCopyMenuItem.IsEnabled = hasSelection && !inTrash;
+        EditPasteMenuItem.IsEnabled = canPaste;
+        EditMoveToTrashMenuItem.IsEnabled = canModifySelection;
+        EditDeletePermanentlyMenuItem.IsEnabled = hasSelection;
+        EditDuplicateMenuItem.IsEnabled = hasSelection && canCreate;
+        EditRenameMenuItem.IsEnabled = canModifySelection;
+    }
+
+    private bool CanWriteToCurrentFolder() =>
+        !ActiveBrowser.IsRecycleBinView &&
+        !ActiveBrowser.IsSearchMode &&
+        IsDirectoryPotentiallyWritable(ActiveBrowser.CurrentPath);
+
+    private static bool CanWriteSelectionParents(IEnumerable<FileSystemEntry> entries) => entries
+        .Select(entry => Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(entry.FullPath)))
+        .Where(path => !string.IsNullOrWhiteSpace(path))
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .All(path => IsDirectoryPotentiallyWritable(path!));
+
+    private static bool IsDirectoryPotentiallyWritable(string path)
+    {
+        try
+        {
+            return Directory.Exists(path) &&
+                (File.GetAttributes(path) & System.IO.FileAttributes.ReadOnly) == 0;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            return false;
+        }
+    }
+
+    private static bool ClipboardContainsStorageItems()
+    {
+        try
+        {
+            return Clipboard.GetContent().Contains(StandardDataFormats.StorageItems);
+        }
+        catch
+        {
+            return false;
+        }
+    }
 
     private void SetViewMode(BrowserViewMode mode)
     {
@@ -3537,6 +4191,10 @@ public sealed partial class MainPage : Page
         {
             TerminalPathLabel.Text = ViewModel.CurrentPath;
         }
+        if (e.PropertyName is nameof(MainPageViewModel.CurrentPath) or nameof(MainPageViewModel.IsSearchMode))
+        {
+            UpdateCommandState();
+        }
     }
 
     private void SplitViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -3549,6 +4207,7 @@ public sealed partial class MainPage : Page
         if (e.PropertyName == nameof(MainPageViewModel.CurrentPath))
         {
             SaveSession();
+            UpdateCommandState();
         }
     }
 
@@ -3749,6 +4408,8 @@ public sealed partial class MainPage : Page
                 ShowHomeToolbarButton = HomeToolbarButton.Visibility == Visibility.Visible,
                 ShowReloadToolbarButton = ReloadToolbarButton.Visibility == Visibility.Visible,
                 ShowSearchToolbarButton = SearchToolbarButton.Visibility == Visibility.Visible,
+                ToolbarOrder = _toolbarOrder.ToList(),
+                ToolbarCustomActions = _toolbarCustomActionIds.OrderBy(value => value, StringComparer.OrdinalIgnoreCase).ToList(),
                 FolderViewSettings = _folderViewSettings,
                 CustomShortcuts = _customShortcuts,
                 Bookmarks = ViewModel.Bookmarks.Select(bookmark => bookmark.Path).ToList(),
@@ -3809,6 +4470,27 @@ public sealed partial class MainPage : Page
 
         ViewModel.StatusText = $"{action} is not available while viewing Trash.";
         return true;
+    }
+
+    private bool RejectDestinationMutation(string action, string? destinationPath = null)
+    {
+        if (ActiveBrowser.IsRecycleBinView)
+        {
+            ViewModel.StatusText = $"{action} is not available while viewing Trash.";
+            return true;
+        }
+        if (ActiveBrowser.IsSearchMode)
+        {
+            ViewModel.StatusText = $"{action} is not available while viewing search results.";
+            return true;
+        }
+        if (!IsDirectoryPotentiallyWritable(destinationPath ?? ActiveBrowser.CurrentPath))
+        {
+            ViewModel.StatusText = $"{action} is not available because this folder is read-only.";
+            return true;
+        }
+
+        return false;
     }
 
     private enum BrowserPane

@@ -88,6 +88,7 @@ public sealed partial class MainPage : Page
         var recovery = _fileOperations.RecoverInterruptedTransfers();
         _restoringSession = true;
         _pluginService.Reload();
+        RefreshCreateDocumentMenus();
         var session = _sessionService.Load();
         ViewModel.ShowHiddenFiles = session.ShowHiddenFiles;
         ShowHiddenMenuItem.IsChecked = session.ShowHiddenFiles;
@@ -1042,48 +1043,24 @@ public sealed partial class MainPage : Page
         }
     }
 
-    private async void CreateDocument_Click(object sender, RoutedEventArgs e)
+    private async void CreateDocumentTemplate_Click(object sender, RoutedEventArgs e)
+    {
+        var templatePath = (sender as MenuFlyoutItem)?.Tag as string;
+        await CreateDocumentAsync(string.IsNullOrEmpty(templatePath) ? null : templatePath);
+    }
+
+    private async Task CreateDocumentAsync(string? selectedTemplate)
     {
         if (RejectRecycleBinMutation("Create Document"))
         {
             return;
         }
 
-        var templatesFolder = Environment.GetFolderPath(Environment.SpecialFolder.Templates);
-        if (string.IsNullOrWhiteSpace(templatesFolder))
-        {
-            templatesFolder = Path.Combine(ViewModel.HomePath, "Templates");
-        }
-
-        var templates = Directory.Exists(templatesFolder)
-            ? Directory.EnumerateFiles(templatesFolder)
-                .OrderBy(Path.GetFileName, StringComparer.CurrentCultureIgnoreCase)
-                .ToArray()
-            : [];
-        var choices = new ComboBox
-        {
-            Header = "Document type",
-            ItemsSource = new[] { "Empty File" }.Concat(templates.Select(Path.GetFileName)).ToArray(),
-            SelectedIndex = 0,
-            MinWidth = 360
-        };
-        var typeDialog = new ContentDialog
-        {
-            Title = "Create Document",
-            Content = choices,
-            PrimaryButtonText = "Continue",
-            CloseButtonText = "Cancel",
-            DefaultButton = ContentDialogButton.Primary,
-            XamlRoot = XamlRoot
-        };
-        if (await typeDialog.ShowAsync() != ContentDialogResult.Primary)
-        {
-            return;
-        }
-
-        var selectedTemplate = choices.SelectedIndex > 0 ? templates[choices.SelectedIndex - 1] : null;
-        var suggestedName = selectedTemplate is null ? "New File.txt" : Path.GetFileName(selectedTemplate);
-        var name = await PromptForNameAsync("Create Document", "Enter the new document name:", suggestedName);
+        var suggestedName = selectedTemplate is null ? "New Empty File" : Path.GetFileName(selectedTemplate);
+        var title = selectedTemplate is null
+            ? "Create Empty File"
+            : $"Create Document from Template '{Path.GetFileName(selectedTemplate)}'";
+        var name = await PromptForNameAsync(title, "Enter the new document name:", suggestedName);
         if (name is null)
         {
             return;
@@ -1113,6 +1090,93 @@ public sealed partial class MainPage : Page
         {
             await PushCreateHistoryAsync(createdPath, false);
         }
+    }
+
+    private void RefreshCreateDocumentMenus()
+    {
+        var templatesFolder = Environment.GetFolderPath(Environment.SpecialFolder.Templates);
+        if (string.IsNullOrWhiteSpace(templatesFolder))
+        {
+            templatesFolder = Path.Combine(ViewModel.HomePath, "Templates");
+        }
+
+        PopulateCreateDocumentMenu(FileCreateDocumentMenu, templatesFolder);
+        PopulateCreateDocumentMenu(FolderCreateDocumentMenu, templatesFolder);
+    }
+
+    private void PopulateCreateDocumentMenu(MenuFlyoutSubItem menu, string templatesFolder)
+    {
+        menu.Items.Clear();
+        if (!AppendDocumentTemplates(menu.Items, templatesFolder))
+        {
+            menu.Items.Add(new MenuFlyoutItem
+            {
+                Text = $"No templates installed in\n'{templatesFolder}'",
+                IsEnabled = false
+            });
+        }
+
+        menu.Items.Add(new MenuFlyoutSeparator());
+        var emptyFileItem = new MenuFlyoutItem
+        {
+            Text = "Empty File",
+            Tag = string.Empty
+        };
+        emptyFileItem.Click += CreateDocumentTemplate_Click;
+        menu.Items.Add(emptyFileItem);
+    }
+
+    private bool AppendDocumentTemplates(IList<MenuFlyoutItemBase> items, string folder)
+    {
+        string[] directories;
+        string[] files;
+        try
+        {
+            if (!Directory.Exists(folder))
+            {
+                return false;
+            }
+
+            directories = Directory.EnumerateDirectories(folder)
+                .OrderBy(Path.GetFileName, StringComparer.CurrentCultureIgnoreCase)
+                .ToArray();
+            files = Directory.EnumerateFiles(folder)
+                .OrderBy(Path.GetFileName, StringComparer.CurrentCultureIgnoreCase)
+                .ToArray();
+        }
+        catch (IOException)
+        {
+            return false;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return false;
+        }
+
+        var added = false;
+        foreach (var directory in directories)
+        {
+            var submenu = new MenuFlyoutSubItem { Text = Path.GetFileName(directory) };
+            if (AppendDocumentTemplates(submenu.Items, directory))
+            {
+                items.Add(submenu);
+                added = true;
+            }
+        }
+
+        foreach (var file in files)
+        {
+            var item = new MenuFlyoutItem
+            {
+                Text = Path.GetFileName(file),
+                Tag = file
+            };
+            item.Click += CreateDocumentTemplate_Click;
+            items.Add(item);
+            added = true;
+        }
+
+        return added;
     }
 
     private async void Cut_Click(object sender, RoutedEventArgs e) => await CopySelectionToClipboardAsync(true);
@@ -2037,6 +2101,14 @@ public sealed partial class MainPage : Page
         }
     }
 
+    private void FolderContextMenu_Opened(object sender, object e)
+    {
+        RefreshCreateDocumentMenus();
+        var canCreate = !ActiveBrowser.IsRecycleBinView;
+        FolderCreateFolderMenuItem.IsEnabled = canCreate;
+        FolderCreateDocumentMenu.IsEnabled = canCreate;
+    }
+
     private async void PluginAction_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not MenuFlyoutItem { Tag: AvailablePluginAction available })
@@ -2528,19 +2600,50 @@ public sealed partial class MainPage : Page
         }
     }
 
-    private void FileList_RightTapped(object sender, RightTappedRoutedEventArgs e)
+    private void FileList_ContextRequested(UIElement sender, ContextRequestedEventArgs e)
     {
-        if (sender is not ListViewBase list ||
-            EntryFromInteractionSource(e.OriginalSource) is not { } entry)
+        if (sender is not ListViewBase list)
         {
             return;
         }
 
         SetActivePaneForList(sender);
-        if (!list.SelectedItems.Contains(entry))
+        var hasPosition = e.TryGetPosition(list, out var position);
+        var entry = hasPosition
+            ? VisualTreeHelper.FindElementsInHostCoordinates(position, list)
+                .OfType<FrameworkElement>()
+                .Select(element => element.DataContext)
+                .OfType<FileSystemEntry>()
+                .FirstOrDefault()
+            : list.SelectedItems.Cast<FileSystemEntry>().FirstOrDefault();
+
+        MenuFlyout? menu;
+        if (entry is null)
         {
             list.SelectedItems.Clear();
-            list.SelectedItems.Add(entry);
+            menu = Resources["FolderContextMenu"] as MenuFlyout;
+        }
+        else
+        {
+            if (!list.SelectedItems.Contains(entry))
+            {
+                list.SelectedItems.Clear();
+                list.SelectedItems.Add(entry);
+            }
+            menu = Resources["FileContextMenu"] as MenuFlyout;
+        }
+
+        e.Handled = true;
+        if (menu is not null)
+        {
+            if (hasPosition)
+            {
+                menu.ShowAt(list, position);
+            }
+            else
+            {
+                menu.ShowAt(list);
+            }
         }
     }
 

@@ -366,6 +366,11 @@
             x:Name="BrowserTabs"
             Grid.Row="3"
             Height="38"
+            AllowDrop="True"
+            DragEnter="FileList_DragEnter"
+            DragOver="FileList_DragEnter"
+            DragLeave="FileList_DragLeave"
+            Drop="FileList_Drop"
             IsAddTabButtonVisible="True"
             AddTabButtonClick="BrowserTabs_AddTabButtonClick"
             SelectionChanged="BrowserTabs_SelectionChanged"
@@ -383,7 +388,7 @@
                 <StackPanel Padding="6,8">
                     <TextBlock Text="DEVICES" Margin="8,6,8,4" FontSize="12" FontWeight="SemiBold" Foreground="#FF555555" />
                     <ListView ItemsSource="{x:Bind ViewModel.Devices}" IsItemClickEnabled="True" ItemClick="Location_ItemClick" SelectionMode="None"
-                              AllowDrop="True" DragEnter="FileList_DragEnter" DragOver="FileList_DragEnter" Drop="FileList_Drop">
+                              AllowDrop="True" DragEnter="FileList_DragEnter" DragOver="FileList_DragEnter" DragLeave="FileList_DragLeave" Drop="FileList_Drop">
                         <ListView.ItemTemplate>
                             <DataTemplate x:DataType="models:NavigationLocation">
                                 <StackPanel Orientation="Horizontal" Spacing="8" Padding="6,4">
@@ -399,7 +404,7 @@
 
                     <TextBlock Text="BOOKMARKS" Margin="8,16,8,4" FontSize="12" FontWeight="SemiBold" Foreground="#FF555555" />
                     <ListView ItemsSource="{x:Bind ViewModel.Bookmarks}" IsItemClickEnabled="True" ItemClick="Location_ItemClick" SelectionMode="None"
-                              AllowDrop="True" DragEnter="FileList_DragEnter" DragOver="FileList_DragEnter" Drop="FileList_Drop">
+                              AllowDrop="True" DragEnter="FileList_DragEnter" DragOver="FileList_DragEnter" DragLeave="FileList_DragLeave" Drop="FileList_Drop">
                         <ListView.ItemTemplate>
                             <DataTemplate x:DataType="models:NavigationLocation">
                                 <StackPanel Orientation="Horizontal" Spacing="8" Padding="6,4">
@@ -412,7 +417,7 @@
 
                     <TextBlock Text="PLACES" Margin="8,16,8,4" FontSize="12" FontWeight="SemiBold" Foreground="#FF555555" />
                     <ListView ItemsSource="{x:Bind ViewModel.Places}" IsItemClickEnabled="True" ItemClick="Location_ItemClick" SelectionMode="None"
-                              AllowDrop="True" DragEnter="FileList_DragEnter" DragOver="FileList_DragEnter" Drop="FileList_Drop">
+                              AllowDrop="True" DragEnter="FileList_DragEnter" DragOver="FileList_DragEnter" DragLeave="FileList_DragLeave" Drop="FileList_Drop">
                         <ListView.ItemTemplate>
                             <DataTemplate x:DataType="models:NavigationLocation">
                                 <StackPanel Orientation="Horizontal" Spacing="8" Padding="6,4">
@@ -425,7 +430,7 @@
 
                     <TextBlock Text="NETWORK" Margin="8,16,8,4" FontSize="12" FontWeight="SemiBold" Foreground="#FF555555" />
                     <ListView ItemsSource="{x:Bind ViewModel.NetworkLocations}" IsItemClickEnabled="True" ItemClick="Location_ItemClick" SelectionMode="None"
-                              AllowDrop="True" DragEnter="FileList_DragEnter" DragOver="FileList_DragEnter" Drop="FileList_Drop">
+                              AllowDrop="True" DragEnter="FileList_DragEnter" DragOver="FileList_DragEnter" DragLeave="FileList_DragLeave" Drop="FileList_Drop">
                         <ListView.ItemTemplate>
                             <DataTemplate x:DataType="models:NavigationLocation">
                                 <StackPanel Orientation="Horizontal" Spacing="8" Padding="6,4">
@@ -442,6 +447,7 @@
                 AllowDrop="True"
                 DragEnter="FileList_DragEnter"
                 DragOver="FileList_DragEnter"
+                DragLeave="FileList_DragLeave"
                 Drop="FileList_Drop"
                 Visibility="Collapsed"
                 Expanding="DirectoryTree_Expanding"
@@ -497,8 +503,10 @@
                     CanDragItems="True"
                     IsSwipeEnabled="True"
                     DragItemsStarting="FileList_DragItemsStarting"
+                    DragItemsCompleted="FileList_DragItemsCompleted"
                     DragEnter="FileList_DragEnter"
                     DragOver="FileList_DragEnter"
+                    DragLeave="FileList_DragLeave"
                     Drop="FileList_Drop"
                     ItemsSource="{x:Bind ViewModel.Entries}"
                     ContextRequested="FileList_ContextRequested"
@@ -548,8 +556,10 @@
                     CanDragItems="True"
                     IsSwipeEnabled="True"
                     DragItemsStarting="FileList_DragItemsStarting"
+                    DragItemsCompleted="FileList_DragItemsCompleted"
                     DragEnter="FileList_DragEnter"
                     DragOver="FileList_DragEnter"
+                    DragLeave="FileList_DragLeave"
                     Drop="FileList_Drop"
                     ItemsSource="{x:Bind ViewModel.Entries}"
                     ContextRequested="FileList_ContextRequested"
@@ -588,8 +598,10 @@
                     CanDragItems="True"
                     IsSwipeEnabled="True"
                     DragItemsStarting="FileList_DragItemsStarting"
+                    DragItemsCompleted="FileList_DragItemsCompleted"
                     DragEnter="FileList_DragEnter"
                     DragOver="FileList_DragEnter"
+                    DragLeave="FileList_DragLeave"
                     Drop="FileList_Drop"
                     ItemsSource="{x:Bind ViewModel.Entries}"
                     ContextRequested="FileList_ContextRequested"
@@ -699,8 +711,10 @@
                             CanDragItems="True"
                             IsSwipeEnabled="True"
                             DragItemsStarting="FileList_DragItemsStarting"
+                            DragItemsCompleted="FileList_DragItemsCompleted"
                             DragEnter="FileList_DragEnter"
                             DragOver="FileList_DragEnter"
+                            DragLeave="FileList_DragLeave"
                             Drop="FileList_Drop"
                             ItemsSource="{x:Bind SplitViewModel.Entries}"
                             ContextRequested="FileList_ContextRequested"

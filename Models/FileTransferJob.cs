@@ -24,7 +24,13 @@ public partial class FileTransferJob : ObservableObject
         DestinationDirectory = destinationDirectory;
         Mode = mode;
         ConflictResolver = conflictResolver;
-        Title = $"{(mode == FileTransferMode.Move ? "Move" : "Copy")} {sourcePaths.Count} item{(sourcePaths.Count == 1 ? string.Empty : "s")}";
+        var operationName = mode switch
+        {
+            FileTransferMode.Move => "Move",
+            FileTransferMode.Link => "Link",
+            _ => "Copy"
+        };
+        Title = $"{operationName} {sourcePaths.Count} item{(sourcePaths.Count == 1 ? string.Empty : "s")}";
         StatusText = "Queued";
     }
 

@@ -10,7 +10,8 @@ namespace WinThunar.Services;
 public enum FileTransferMode
 {
     Copy,
-    Move
+    Move,
+    Link
 }
 
 public enum ConflictAction
@@ -284,6 +285,16 @@ public sealed class FileOperationService
                 var destinationPath = Path.Combine(
                     destinationDirectory,
                     Path.GetFileName(Path.TrimEndingDirectorySeparator(sourcePath)));
+                var sourceParent = Path.GetDirectoryName(
+                    Path.TrimEndingDirectorySeparator(sourcePath));
+                if (mode is FileTransferMode.Copy or FileTransferMode.Link &&
+                    !string.IsNullOrWhiteSpace(sourceParent) &&
+                    PathsEqual(sourceParent, destinationDirectory))
+                {
+                    destinationPath = mode == FileTransferMode.Copy
+                        ? GetDuplicatePath(sourcePath)
+                        : GetAvailableLinkPath(sourcePath);
+                }
 
                 var outcome = await TransferPathAsync(
                     sourcePath,
@@ -481,6 +492,50 @@ public sealed class FileOperationService
         return result;
     }
 
+    public async Task<FileOperationResult> RestoreRecycleItemToDirectoryAsync(
+        string recycledPath,
+        string originalPath,
+        string metadataPath,
+        string destinationDirectory,
+        Func<FileConflict, Task<ConflictResolution>> conflictResolver,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(recycledPath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(originalPath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(metadataPath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(destinationDirectory);
+        ArgumentNullException.ThrowIfNull(conflictResolver);
+
+        EnsurePathExists(recycledPath);
+        EnsureDirectoryExists(destinationDirectory);
+        var originalName = Path.GetFileName(Path.TrimEndingDirectorySeparator(originalPath));
+        EnsureValidLeafName(originalName);
+        var destinationPath = Path.Combine(destinationDirectory, originalName);
+
+        var result = await TransferExactAsync(
+            recycledPath,
+            destinationPath,
+            FileTransferMode.Move,
+            conflictResolver,
+            cancellationToken);
+        if (result.Succeeded && result.CompletedItems == 1 && !PathExists(recycledPath))
+        {
+            try
+            {
+                File.Delete(metadataPath);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                return result with
+                {
+                    Errors = [$"The item was restored, but its Recycle Bin record could not be removed: {ex.Message}"]
+                };
+            }
+        }
+
+        return result;
+    }
+
     public async Task DeletePermanentlyAsync(
         IEnumerable<string> paths,
         CancellationToken cancellationToken = default)
@@ -528,6 +583,28 @@ public sealed class FileOperationService
         throw new IOException("No available duplicate name could be generated.");
     }
 
+    public static string GetAvailableLinkPath(string sourcePath)
+    {
+        EnsurePathExists(sourcePath);
+        var isDirectory = Directory.Exists(sourcePath);
+        var parent = Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(sourcePath))
+            ?? throw new InvalidOperationException("The filesystem root cannot be linked here.");
+        var originalName = Path.GetFileName(Path.TrimEndingDirectorySeparator(sourcePath));
+        var stem = isDirectory ? originalName : Path.GetFileNameWithoutExtension(originalName);
+        var extension = isDirectory ? string.Empty : Path.GetExtension(originalName);
+
+        for (var linkNumber = 1; linkNumber < int.MaxValue; linkNumber++)
+        {
+            var candidate = Path.Combine(parent, $"{stem} (link {linkNumber}){extension}");
+            if (!PathExists(candidate))
+            {
+                return candidate;
+            }
+        }
+
+        throw new IOException("No available link name could be generated.");
+    }
+
     private async Task<TransferPathResult> TransferPathAsync(
         string sourcePath,
         string requestedDestinationPath,
@@ -561,6 +638,38 @@ public sealed class FileOperationService
         }
 
         var destinationPath = resolution.DestinationPath;
+        if (mode == FileTransferMode.Link)
+        {
+            if (resolution.ReplacedExistingItem)
+            {
+                await ReplacePathAsync(
+                    sourcePath,
+                    destinationPath,
+                    sourceIsDirectory,
+                    mode,
+                    cancellationToken,
+                    byteProgress);
+            }
+            else
+            {
+                await Task.Run(
+                    () => CreateSymbolicLink(sourcePath, destinationPath, sourceIsDirectory),
+                    cancellationToken);
+            }
+
+            var linkState = await CapturePathStateAsync(destinationPath, cancellationToken);
+            journal.Add(new FileTransferRecord(
+                sourcePath,
+                destinationPath,
+                mode,
+                resolution.ReplacedExistingItem,
+                linkState));
+            return new TransferPathResult(
+                TransferOutcome.Completed,
+                destinationPath,
+                resolution.ReplacedExistingItem);
+        }
+
         if (resolution.ReplacedExistingItem &&
             !(sourceIsDirectory && Directory.Exists(destinationPath)))
         {
@@ -939,7 +1048,13 @@ public sealed class FileOperationService
 
         try
         {
-            if (sourceIsDirectory)
+            if (mode == FileTransferMode.Link)
+            {
+                await Task.Run(
+                    () => CreateSymbolicLink(sourcePath, stagedPath, sourceIsDirectory),
+                    cancellationToken);
+            }
+            else if (sourceIsDirectory)
             {
                 await CopyDirectoryPreservingMetadataAsync(sourcePath, stagedPath, cancellationToken, byteProgress);
             }
@@ -1173,6 +1288,58 @@ public sealed class FileOperationService
         return leftIdentity == rightIdentity;
     }
 
+    public static bool PathsReferToSameItem(string left, string right) =>
+        AreSameFileSystemObject(left, right);
+
+    public static bool IsSameOrDescendant(string candidatePath, string parentPath) =>
+        IsSameOrDescendantPath(candidatePath, parentPath);
+
+    public static bool ArePathsOnSameVolume(
+        IEnumerable<string> sourcePaths,
+        string destinationDirectory)
+    {
+        ArgumentNullException.ThrowIfNull(sourcePaths);
+        if (!TryGetFileIdentity(destinationDirectory, out var destinationIdentity))
+        {
+            var destinationRoot = Path.GetPathRoot(Path.GetFullPath(destinationDirectory));
+            return sourcePaths.All(path => string.Equals(
+                Path.GetPathRoot(Path.GetFullPath(path)),
+                destinationRoot,
+                StringComparison.OrdinalIgnoreCase));
+        }
+
+        foreach (var sourcePath in sourcePaths)
+        {
+            if (!TryGetFileIdentity(sourcePath, out var sourceIdentity) ||
+                sourceIdentity.VolumeSerialNumber != destinationIdentity.VolumeSerialNumber)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public static bool CanWriteToDirectory(string path, bool requiresSubdirectoryCreation)
+    {
+        if (!Directory.Exists(path))
+        {
+            return false;
+        }
+
+        var desiredAccess = FileAddFile |
+            (requiresSubdirectoryCreation ? FileAddSubdirectory : 0u);
+        using var handle = CreateFile(
+            Path.TrimEndingDirectorySeparator(Path.GetFullPath(path)),
+            desiredAccess,
+            FileShareRead | FileShareWrite | FileShareDelete,
+            IntPtr.Zero,
+            OpenExisting,
+            FileFlagBackupSemantics,
+            IntPtr.Zero);
+        return !handle.IsInvalid;
+    }
+
     private static bool TryGetFileIdentity(string path, out FileIdentity identity)
     {
         identity = default;
@@ -1306,6 +1473,21 @@ public sealed class FileOperationService
         }
     }
 
+    private static void CreateSymbolicLink(
+        string sourcePath,
+        string destinationPath,
+        bool sourceIsDirectory)
+    {
+        if (sourceIsDirectory)
+        {
+            Directory.CreateSymbolicLink(destinationPath, sourcePath);
+        }
+        else
+        {
+            File.CreateSymbolicLink(destinationPath, sourcePath);
+        }
+    }
+
     private enum TransferOutcome
     {
         Completed,
@@ -1346,6 +1528,8 @@ public sealed class FileOperationService
     private const uint FileShareDelete = 0x00000004;
     private const uint OpenExisting = 3;
     private const uint FileFlagBackupSemantics = 0x02000000;
+    private const uint FileAddFile = 0x00000002;
+    private const uint FileAddSubdirectory = 0x00000004;
 
     [Flags]
     private enum CopyFileFlags : uint

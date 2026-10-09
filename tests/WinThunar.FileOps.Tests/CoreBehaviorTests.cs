@@ -104,6 +104,104 @@ public sealed class CoreBehaviorTests : IDisposable
     }
 
     [Fact]
+    public async Task CopyingIntoTheSameFolderCreatesAnAvailableDuplicate()
+    {
+        var source = Path.Combine(_root, "report.txt");
+        await File.WriteAllTextAsync(source, "contents");
+        await File.WriteAllTextAsync(Path.Combine(_root, "report (copy 1).txt"), "existing");
+
+        var result = await new FileOperationService().TransferAsync(
+            [source], _root, FileTransferMode.Copy, ReplaceConflict);
+
+        Assert.True(result.Succeeded, string.Join(Environment.NewLine, result.Errors));
+        Assert.Equal("contents", await File.ReadAllTextAsync(
+            Path.Combine(_root, "report (copy 2).txt")));
+        Assert.Equal("contents", await File.ReadAllTextAsync(source));
+    }
+
+    [Fact]
+    public void DropPolicyMatchesExplorerStyleModifierSemantics()
+    {
+        var sourceDirectory = Directory.CreateDirectory(Path.Combine(_root, "drag-source")).FullName;
+        var destination = Directory.CreateDirectory(Path.Combine(_root, "drag-destination")).FullName;
+        var source = Path.Combine(sourceDirectory, "item.txt");
+        File.WriteAllText(source, "contents");
+        var target = new FileDropTarget(FileDropTargetKind.Directory, destination);
+
+        Assert.Equal(FileDropOperation.Move,
+            DragDropPolicy.Evaluate([source], target, DropModifierKeys.None, false, false).Operation);
+        Assert.Equal(FileDropOperation.Copy,
+            DragDropPolicy.Evaluate([source], target, DropModifierKeys.Control, false, false).Operation);
+        Assert.Equal(FileDropOperation.Move,
+            DragDropPolicy.Evaluate([source], target, DropModifierKeys.Shift, false, false).Operation);
+        Assert.Equal(FileDropOperation.Link,
+            DragDropPolicy.Evaluate(
+                [source],
+                target,
+                DropModifierKeys.Control | DropModifierKeys.Shift,
+                false,
+                false).Operation);
+    }
+
+    [Fact]
+    public void DropPolicyHandlesSpecialTargetsAndRejectsUnsafeFolders()
+    {
+        var source = Directory.CreateDirectory(Path.Combine(_root, "folder")).FullName;
+        var child = Directory.CreateDirectory(Path.Combine(source, "child")).FullName;
+        var executable = Path.Combine(_root, "viewer.exe");
+        File.WriteAllBytes(executable, []);
+
+        Assert.Equal(FileDropOperation.Trash, DragDropPolicy.Evaluate(
+            [source],
+            new FileDropTarget(FileDropTargetKind.Trash, "Trash"),
+            DropModifierKeys.None,
+            false,
+            false).Operation);
+        Assert.Equal(FileDropOperation.Execute, DragDropPolicy.Evaluate(
+            [source],
+            new FileDropTarget(FileDropTargetKind.Executable, executable),
+            DropModifierKeys.None,
+            false,
+            false).Operation);
+        Assert.False(DragDropPolicy.Evaluate(
+            [source],
+            new FileDropTarget(FileDropTargetKind.Directory, child),
+            DropModifierKeys.None,
+            false,
+            false).IsAllowed);
+        Assert.False(DragDropPolicy.Evaluate(
+            [source],
+            new FileDropTarget(FileDropTargetKind.Directory, _root),
+            DropModifierKeys.None,
+            true,
+            false).IsAllowed);
+    }
+
+    [Fact]
+    public async Task TrashItemsCanBeRestoredIntoADroppedFolder()
+    {
+        var recycleDirectory = Directory.CreateDirectory(Path.Combine(_root, "recycle")).FullName;
+        var destination = Directory.CreateDirectory(Path.Combine(_root, "restore-here")).FullName;
+        var recycledPath = Path.Combine(recycleDirectory, "$Rfixture.txt");
+        var metadataPath = Path.Combine(recycleDirectory, "$Ifixture.txt");
+        var originalPath = Path.Combine(_root, "original", "fixture.txt");
+        await File.WriteAllTextAsync(recycledPath, "recover me");
+        await File.WriteAllTextAsync(metadataPath, "metadata");
+
+        var result = await new FileOperationService().RestoreRecycleItemToDirectoryAsync(
+            recycledPath,
+            originalPath,
+            metadataPath,
+            destination,
+            ReplaceConflict);
+
+        Assert.True(result.Succeeded, string.Join(Environment.NewLine, result.Errors));
+        Assert.Equal("recover me", await File.ReadAllTextAsync(Path.Combine(destination, "fixture.txt")));
+        Assert.False(File.Exists(recycledPath));
+        Assert.False(File.Exists(metadataPath));
+    }
+
+    [Fact]
     public async Task HistoryIsBoundedAndSupportsRedo()
     {
         var value = 0;

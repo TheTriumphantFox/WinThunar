@@ -18,6 +18,7 @@ namespace WinThunar;
 
 public sealed partial class MainPage : Page
 {
+    private const string InternalDragFormat = "WinThunar.InternalPaths";
     private readonly FileOperationService _fileOperations = new();
     private readonly BulkRenameService _bulkRenameService = new();
     private readonly ShellImageService _shellImageService = new();
@@ -60,6 +61,17 @@ public sealed partial class MainPage : Page
     private double _dragSplitSizeStart;
     private double _dragSplitTypeStart;
     private int _dragPointerStartX;
+    private IReadOnlyList<string>? _internalDragPaths;
+    private IReadOnlyList<FileSystemEntry>? _internalDragEntries;
+    private Task<IReadOnlyList<IStorageItem>>? _dropStorageItemsTask;
+    private CancellationTokenSource? _dropHoverCancellation;
+    private string? _dropHoverKey;
+    private Control? _dropHighlightControl;
+    private Brush? _dropHighlightBorderBrush;
+    private Thickness _dropHighlightBorderThickness;
+    private string? _dropStatusBeforeDrag;
+    private string? _dropDecisionKey;
+    private FileDropDecision? _dropDecision;
     private bool _disposed;
 
     public MainPageViewModel ViewModel { get; } = new();
@@ -683,9 +695,14 @@ public sealed partial class MainPage : Page
             {
                 Content = string.IsNullOrWhiteSpace(label) ? segment : label,
                 Tag = segment,
-                Padding = new Thickness(9, 4, 9, 4)
+                Padding = new Thickness(9, 4, 9, 4),
+                AllowDrop = true
             };
             button.Click += PathSegment_Click;
+            button.DragEnter += FileList_DragEnter;
+            button.DragOver += FileList_DragEnter;
+            button.DragLeave += FileList_DragLeave;
+            button.Drop += FileList_Drop;
             PathBarPanel.Children.Add(button);
         }
     }
@@ -3222,13 +3239,6 @@ public sealed partial class MainPage : Page
     private void FileList_DragItemsStarting(object sender, DragItemsStartingEventArgs args)
     {
         SetActivePaneForList(sender);
-        if (ActiveBrowser.IsRecycleBinView)
-        {
-            args.Cancel = true;
-            ActiveBrowser.StatusText = "Drag is not available while viewing Trash.";
-            return;
-        }
-
         var dragEntries = args.Items.OfType<FileSystemEntry>().ToArray();
         if (dragEntries.Length == 0)
         {
@@ -3236,11 +3246,36 @@ public sealed partial class MainPage : Page
             return;
         }
 
+        ResetDropTargetState(true);
+        _internalDragEntries = dragEntries;
+        _internalDragPaths = dragEntries.Select(entry => entry.FullPath).ToArray();
+        _dropStatusBeforeDrag = ActiveBrowser.StatusText;
         ActiveBrowser.StatusText = $"Dragging {dragEntries.Length} item{(dragEntries.Length == 1 ? string.Empty : "s")}...";
-        args.Data.RequestedOperation = DataPackageOperation.Copy | DataPackageOperation.Move;
-        args.Data.SetDataProvider(
-            StandardDataFormats.StorageItems,
-            request => ProvideDragStorageItems(request, dragEntries));
+        args.Data.RequestedOperation = ActiveBrowser.IsRecycleBinView
+            ? DataPackageOperation.Move
+            : DataPackageOperation.Copy | DataPackageOperation.Move | DataPackageOperation.Link;
+        args.Data.SetData(InternalDragFormat, string.Join('\n', _internalDragPaths));
+        if (!ActiveBrowser.IsRecycleBinView)
+        {
+            args.Data.SetDataProvider(
+                StandardDataFormats.StorageItems,
+                request => ProvideDragStorageItems(request, dragEntries));
+        }
+    }
+
+    private void FileList_DragItemsCompleted(ListViewBase sender, DragItemsCompletedEventArgs args)
+    {
+        var statusToRestore = _dropStatusBeforeDrag;
+        ResetDropTargetState(true);
+        _internalDragEntries = null;
+        _internalDragPaths = null;
+        _dropStatusBeforeDrag = null;
+        if (args.DropResult == DataPackageOperation.None &&
+            _transferQueue.ActiveJob is null &&
+            !string.IsNullOrWhiteSpace(statusToRestore))
+        {
+            ActiveBrowser.StatusText = statusToRestore;
+        }
     }
 
     private async void ProvideDragStorageItems(
@@ -3275,7 +3310,7 @@ public sealed partial class MainPage : Page
         {
             SetActivePaneForList(sender);
         }
-        if (!e.DataView.Contains(StandardDataFormats.StorageItems))
+        if (!ContainsSupportedDropData(e.DataView))
         {
             e.AcceptedOperation = DataPackageOperation.None;
             return;
@@ -3284,35 +3319,48 @@ public sealed partial class MainPage : Page
         var deferral = e.GetDeferral();
         try
         {
-            var destination = GetDropDestination(e, sender);
-            if (destination is null)
+            var target = GetDropTarget(e, sender);
+            if (target is null)
             {
                 e.AcceptedOperation = DataPackageOperation.None;
+                ClearDropHighlight();
+                CancelSpringOpen();
                 return;
             }
-            var items = await e.DataView.GetStorageItemsAsync();
-            var mode = DetermineDropMode(items.Select(item => item.Path), destination, e.Modifiers);
-            e.AcceptedOperation = mode == FileTransferMode.Move
-                ? DataPackageOperation.Move
-                : DataPackageOperation.Copy;
-            var destinationName = Path.GetFileName(Path.TrimEndingDirectorySeparator(destination));
-            if (string.IsNullOrWhiteSpace(destinationName))
+
+            var paths = await GetDropPathsAsync(e.DataView);
+            var decision = EvaluateDrop(paths, target.Target, e.Modifiers, sender);
+            e.AcceptedOperation = ToDataPackageOperation(decision.Operation);
+            if (!decision.IsAllowed)
             {
-                destinationName = destination;
+                ClearDropHighlight();
+                CancelSpringOpen();
+                e.DragUIOverride.Caption = decision.RejectionReason ?? "Cannot drop here";
+                e.Handled = true;
+                return;
             }
-            e.DragUIOverride.Caption = mode == FileTransferMode.Move
-                ? $"Move to {destinationName}"
-                : $"Copy to {destinationName}";
+
+            SetDropHighlight(target.Visual);
+            ScheduleSpringOpen(target, sender);
+            e.DragUIOverride.Caption = DropCaption(decision.Operation, target.Target.Path);
+            e.DragUIOverride.IsCaptionVisible = true;
             e.Handled = true;
         }
         catch
         {
             e.AcceptedOperation = DataPackageOperation.None;
+            ClearDropHighlight();
+            CancelSpringOpen();
         }
         finally
         {
             deferral.Complete();
         }
+    }
+
+    private void FileList_DragLeave(object sender, DragEventArgs e)
+    {
+        ResetDropTargetState(true);
     }
 
     private async void FileList_Drop(object sender, DragEventArgs e)
@@ -3321,32 +3369,34 @@ public sealed partial class MainPage : Page
         {
             SetActivePaneForList(sender);
         }
-        if (!e.DataView.Contains(StandardDataFormats.StorageItems))
+        if (!ContainsSupportedDropData(e.DataView))
         {
             return;
         }
 
         var deferral = e.GetDeferral();
-        Task<FileOperationResult?>? transfer = null;
+        Func<Task>? performDrop = null;
         try
         {
-            var destination = GetDropDestination(e, sender);
-            if (destination is null)
+            var target = GetDropTarget(e, sender);
+            if (target is null)
             {
                 e.AcceptedOperation = DataPackageOperation.None;
                 return;
             }
-            var items = await e.DataView.GetStorageItemsAsync();
-            var paths = items
-                .Select(item => item.Path)
-                .Where(path => !string.IsNullOrWhiteSpace(path))
-                .ToArray();
-            var mode = DetermineDropMode(paths, destination, e.Modifiers);
-            e.AcceptedOperation = mode == FileTransferMode.Move
-                ? DataPackageOperation.Move
-                : DataPackageOperation.Copy;
+
+            var paths = await GetDropPathsAsync(e.DataView);
+            var decision = EvaluateDrop(paths, target.Target, e.Modifiers, sender);
+            e.AcceptedOperation = ToDataPackageOperation(decision.Operation);
+            if (!decision.IsAllowed)
+            {
+                ActiveBrowser.StatusText = decision.RejectionReason ?? "That location cannot accept the dragged items.";
+                return;
+            }
+
+            var trashEntries = _internalDragEntries?.Where(entry => entry.IsRecycleBinItem).ToArray() ?? [];
+            performDrop = () => PerformDropAsync(paths, trashEntries, target.Target, decision.Operation);
             e.Handled = true;
-            transfer = RunTransferAsync(paths, destination, mode);
         }
         catch (Exception ex)
         {
@@ -3355,11 +3405,12 @@ public sealed partial class MainPage : Page
         finally
         {
             deferral.Complete();
+            ResetDropTargetState(true);
         }
 
-        if (transfer is not null)
+        if (performDrop is not null)
         {
-            await transfer;
+            await performDrop();
         }
     }
 
@@ -3454,64 +3505,129 @@ public sealed partial class MainPage : Page
         return storageItems;
     }
 
-    private static FileTransferMode DetermineDropMode(
-        IEnumerable<string> sourcePaths,
-        string destinationPath,
-        DragDropModifiers modifiers)
+    private FileDropDecision EvaluateDrop(
+        IReadOnlyCollection<string> sourcePaths,
+        FileDropTarget target,
+        DragDropModifiers modifiers,
+        object sender)
     {
-        if ((modifiers & DragDropModifiers.Control) == DragDropModifiers.Control)
+        var browser = DropBrowserFor(sender);
+        var modifierKeys = ToDropModifierKeys(modifiers);
+        var sourceIsRecycleBin = _internalDragEntries is { Count: > 0 } &&
+            _internalDragEntries.All(entry => entry.IsRecycleBinItem);
+        var key = $"{target.Kind}|{target.Path}|{modifierKeys}|{browser.IsSearchMode}|" +
+            $"{sourceIsRecycleBin}|{string.Join('\n', sourcePaths)}";
+        if (string.Equals(key, _dropDecisionKey, StringComparison.Ordinal) && _dropDecision is not null)
         {
-            return FileTransferMode.Copy;
+            return _dropDecision;
         }
 
-        if ((modifiers & DragDropModifiers.Shift) == DragDropModifiers.Shift)
-        {
-            return FileTransferMode.Move;
-        }
-
-        var destinationRoot = Path.GetPathRoot(Path.GetFullPath(destinationPath));
-        var sameVolume = sourcePaths
-            .Where(path => !string.IsNullOrWhiteSpace(path))
-            .Select(path => Path.GetPathRoot(Path.GetFullPath(path)))
-            .All(root => string.Equals(root, destinationRoot, StringComparison.OrdinalIgnoreCase));
-        return sameVolume ? FileTransferMode.Move : FileTransferMode.Copy;
+        _dropDecisionKey = key;
+        _dropDecision = DragDropPolicy.Evaluate(
+            sourcePaths,
+            target,
+            modifierKeys,
+            browser.IsSearchMode,
+            sourceIsRecycleBin);
+        return _dropDecision;
     }
 
-    private string? GetDropDestination(DragEventArgs args, object sender)
+    private static DropModifierKeys ToDropModifierKeys(DragDropModifiers modifiers)
+    {
+        var result = DropModifierKeys.None;
+        if ((modifiers & DragDropModifiers.Control) != 0)
+        {
+            result |= DropModifierKeys.Control;
+        }
+        if ((modifiers & DragDropModifiers.Shift) != 0)
+        {
+            result |= DropModifierKeys.Shift;
+        }
+        return result;
+    }
+
+    private MainPageViewModel DropBrowserFor(object sender)
+    {
+        if (ReferenceEquals(sender, SecondaryFileList))
+        {
+            return SplitViewModel;
+        }
+
+        return ReferenceEquals(sender, FileList) ||
+               ReferenceEquals(sender, IconFileList) ||
+               ReferenceEquals(sender, CompactFileList)
+            ? ViewModel
+            : ActiveBrowser;
+    }
+
+    private DropVisualTarget? GetDropTarget(DragEventArgs args, object sender)
     {
         if (sender is UIElement dropSurface)
         {
-            var pointerPosition = args.GetPosition(null!);
+            var pointerPosition = args.GetPosition(dropSurface);
             foreach (var hit in VisualTreeHelper.FindElementsInHostCoordinates(
                          pointerPosition,
                          dropSurface,
                          true))
             {
+                var visual = FindDropHighlightControl(hit, dropSurface);
                 var current = hit as DependencyObject;
                 while (current is not null && !ReferenceEquals(current, dropSurface))
                 {
+                    if (current is TabViewItem { Tag: BrowserTabState tabState } tabItem)
+                    {
+                        return DirectoryDropTarget(tabState.Path, tabItem, true, tabItem);
+                    }
+
                     if (dropSurface is TreeView tree && current is TreeViewItem)
                     {
                         var node = tree.NodeFromContainer(current);
                         if (node is not null && _treeLocations.TryGetValue(node, out var treeLocation))
                         {
-                            return treeLocation.Path;
+                            return DirectoryDropTarget(treeLocation.Path, visual, true);
                         }
                     }
 
-                    var destination = current switch
+                    switch (current)
                     {
-                        FrameworkElement { DataContext: FileSystemEntry { IsDirectory: true } item } => item.FullPath,
-                        ContentControl { Content: FileSystemEntry { IsDirectory: true } item } => item.FullPath,
-                        FrameworkElement { DataContext: NavigationLocation { Kind: NavigationLocationKind.FileSystem } location } => location.Path,
-                        ContentControl { Content: NavigationLocation { Kind: NavigationLocationKind.FileSystem } location } => location.Path,
-                        FrameworkElement { DataContext: TreeViewNode node } when _treeLocations.TryGetValue(node, out var location) => location.Path,
-                        ContentControl { Content: TreeViewNode node } when _treeLocations.TryGetValue(node, out var location) => location.Path,
-                        _ => null
-                    };
-                    if (!string.IsNullOrWhiteSpace(destination))
-                    {
-                        return destination;
+                        case FrameworkElement { DataContext: FileSystemEntry entry }:
+                            if (entry.IsDirectory)
+                            {
+                                return DirectoryDropTarget(entry.FullPath, visual, true);
+                            }
+                            if (IsExecutableDropTarget(entry.FullPath))
+                            {
+                                return new DropVisualTarget(
+                                    new FileDropTarget(FileDropTargetKind.Executable, entry.FullPath),
+                                    visual,
+                                    false);
+                            }
+                            break;
+                        case ContentControl { Content: FileSystemEntry entry }:
+                            if (entry.IsDirectory)
+                            {
+                                return DirectoryDropTarget(entry.FullPath, visual, true);
+                            }
+                            if (IsExecutableDropTarget(entry.FullPath))
+                            {
+                                return new DropVisualTarget(
+                                    new FileDropTarget(FileDropTargetKind.Executable, entry.FullPath),
+                                    visual,
+                                    false);
+                            }
+                            break;
+                        case FrameworkElement { DataContext: NavigationLocation location }:
+                            return NavigationDropTarget(location, visual);
+                        case ContentControl { Content: NavigationLocation location }:
+                            return NavigationDropTarget(location, visual);
+                        case FrameworkElement { DataContext: TreeViewNode node }
+                            when _treeLocations.TryGetValue(node, out var location):
+                            return DirectoryDropTarget(location.Path, visual, true);
+                        case ContentControl { Content: TreeViewNode node }
+                            when _treeLocations.TryGetValue(node, out var location):
+                            return DirectoryDropTarget(location.Path, visual, true);
+                        case Button { Tag: string path } button when Directory.Exists(path):
+                            return DirectoryDropTarget(path, button, false);
                     }
 
                     current = VisualTreeHelper.GetParent(current);
@@ -3521,12 +3637,357 @@ public sealed partial class MainPage : Page
 
         return sender switch
         {
-            _ when ReferenceEquals(sender, SecondaryFileList) => SplitViewModel.CurrentPath,
+            Button { Tag: string path } button when Directory.Exists(path) =>
+                DirectoryDropTarget(path, button, false),
+            _ when ReferenceEquals(sender, SecondaryFileList) =>
+                DirectoryDropTarget(SplitViewModel.CurrentPath, sender as Control, false),
             _ when ReferenceEquals(sender, FileList) ||
                    ReferenceEquals(sender, IconFileList) ||
-                   ReferenceEquals(sender, CompactFileList) => ViewModel.CurrentPath,
+                   ReferenceEquals(sender, CompactFileList) =>
+                DirectoryDropTarget(ViewModel.CurrentPath, sender as Control, false),
             _ => null
         };
+    }
+
+    private static DropVisualTarget DirectoryDropTarget(
+        string path,
+        Control? visual,
+        bool canSpringOpen,
+        TabViewItem? tab = null) =>
+        new(new FileDropTarget(FileDropTargetKind.Directory, path), visual, canSpringOpen, tab);
+
+    private static DropVisualTarget? NavigationDropTarget(
+        NavigationLocation location,
+        Control? visual) => location.Kind switch
+    {
+        NavigationLocationKind.FileSystem when Directory.Exists(location.Path) =>
+            DirectoryDropTarget(location.Path, visual, true),
+        NavigationLocationKind.RecycleBin =>
+            new DropVisualTarget(
+                new FileDropTarget(FileDropTargetKind.Trash, RecycleBinService.VirtualPath),
+                visual,
+                false),
+        _ => null
+    };
+
+    private static Control? FindDropHighlightControl(DependencyObject start, UIElement surface)
+    {
+        var current = start;
+        while (current is not null && !ReferenceEquals(current, surface))
+        {
+            if (current is ListViewItem or GridViewItem or TreeViewItem or TabViewItem or Button)
+            {
+                return current as Control;
+            }
+            current = VisualTreeHelper.GetParent(current);
+        }
+        return surface as Control;
+    }
+
+    private static bool IsExecutableDropTarget(string path) =>
+        File.Exists(path) && new[] { ".exe", ".com", ".bat", ".cmd" }
+            .Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase);
+
+    private bool ContainsSupportedDropData(DataPackageView dataView) =>
+        (_internalDragPaths is { Count: > 0 } && dataView.Contains(InternalDragFormat)) ||
+        dataView.Contains(StandardDataFormats.StorageItems);
+
+    private async Task<IReadOnlyList<string>> GetDropPathsAsync(DataPackageView dataView)
+    {
+        if (_internalDragPaths is { Count: > 0 } && dataView.Contains(InternalDragFormat))
+        {
+            return _internalDragPaths;
+        }
+
+        if (!dataView.Contains(StandardDataFormats.StorageItems))
+        {
+            return [];
+        }
+
+        _dropStorageItemsTask ??= LoadDropStorageItemsAsync(dataView);
+        var storageItems = await _dropStorageItemsTask;
+        return storageItems
+            .Select(item => item.Path)
+            .Where(path => !string.IsNullOrWhiteSpace(path))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
+
+    private static async Task<IReadOnlyList<IStorageItem>> LoadDropStorageItemsAsync(
+        DataPackageView dataView) => await dataView.GetStorageItemsAsync();
+
+    private static DataPackageOperation ToDataPackageOperation(FileDropOperation operation) =>
+        operation switch
+        {
+            FileDropOperation.Copy => DataPackageOperation.Copy,
+            FileDropOperation.Move or FileDropOperation.Trash => DataPackageOperation.Move,
+            FileDropOperation.Link or FileDropOperation.Execute => DataPackageOperation.Link,
+            _ => DataPackageOperation.None
+        };
+
+    private static string DropCaption(FileDropOperation operation, string? destinationPath)
+    {
+        if (operation == FileDropOperation.Trash)
+        {
+            return "Move to Trash";
+        }
+
+        var destinationName = string.IsNullOrWhiteSpace(destinationPath)
+            ? "this location"
+            : Path.GetFileName(Path.TrimEndingDirectorySeparator(destinationPath));
+        if (string.IsNullOrWhiteSpace(destinationName))
+        {
+            destinationName = destinationPath;
+        }
+
+        return operation switch
+        {
+            FileDropOperation.Copy => $"Copy to {destinationName}",
+            FileDropOperation.Move => $"Move to {destinationName}",
+            FileDropOperation.Link => $"Create link in {destinationName}",
+            FileDropOperation.Execute => $"Open with {destinationName}",
+            _ => "Cannot drop here"
+        };
+    }
+
+    private void SetDropHighlight(Control? control)
+    {
+        if (ReferenceEquals(control, _dropHighlightControl))
+        {
+            return;
+        }
+
+        ClearDropHighlight();
+        if (control is null)
+        {
+            return;
+        }
+
+        _dropHighlightControl = control;
+        _dropHighlightBorderBrush = control.BorderBrush;
+        _dropHighlightBorderThickness = control.BorderThickness;
+        control.BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.DodgerBlue);
+        control.BorderThickness = new Thickness(2);
+    }
+
+    private void ClearDropHighlight()
+    {
+        if (_dropHighlightControl is not null)
+        {
+            _dropHighlightControl.BorderBrush = _dropHighlightBorderBrush;
+            _dropHighlightControl.BorderThickness = _dropHighlightBorderThickness;
+        }
+
+        _dropHighlightControl = null;
+        _dropHighlightBorderBrush = null;
+        _dropHighlightBorderThickness = default;
+    }
+
+    private void CancelSpringOpen()
+    {
+        _dropHoverCancellation?.Cancel();
+        _dropHoverCancellation?.Dispose();
+        _dropHoverCancellation = null;
+        _dropHoverKey = null;
+    }
+
+    private void ScheduleSpringOpen(DropVisualTarget target, object sender)
+    {
+        if (!target.CanSpringOpen ||
+            target.Target.Kind != FileDropTargetKind.Directory ||
+            string.IsNullOrWhiteSpace(target.Target.Path))
+        {
+            CancelSpringOpen();
+            return;
+        }
+
+        var browser = DropBrowserFor(sender);
+        if (target.TabItem is null && PathEquals(browser.CurrentPath, target.Target.Path))
+        {
+            CancelSpringOpen();
+            return;
+        }
+
+        var hoverKey = target.TabItem is null
+            ? $"folder:{target.Target.Path}"
+            : $"tab:{target.Target.Path}";
+        if (string.Equals(_dropHoverKey, hoverKey, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        CancelSpringOpen();
+        _dropHoverKey = hoverKey;
+        _dropHoverCancellation = new CancellationTokenSource();
+        _ = SpringOpenAsync(target, _dropHoverCancellation.Token);
+    }
+
+    private async Task SpringOpenAsync(DropVisualTarget target, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await Task.Delay(650, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (target.TabItem is not null)
+            {
+                SetActivePane(BrowserPane.Primary);
+                BrowserTabs.SelectedItem = target.TabItem;
+            }
+            else if (!string.IsNullOrWhiteSpace(target.Target.Path))
+            {
+                await NavigateActivePaneAsync(target.Target.Path);
+            }
+
+            _dropDecisionKey = null;
+            _dropDecision = null;
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private void ResetDropTargetState(bool clearPayload)
+    {
+        CancelSpringOpen();
+        ClearDropHighlight();
+        _dropDecisionKey = null;
+        _dropDecision = null;
+        if (clearPayload)
+        {
+            _dropStorageItemsTask = null;
+        }
+    }
+
+    private async Task PerformDropAsync(
+        IReadOnlyCollection<string> sourcePaths,
+        IReadOnlyList<FileSystemEntry> trashEntries,
+        FileDropTarget target,
+        FileDropOperation operation)
+    {
+        if (operation == FileDropOperation.Trash)
+        {
+            await MoveDroppedItemsToTrashAsync(sourcePaths);
+            return;
+        }
+
+        if (operation == FileDropOperation.Execute && !string.IsNullOrWhiteSpace(target.Path))
+        {
+            await LaunchDropTargetAsync(target.Path, sourcePaths);
+            return;
+        }
+
+        if (target.Kind != FileDropTargetKind.Directory || string.IsNullOrWhiteSpace(target.Path))
+        {
+            return;
+        }
+
+        if (trashEntries.Count > 0)
+        {
+            await RestoreDroppedTrashItemsAsync(trashEntries, target.Path);
+            return;
+        }
+
+        var effectivePaths = operation == FileDropOperation.Move
+            ? sourcePaths.Where(path => !PathEquals(
+                Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(path)) ?? string.Empty,
+                target.Path)).ToArray()
+            : sourcePaths.ToArray();
+        if (effectivePaths.Length == 0)
+        {
+            ActiveBrowser.StatusText = "The items are already in that folder.";
+            return;
+        }
+
+        var mode = operation switch
+        {
+            FileDropOperation.Copy => FileTransferMode.Copy,
+            FileDropOperation.Move => FileTransferMode.Move,
+            FileDropOperation.Link => FileTransferMode.Link,
+            _ => throw new InvalidOperationException("The selected drop operation is not supported.")
+        };
+        await RunTransferAsync(effectivePaths, target.Path, mode);
+    }
+
+    private async Task MoveDroppedItemsToTrashAsync(IReadOnlyCollection<string> paths)
+    {
+        if (_confirmMoveToTrash)
+        {
+            var confirmation = new ContentDialog
+            {
+                Title = "Move to Recycle Bin?",
+                Content = $"Move {paths.Count} item{(paths.Count == 1 ? string.Empty : "s")} to the Windows Recycle Bin?",
+                PrimaryButtonText = "Move",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = XamlRoot
+            };
+            if (await confirmation.ShowAsync() != ContentDialogResult.Primary)
+            {
+                return;
+            }
+        }
+
+        if (await RunFileOperationAsync(
+                $"Moving {paths.Count} item{(paths.Count == 1 ? string.Empty : "s")} to Trash...",
+                () => _fileOperations.MoveToTrashAsync(paths)))
+        {
+            ActiveBrowser.StatusText = $"Moved {paths.Count} item{(paths.Count == 1 ? string.Empty : "s")} to Trash.";
+        }
+    }
+
+    private async Task RestoreDroppedTrashItemsAsync(
+        IReadOnlyList<FileSystemEntry> entries,
+        string destinationDirectory)
+    {
+        var restored = 0;
+        var skipped = 0;
+        var errors = new List<string>();
+        foreach (var entry in entries)
+        {
+            var result = await _fileOperations.RestoreRecycleItemToDirectoryAsync(
+                entry.FullPath,
+                entry.RecycleOriginalPath!,
+                entry.RecycleMetadataPath!,
+                destinationDirectory,
+                ResolveConflictAsync);
+            restored += result.CompletedItems;
+            skipped += result.SkippedItems;
+            errors.AddRange(result.Errors);
+            if (result.Cancelled)
+            {
+                break;
+            }
+        }
+
+        await RefreshVisiblePanesAsync();
+        ActiveBrowser.StatusText = errors.Count > 0
+            ? $"Restored {restored}, skipped {skipped}. {errors[0]}"
+            : $"Restored {restored} item{(restored == 1 ? string.Empty : "s")}; skipped {skipped}.";
+    }
+
+    private async Task LaunchDropTargetAsync(
+        string executablePath,
+        IReadOnlyCollection<string> sourcePaths)
+    {
+        try
+        {
+            var startInfo = new ProcessStartInfo(executablePath)
+            {
+                UseShellExecute = true,
+                WorkingDirectory = Path.GetDirectoryName(executablePath) ?? string.Empty
+            };
+            foreach (var sourcePath in sourcePaths)
+            {
+                startInfo.ArgumentList.Add(sourcePath);
+            }
+
+            Process.Start(startInfo);
+            ActiveBrowser.StatusText = $"Opened {sourcePaths.Count} item{(sourcePaths.Count == 1 ? string.Empty : "s")} with {Path.GetFileName(executablePath)}.";
+        }
+        catch (Exception ex)
+        {
+            await ShowMessageAsync("Open With Failed", ex.Message);
+        }
     }
 
     private bool IsFilePaneList(object sender) =>
@@ -3554,7 +4015,12 @@ public sealed partial class MainPage : Page
                 destination,
                 mode,
                 conflictResolver ?? ResolveConflictAsync);
-            var operationName = historyDescription ?? (mode == FileTransferMode.Move ? "Move" : "Copy");
+            var operationName = historyDescription ?? mode switch
+            {
+                FileTransferMode.Move => "Move",
+                FileTransferMode.Link => "Create Link",
+                _ => "Copy"
+            };
             await FinishTransferAsync(result, operationName);
             PushTransferHistory(result.Transfers, operationName);
             return result;
@@ -3715,7 +4181,8 @@ public sealed partial class MainPage : Page
             }
         }
 
-        if (undo && transfers.All(transfer => transfer.Mode == FileTransferMode.Copy))
+        if (undo && transfers.All(transfer =>
+                transfer.Mode is FileTransferMode.Copy or FileTransferMode.Link))
         {
             await _fileOperations.MoveToTrashAsync(
                 transfers.Reverse().Select(transfer => transfer.DestinationPath));
@@ -3725,7 +4192,7 @@ public sealed partial class MainPage : Page
         var ordered = undo ? transfers.Reverse() : transfers;
         foreach (var transfer in ordered)
         {
-            if (undo && transfer.Mode == FileTransferMode.Copy)
+            if (undo && transfer.Mode is FileTransferMode.Copy or FileTransferMode.Link)
             {
                 await _fileOperations.MoveToTrashAsync([transfer.DestinationPath]);
                 continue;
@@ -4492,6 +4959,12 @@ public sealed partial class MainPage : Page
 
         return false;
     }
+
+    private sealed record DropVisualTarget(
+        FileDropTarget Target,
+        Control? Visual,
+        bool CanSpringOpen,
+        TabViewItem? TabItem = null);
 
     private enum BrowserPane
     {

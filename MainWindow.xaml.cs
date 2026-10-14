@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using WinThunar.Services;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -17,6 +18,11 @@ public sealed partial class MainWindow : Window
     private bool _closePromptOpen;
 
     public MainWindow(string? initialPath = null)
+        : this(initialPath is null ? LaunchRequest.Empty : new LaunchRequest(initialPath, null))
+    {
+    }
+
+    public MainWindow(LaunchRequest launchRequest)
     {
         InitializeComponent();
         var version = typeof(App).Assembly.GetName().Version;
@@ -31,7 +37,7 @@ public sealed partial class MainWindow : Window
         AppWindow.Closing += AppWindow_Closing;
 
         // Navigate the root frame to the main page on startup.
-        RootFrame.Navigate(typeof(MainPage), initialPath);
+        RootFrame.Navigate(typeof(MainPage), launchRequest);
     }
 
     private async void AppWindow_Closing(

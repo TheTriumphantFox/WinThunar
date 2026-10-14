@@ -1,9 +1,7 @@
+using System.Collections.Concurrent;
 using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Data;
-using Microsoft.UI.Xaml.Input;
-using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Navigation;
+using Microsoft.Windows.AppLifecycle;
+using WinThunar.Services;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -36,11 +34,16 @@ public partial class App : Application
     public static nint WindowHandle =>
         WinRT.Interop.WindowNative.GetWindowHandle(Window);
 
+    private static readonly ConcurrentQueue<LaunchRequest> PendingRedirects = new();
+    private static readonly List<Window> OpenWindows = [];
+    private readonly LaunchRequest _launchRequest;
+
     /// <summary>
     /// Initializes the singleton application object.
     /// </summary>
-    public App()
+    public App(LaunchRequest launchRequest)
     {
+        _launchRequest = launchRequest;
         InitializeComponent();
         UnhandledException += App_UnhandledException;
     }
@@ -69,8 +72,47 @@ public partial class App : Application
     /// <param name="args">Details about the launch request and process.</param>
     protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
     {
-        Window = new MainWindow();
         DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
-        Window.Activate();
+        Window = OpenWindow(_launchRequest);
+        OpenPendingRedirects();
+    }
+
+    /// <summary>
+    /// Receives launches that a second WinThunar process redirected here. Raised off the UI thread,
+    /// possibly before <see cref="OnLaunched"/> has run.
+    /// </summary>
+    public static void OnRedirectedActivation(object? sender, AppActivationArguments args)
+    {
+        var request = args.Kind == ExtendedActivationKind.Launch &&
+            args.Data is Windows.ApplicationModel.Activation.ILaunchActivatedEventArgs launch
+                ? LaunchRequest.ParseCommandLine(launch.Arguments)
+                : LaunchRequest.Empty;
+        PendingRedirects.Enqueue(request);
+        DispatcherQueue?.TryEnqueue(OpenPendingRedirects);
+    }
+
+    /// <summary>Opens a top-level window that lives until the user closes it.</summary>
+    public static Window OpenWindow(LaunchRequest request)
+    {
+        var window = new MainWindow(request);
+        OpenWindows.Add(window);
+        window.Closed += (_, _) =>
+        {
+            OpenWindows.Remove(window);
+            if (ReferenceEquals(Window, window) && OpenWindows.Count > 0)
+            {
+                Window = OpenWindows[^1];
+            }
+        };
+        window.Activate();
+        return window;
+    }
+
+    private static void OpenPendingRedirects()
+    {
+        while (PendingRedirects.TryDequeue(out var request))
+        {
+            Window = OpenWindow(request);
+        }
     }
 }

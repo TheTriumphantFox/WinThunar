@@ -34,8 +34,7 @@ public sealed partial class MainPage : Page
     private BrowserTabState? _splitTab;
     private CancellationTokenSource? _searchInputDelay;
     private MainPageViewModel? _searchBrowser;
-    private string? _launchPath;
-    private readonly List<Window> _ownedWindows = [];
+    private LaunchRequest _launchRequest = LaunchRequest.Empty;
     private bool _confirmMoveToTrash;
     private bool _restoreTabs = true;
     private bool _treeSidePane;
@@ -97,7 +96,7 @@ public sealed partial class MainPage : Page
     protected override void OnNavigatedTo(NavigationEventArgs e)
     {
         base.OnNavigatedTo(e);
-        _launchPath = e.Parameter as string;
+        _launchRequest = e.Parameter as LaunchRequest ?? LaunchRequest.Empty;
     }
 
     private async void Page_Loaded(object sender, RoutedEventArgs e)
@@ -166,15 +165,15 @@ public sealed partial class MainPage : Page
         ApplyImagePreview();
         ApplyTerminalPanel();
 
-        var tabPaths = (_restoreTabs ? session.Tabs : [])
+        // An explicit folder request (command line, another app, New Window) replaces tab restore.
+        var tabPaths = (_restoreTabs && _launchRequest.IsEmpty ? session.Tabs : [])
             .Where(Directory.Exists)
             .Select(Path.GetFullPath)
             .ToList();
         if (tabPaths.Count == 0)
         {
-            tabPaths.Add(Directory.Exists(_launchPath)
-                ? Path.GetFullPath(_launchPath!)
-                : Directory.Exists(session.LastPath) ? session.LastPath! : ViewModel.HomePath);
+            tabPaths.Add(_launchRequest.FolderPath
+                ?? (Directory.Exists(session.LastPath) ? session.LastPath! : ViewModel.HomePath));
         }
 
         foreach (var path in tabPaths)
@@ -182,12 +181,18 @@ public sealed partial class MainPage : Page
             AddBrowserTab(path, false);
         }
 
-        BrowserTabs.SelectedIndex = Math.Clamp(session.ActiveTabIndex, 0, BrowserTabs.TabItems.Count - 1);
-        var initialPath = ActiveTab?.Path ?? ViewModel.HomePath;
+        var selectedTabIndex = Math.Clamp(session.ActiveTabIndex, 0, tabPaths.Count - 1);
+        BrowserTabs.SelectedIndex = selectedTabIndex;
+        // TabView may not report SelectedItem until it is realized, so read the path directly.
+        var initialPath = tabPaths[selectedTabIndex];
         ApplyFolderViewSettings(ViewModel, initialPath);
         await ViewModel.InitializeAsync(initialPath);
+        if (_launchRequest.SelectPath is { } selectPath)
+        {
+            SelectLaunchItem(selectPath);
+        }
         ApplyToolbarOrder();
-        if (session.SplitPaneOpen && Directory.Exists(session.SplitPath))
+        if (_launchRequest.IsEmpty && session.SplitPaneOpen && Directory.Exists(session.SplitPath))
         {
             await OpenSplitPaneAsync(session.SplitPath!, false);
         }
@@ -200,6 +205,26 @@ public sealed partial class MainPage : Page
             ViewModel.StatusText = recovery.Errors.Count == 0
                 ? $"Recovered {recovery.RecoveredOperations} interrupted transfer{(recovery.RecoveredOperations == 1 ? string.Empty : "s")}."
                 : $"Recovered {recovery.RecoveredOperations} interrupted transfers; {recovery.Errors.Count} need attention.";
+        }
+    }
+
+    private void SelectLaunchItem(string path)
+    {
+        var entry = ViewModel.Entries.FirstOrDefault(candidate =>
+            string.Equals(candidate.FullPath, path, StringComparison.OrdinalIgnoreCase));
+        if (entry is null)
+        {
+            ViewModel.StatusText = $"\"{Path.GetFileName(path)}\" is hidden. Press Ctrl+H to show hidden files.";
+            return;
+        }
+
+        var list = ActiveFileList;
+        list.SelectedItems.Clear();
+        list.SelectedItems.Add(entry);
+        list.ScrollIntoView(entry);
+        if (list.ContainerFromItem(entry) is Control container)
+        {
+            container.Focus(FocusState.Programmatic);
         }
     }
 
@@ -226,12 +251,12 @@ public sealed partial class MainPage : Page
         _transferQueue.Dispose();
         ViewModel.Dispose();
         SplitViewModel.Dispose();
-        foreach (var window in _ownedWindows.ToArray())
-        {
-            window.Close();
-        }
-        _ownedWindows.Clear();
     }
+
+    /// <summary>The HWND of the window hosting this page, for parenting native shell dialogs.</summary>
+    private nint HostWindowHandle => XamlRoot?.ContentIslandEnvironment is { } environment
+        ? Microsoft.UI.Win32Interop.GetWindowFromWindowId(environment.AppWindowId)
+        : App.WindowHandle;
 
     private async void Back_Click(object sender, RoutedEventArgs e)
     {
@@ -1237,10 +1262,7 @@ public sealed partial class MainPage : Page
 
     private void NewWindow_Click(object sender, RoutedEventArgs e)
     {
-        var window = new MainWindow(ActiveBrowser.CurrentPath);
-        _ownedWindows.Add(window);
-        window.Closed += (_, _) => _ownedWindows.Remove(window);
-        window.Activate();
+        App.OpenWindow(new LaunchRequest(ActiveBrowser.CurrentPath, null));
     }
 
     private void OpenSelectedInNewWindow_Click(object sender, RoutedEventArgs e)
@@ -1250,10 +1272,7 @@ public sealed partial class MainPage : Page
             return;
         }
 
-        var window = new MainWindow(folder.FullPath);
-        _ownedWindows.Add(window);
-        window.Closed += (_, _) => _ownedWindows.Remove(window);
-        window.Activate();
+        App.OpenWindow(new LaunchRequest(folder.FullPath, null));
     }
 
     private void OpenSelectedTerminal_Click(object sender, RoutedEventArgs e)
@@ -1968,7 +1987,7 @@ public sealed partial class MainPage : Page
         }
 
         var path = selected.FirstOrDefault()?.FullPath ?? ActiveBrowser.CurrentPath;
-        if (!ShellIntegrationService.ShowProperties(path, App.WindowHandle))
+        if (!ShellIntegrationService.ShowProperties(path, HostWindowHandle))
         {
             await ShowMessageAsync("Properties", "Windows could not open the Properties dialog for this item.");
         }
@@ -2710,7 +2729,7 @@ public sealed partial class MainPage : Page
                 await RunGitPluginAsync("log", selected);
                 break;
             case "builtin:share-manage":
-                ShellIntegrationService.ShowProperties(selected[0].FullPath, App.WindowHandle);
+                ShellIntegrationService.ShowProperties(selected[0].FullPath, HostWindowHandle);
                 break;
             default:
                 throw new NotSupportedException($"Unknown built-in plugin action: {action.Command}");
@@ -3053,7 +3072,7 @@ public sealed partial class MainPage : Page
         };
         if (await dialog.ShowAsync() == ContentDialogResult.Primary)
         {
-            var result = ShellIntegrationService.EmptyRecycleBin(App.WindowHandle);
+            var result = ShellIntegrationService.EmptyRecycleBin(HostWindowHandle);
             ViewModel.StatusText = result == 0 ? "Recycle Bin emptied." : $"Windows could not empty the Recycle Bin (error 0x{result:X8}).";
         }
     }

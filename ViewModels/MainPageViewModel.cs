@@ -143,7 +143,11 @@ public partial class MainPageViewModel : ObservableObject, IDisposable
     }
 
     public async Task InitializeAsync(string? initialPath = null) =>
-        await NavigateAsync(Directory.Exists(initialPath) ? initialPath! : HomePath);
+        await NavigateAsync(
+            Directory.Exists(initialPath) ||
+            string.Equals(initialPath, RecycleBinService.VirtualPath, StringComparison.OrdinalIgnoreCase)
+                ? initialPath!
+                : HomePath);
 
     public void SetBookmarks(IEnumerable<string> paths)
     {

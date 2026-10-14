@@ -52,7 +52,7 @@
 - Portable/self-contained x64 GitHub release
 - Optional installer or MSIX packaging and updates
 - [x] Transfer crash recovery journal and bounded thumbnail loading
-- Accessibility and keyboard-navigation review
+- Accessibility and keyboard-navigation review (files and side-pane locations now have screen-reader names; a full review remains)
 
 ## 5. Plugin ecosystem
 

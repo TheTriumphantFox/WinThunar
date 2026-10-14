@@ -26,6 +26,13 @@ public partial class App : Application
     /// </summary>
     public static Microsoft.UI.Dispatching.DispatcherQueue DispatcherQueue { get; private set; } = null!;
 
+    /// <summary>The process-wide updater shared by every window.</summary>
+    public static UpdateService Updates { get; private set; } = null!;
+
+    /// <summary>True while any window is copying or moving files, which a restart would cancel.</summary>
+    public static bool HasPendingTransfers =>
+        OpenWindows.OfType<MainWindow>().Any(window => window.Page?.HasPendingTransfers == true);
+
     /// <summary>
     /// The native window handle (HWND). Use for file pickers,
     /// <c>DataTransferManager</c>, and any WinRT interop that requires
@@ -73,8 +80,10 @@ public partial class App : Application
     protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
     {
         DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
+        Updates = new UpdateService();
         Window = OpenWindow(_launchRequest);
         OpenPendingRedirects();
+        Updates.StartAutomaticChecks();
     }
 
     /// <summary>
@@ -102,6 +111,11 @@ public partial class App : Application
             if (ReferenceEquals(Window, window) && OpenWindows.Count > 0)
             {
                 Window = OpenWindows[^1];
+            }
+            else if (OpenWindows.Count == 0)
+            {
+                // The process exits with its last window; install a downloaded update after it does.
+                Updates.ApplyOnExit();
             }
         };
         window.Activate();

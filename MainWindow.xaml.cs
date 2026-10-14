@@ -17,6 +17,8 @@ public sealed partial class MainWindow : Window
     private bool _allowClose;
     private bool _closePromptOpen;
 
+    public MainPage? Page => RootFrame.Content as MainPage;
+
     public MainWindow(string? initialPath = null)
         : this(initialPath is null ? LaunchRequest.Empty : new LaunchRequest(initialPath, null))
     {
@@ -31,7 +33,8 @@ public sealed partial class MainWindow : Window
             : version.Build > 0
                 ? $"WinThunar {version.Major}.{version.Minor}.{version.Build}"
                 : $"WinThunar {version.Major}.{version.Minor}";
-        AppWindow.SetIcon("Assets/AppIcon.ico");
+        // Absolute: shortcuts and Explorer launch WinThunar with a working directory other than its own.
+        AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "AppIcon.ico"));
 
         AppWindow.Resize(new Windows.Graphics.SizeInt32(1100, 720));
         AppWindow.Closing += AppWindow_Closing;

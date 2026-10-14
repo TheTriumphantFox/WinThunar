@@ -50,7 +50,7 @@
 - [x] Optional, reversible default handler for folders and drives (Win+E and apps that call
   `SHOpenFolderAndSelectItems` still open Explorer)
 - Portable/self-contained x64 GitHub release
-- Optional installer or MSIX packaging and updates
+- [x] Per-user installer with background delta updates from GitHub Releases (Velopack)
 - [x] Transfer crash recovery journal and bounded thumbnail loading
 - Accessibility and keyboard-navigation review (files and side-pane locations now have screen-reader names; a full review remains)
 

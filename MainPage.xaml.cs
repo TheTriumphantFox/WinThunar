@@ -73,6 +73,8 @@ public sealed partial class MainPage : Page
     private string? _dropStatusBeforeDrag;
     private string? _dropDecisionKey;
     private FileDropDecision? _dropDecision;
+    private bool _updateBarDismissed;
+    private bool _updateCheckRequested;
     private bool _disposed;
 
     public MainPageViewModel ViewModel { get; } = new();
@@ -208,6 +210,9 @@ public sealed partial class MainPage : Page
                 ? $"Recovered {recovery.RecoveredOperations} interrupted transfer{(recovery.RecoveredOperations == 1 ? string.Empty : "s")}."
                 : $"Recovered {recovery.RecoveredOperations} interrupted transfers; {recovery.Errors.Count} need attention.";
         }
+
+        App.Updates.StateChanged += Updates_StateChanged;
+        ApplyUpdateState();
     }
 
     private void SelectLaunchItem(string path)
@@ -248,6 +253,7 @@ public sealed partial class MainPage : Page
         _templatesWatcher = null;
         _transferQueue.StateChanged -= TransferQueue_StateChanged;
         _history.Changed -= History_Changed;
+        App.Updates.StateChanged -= Updates_StateChanged;
         ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
         SplitViewModel.PropertyChanged -= SplitViewModel_PropertyChanged;
         _transferQueue.Dispose();
@@ -2122,6 +2128,24 @@ public sealed partial class MainPage : Page
             MaxWidth = 430,
             Foreground = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 90, 90, 90))
         };
+        var updates = App.Updates;
+        var checkForUpdates = new CheckBox
+        {
+            Content = "Check for updates automatically",
+            IsChecked = updates.IsSupported && updates.Settings.CheckAutomatically,
+            IsEnabled = updates.IsSupported
+        };
+        var updatesNote = new TextBlock
+        {
+            Text = updates.IsSupported
+                ? updates.RequiresAdministrator
+                    ? "Checks once a day and downloads updates in the background. WinThunar is installed for all users, so installing an update needs administrator permission."
+                    : "Checks once a day. Updates download in the background and install when you close WinThunar."
+                : "Automatic updates are available in the installed version of WinThunar.",
+            TextWrapping = TextWrapping.Wrap,
+            MaxWidth = 430,
+            Foreground = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 90, 90, 90))
+        };
         var defaultView = new ComboBox
         {
             Header = "Default/last active view",
@@ -2150,6 +2174,9 @@ public sealed partial class MainPage : Page
         content.Children.Add(openVerb);
         content.Children.Add(defaultManager);
         content.Children.Add(integrationNote);
+        content.Children.Add(new TextBlock { Text = "Updates", Margin = new Thickness(0, 8, 0, 0), FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+        content.Children.Add(checkForUpdates);
+        content.Children.Add(updatesNote);
 
         var dialog = new ContentDialog
         {
@@ -2188,6 +2215,11 @@ public sealed partial class MainPage : Page
         if (shellSupported)
         {
             ApplyShellIntegration(shellRegistration, openVerb.IsChecked == true, defaultManager.IsChecked == true);
+        }
+
+        if (updates.IsSupported && updates.Settings.CheckAutomatically != (checkForUpdates.IsChecked == true))
+        {
+            updates.SetCheckAutomatically(checkForUpdates.IsChecked == true);
         }
     }
 
@@ -2235,6 +2267,98 @@ public sealed partial class MainPage : Page
             XamlRoot = XamlRoot
         };
         await dialog.ShowAsync();
+    }
+
+    private async void CheckForUpdates_Click(object sender, RoutedEventArgs e)
+    {
+        var updates = App.Updates;
+        if (!updates.IsSupported)
+        {
+            await ShowUpdateMessageAsync(
+                "This copy of WinThunar is portable, so it cannot update itself. Install WinThunar with its setup program to get updates automatically, or download new versions from:\n" + UpdateService.ReleasesUrl);
+            return;
+        }
+
+        if (updates.State != UpdateState.Ready)
+        {
+            _updateCheckRequested = true;
+            try
+            {
+                await updates.CheckAsync();
+            }
+            finally
+            {
+                _updateCheckRequested = false;
+            }
+        }
+
+        switch (updates.State)
+        {
+            case UpdateState.Ready:
+                // The update bar carries the result; reopen it if this window dismissed it.
+                _updateBarDismissed = false;
+                ApplyUpdateState();
+                ViewModel.StatusText = $"WinThunar {updates.AvailableVersion} is ready to install.";
+                break;
+            case UpdateState.UpToDate:
+                ViewModel.StatusText = "WinThunar is up to date.";
+                await ShowUpdateMessageAsync($"You have the latest version of WinThunar ({updates.CurrentVersion}).");
+                break;
+            case UpdateState.Failed:
+                ViewModel.StatusText = "Could not check for updates.";
+                await ShowUpdateMessageAsync($"WinThunar could not check for updates.\n\n{updates.ErrorMessage}");
+                break;
+        }
+    }
+
+    private async Task ShowUpdateMessageAsync(string message)
+    {
+        var dialog = new ContentDialog
+        {
+            Title = "Check for Updates",
+            Content = new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap, MaxWidth = 430, IsTextSelectionEnabled = true },
+            CloseButtonText = "Close",
+            XamlRoot = XamlRoot
+        };
+        await dialog.ShowAsync();
+    }
+
+    private void Updates_StateChanged(object? sender, EventArgs e) => ApplyUpdateState();
+
+    private void ApplyUpdateState()
+    {
+        var updates = App.Updates;
+        // Automatic checks stay quiet; progress is only reported for a check this window asked for.
+        if (_updateCheckRequested)
+        {
+            if (updates.State == UpdateState.Checking)
+            {
+                ViewModel.StatusText = "Checking for updates...";
+            }
+            else if (updates.State == UpdateState.Downloading)
+            {
+                ViewModel.StatusText = $"Downloading WinThunar {updates.AvailableVersion}... {updates.DownloadProgress}%";
+            }
+        }
+
+        UpdateInfoBar.Message = updates.RequiresAdministrator
+            ? $"WinThunar {updates.AvailableVersion} has been downloaded. WinThunar is installed for all users, so installing it needs administrator permission."
+            : $"WinThunar {updates.AvailableVersion} has been downloaded and will be installed when you close WinThunar.";
+        RestartToUpdateButton.Content = updates.RequiresAdministrator ? "Install Now" : "Restart Now";
+        UpdateInfoBar.IsOpen = updates.State == UpdateState.Ready && !_updateBarDismissed;
+    }
+
+    private void UpdateInfoBar_CloseButtonClick(InfoBar sender, object args) => _updateBarDismissed = true;
+
+    private void RestartToUpdate_Click(object sender, RoutedEventArgs e)
+    {
+        if (App.HasPendingTransfers)
+        {
+            ViewModel.StatusText = "Finish or cancel the running transfers before restarting to update.";
+            return;
+        }
+
+        App.Updates.ApplyAndRestart();
     }
 
     private async void KeyboardShortcuts_Click(object sender, RoutedEventArgs e)

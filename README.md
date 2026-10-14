@@ -49,12 +49,42 @@ The project is open source under the MIT License. It does not contain code copie
 - Selection-aware custom actions with file patterns, file/folder targeting, confirmation prompts, and argument-list execution without a command shell
 - Atomic, junction-safe bundled archive create/extract, media-tag editing, Git status/diff/log, and Windows sharing-management integrations
 
+## Installing
+
+Run `WinThunar-<version>-win-x64.msi`. The target Windows 11 computer does not need a separate
+.NET installation. The installer asks:
+
+- **Just me or everyone.** Just me installs to `%LOCALAPPDATA%\WinThunar.App` without asking for
+  administrator permission. Everyone installs to `C:\Program Files\WinThunar.App` for all accounts
+  and needs administrator permission.
+- **Which shortcuts to create:** a desktop shortcut, a Start menu shortcut, both, or neither.
+
+WinThunar can be removed from Settings > Apps > Installed apps. For a scripted install, pass
+`DESKTOPSHORTCUT=""` or `STARTMENUSHORTCUT=""` to `msiexec` to skip a shortcut.
+
+Uninstalling removes the program and, if this copy was registered with Explorer, its "Open in
+WinThunar" and default-file-manager settings. Your settings, bookmarks, session, and personal
+plugins in `%LOCALAPPDATA%\WinThunar` are kept.
+
+The portable ZIP is still available for running WinThunar without installing it.
+
+## Updating
+
+The installed WinThunar checks GitHub Releases for a new version once a day, starting shortly
+after launch. A new version downloads in the background, usually as a small delta, and installs
+after you close the last WinThunar window. An "Update ready" bar offers **Restart Now** to install
+it straight away; that button waits until running transfers finish or are cancelled. When WinThunar
+is installed for everyone, installing an update needs administrator permission, so it never installs
+on close: the bar's **Install Now** button asks for permission instead. Use
+`Help > Check for Updates...` to check on demand, and `Edit > Preferences > Updates` to turn
+automatic checks off. Portable copies do not update themselves.
+
 ## Using WinThunar as the default file manager
 
 `Edit > Preferences > Windows Integration` can add "Open in WinThunar" to Explorer's folder menu
 and make WinThunar the handler for opening folders and drives. Both settings write only to your
 own account's registry (`HKCU\Software\Classes`), record any value they replace, and restore it
-when turned off. They are available in the portable build; MSIX packages cannot register shell
+when turned off. They are available in the installed and portable builds; MSIX packages cannot register shell
 handlers this way.
 
 The same changes can be scripted, and `--unregister-shell` is the recovery path if WinThunar
@@ -66,7 +96,8 @@ cannot start:
 .\WinThunar.exe --unregister-shell    # undo both
 ```
 
-Turn the setting off before moving or deleting the portable folder. If the registered copy has
+Turn the setting off before moving or deleting the portable folder; the installed copy does this
+when it is uninstalled. If the registered copy has
 already been moved, launching WinThunar from its new location repairs the registration.
 
 WinThunar accepts a folder or file path, `file:` URIs, and Explorer-style `/select,<path>`,
@@ -98,20 +129,44 @@ dotnet test .\tests\WinThunar.FileOps.Tests\WinThunar.FileOps.Tests.csproj --con
 
 Developer Mode must be enabled in Windows Settings to register and launch the development package.
 
-## Portable Windows release
+## Windows release
 
-Create a self-contained, unpackaged x64 release folder, ZIP, and SHA-256 checksum:
+The installer is built with [Velopack](https://velopack.io) (MIT). Install its packaging tool once:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.4.1
+dotnet tool install -g vpk --version 1.2.161
 ```
 
-The generated `artifacts\WinThunar-<version>-win-x64.zip` can be extracted and run with
-`WinThunar.exe`; the target Windows 11 computer does not need a separate .NET installation.
+Create a self-contained, unpackaged x64 release folder, portable ZIP, installer, and SHA-256
+checksums:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.5.0
+```
+
+This writes `artifacts\WinThunar-<version>-win-x64.zip` and
+`artifacts\WinThunar-<version>-win-x64.msi`, each with a `.sha256` file. The script adds the
+shortcut checkboxes to Velopack's MSI with `scripts\Set-MsiShortcutChoices.ps1`. The installer needs
+a three-part version; pass `-SkipInstaller` for a ZIP-only build. Keep `artifacts\installer`
+between releases: it holds every version's Velopack packages, which later releases need for
+delta updates. The ZIP can be extracted and run with `WinThunar.exe`; the target Windows 11
+computer does not need a separate .NET installation.
+
+Installed copies find new versions through GitHub Releases. Publish one by uploading the Velopack
+packages with a GitHub token that can create releases (keep the token out of the repository and
+your shell history):
+
+```powershell
+vpk upload github --outputDir .\artifacts\installer --repoUrl https://github.com/TheTriumphantFox/WinThunar --token $env:GITHUB_TOKEN --publish --releaseName "WinThunar 0.5.0" --tag v0.5.0
+```
+
+To try an update before publishing it, install the previous version, then start WinThunar with
+`WINTHUNAR_UPDATE_FEED` set to a local `artifacts\installer` folder (or a URL serving one) and use
+`Help > Check for Updates...`.
 
 The bundled plugin manifests live beside the executable in `Plugins`. Personal manifests and
-custom actions are stored under `%LOCALAPPDATA%\WinThunar\Plugins`, so updating the portable app
-does not overwrite them.
+custom actions are stored under `%LOCALAPPDATA%\WinThunar\Plugins`, so reinstalling or replacing
+the app does not overwrite them.
 
 ## Icon
 

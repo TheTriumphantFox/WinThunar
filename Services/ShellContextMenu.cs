@@ -92,7 +92,7 @@ public static class ShellContextMenu
                 hwnd = ownerWindow,
                 lpVerb = offset,
                 lpVerbW = offset,
-                lpDirectoryW = folder,
+                lpDirectoryW = Directory.Exists(folder) ? folder : null,
                 nShow = 1,
                 ptInvoke = new Point { X = screenX, Y = screenY }
             };

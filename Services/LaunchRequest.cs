@@ -10,6 +10,14 @@ namespace WinThunar.Services;
 public sealed record LaunchRequest(string? FolderPath, string? SelectPath)
 {
     public const string RecycleBinPath = "shell:RecycleBinFolder";
+    public const string ComputerPath = "shell:MyComputerFolder";
+
+    private static readonly string[] ComputerAliases =
+    [
+        ComputerPath,
+        "::{20D04FE0-3AEA-1069-A2D8-08002B30309D}",
+        "shell:::{20D04FE0-3AEA-1069-A2D8-08002B30309D}"
+    ];
 
     private static readonly string[] RecycleBinAliases =
     [
@@ -233,6 +241,11 @@ public sealed record LaunchRequest(string? FolderPath, string? SelectPath)
         if (RecycleBinAliases.Any(alias => string.Equals(alias, targetPath, StringComparison.OrdinalIgnoreCase)))
         {
             return new LaunchRequest(RecycleBinPath, null);
+        }
+
+        if (ComputerAliases.Any(alias => string.Equals(alias, targetPath, StringComparison.OrdinalIgnoreCase)))
+        {
+            return new LaunchRequest(ComputerPath, null);
         }
 
         if (Directory.Exists(targetPath))

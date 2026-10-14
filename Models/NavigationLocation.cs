@@ -3,6 +3,7 @@ namespace WinThunar.Models;
 public enum NavigationLocationKind
 {
     FileSystem,
+    Computer,
     RecycleBin,
     NetworkBrowser
 }

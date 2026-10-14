@@ -87,6 +87,15 @@ public sealed class LaunchRequestTests : IDisposable
     }
 
     [Fact]
+    public void MapsThisPcAliases()
+    {
+        var expected = new LaunchRequest(LaunchRequest.ComputerPath, null);
+        Assert.Equal(expected, LaunchRequest.Parse(["shell:MyComputerFolder"]));
+        Assert.Equal(expected, LaunchRequest.Parse(["::{20D04FE0-3AEA-1069-A2D8-08002B30309D}"]));
+        Assert.Equal(expected, LaunchRequest.Parse(["/e,::{20D04FE0-3AEA-1069-A2D8-08002B30309D}"]));
+    }
+
+    [Fact]
     public void SplitsCommandLinesLikeWindows()
     {
         Assert.Equal(

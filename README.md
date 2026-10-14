@@ -8,7 +8,7 @@ The project is open source under the MIT License. It does not contain code copie
 ## Current milestone
 
 - Classic menu, toolbar, location bar, side pane, detail view, and status bar
-- Places and detected drives
+- Places, detected drives, a This PC drive overview (Up from a drive root), and OneDrive when signed in
 - Real directory enumeration
 - Back, Forward, Up, Home, Refresh, direct-path navigation, and folder opening
 - Multiple selection and selection totals

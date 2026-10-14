@@ -423,6 +423,7 @@ public sealed class FileOperationService
         CancellationToken cancellationToken = default)
     {
         var selectedPaths = RemoveNestedSelections(paths);
+        EnsureNoFilesystemRoots(selectedPaths);
         await Task.Run(() =>
         {
             foreach (var path in selectedPaths)
@@ -541,6 +542,7 @@ public sealed class FileOperationService
         CancellationToken cancellationToken = default)
     {
         var selectedPaths = RemoveNestedSelections(paths);
+        EnsureNoFilesystemRoots(selectedPaths);
         await Task.Run(() =>
         {
             foreach (var path in selectedPaths)
@@ -1426,6 +1428,25 @@ public sealed class FileOperationService
             StringComparison.Ordinal);
 
     private static bool PathExists(string path) => File.Exists(path) || Directory.Exists(path);
+
+    /// <summary>
+    /// Drive and share roots can be listed (This PC) but never deleted. Checked for every path before
+    /// any work starts, so a mixed selection fails without deleting anything.
+    /// </summary>
+    private static void EnsureNoFilesystemRoots(IEnumerable<string> paths)
+    {
+        foreach (var path in paths)
+        {
+            var fullPath = Path.GetFullPath(path);
+            if (string.Equals(
+                    Path.TrimEndingDirectorySeparator(fullPath),
+                    Path.TrimEndingDirectorySeparator(Path.GetPathRoot(fullPath) ?? string.Empty),
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException($"{fullPath} is a drive or share root and cannot be deleted.");
+            }
+        }
+    }
 
     private static void EnsurePathExists(string path)
     {

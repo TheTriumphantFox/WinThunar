@@ -36,6 +36,7 @@ public sealed partial class MainPage : Page
     private MainPageViewModel? _searchBrowser;
     private LaunchRequest _launchRequest = LaunchRequest.Empty;
     private (int X, int Y)? _contextMenuScreenPoint;
+    private const string ThisPcParsingName = "::{20D04FE0-3AEA-1069-A2D8-08002B30309D}";
     private bool _confirmMoveToTrash;
     private bool _restoreTabs = true;
     private bool _treeSidePane;
@@ -346,15 +347,14 @@ public sealed partial class MainPage : Page
 
     private async void Up_Click(object sender, RoutedEventArgs e)
     {
-        if (ActiveBrowser.IsRecycleBinView)
+        if (ActiveBrowser.IsVirtualView)
         {
             return;
         }
 
-        if (Directory.GetParent(ActiveBrowser.CurrentPath) is { } parent)
-        {
-            await NavigateActivePaneAsync(parent.FullName);
-        }
+        // Above a drive root is This PC, as in Explorer.
+        await NavigateActivePaneAsync(
+            Directory.GetParent(ActiveBrowser.CurrentPath)?.FullName ?? MainPageViewModel.ComputerPath);
     }
 
     private async void Home_Click(object sender, RoutedEventArgs e) => await NavigateActivePaneAsync(ViewModel.HomePath);
@@ -451,15 +451,13 @@ public sealed partial class MainPage : Page
     private async void SplitUp_Click(object sender, RoutedEventArgs e)
     {
         SetActivePane(BrowserPane.Secondary);
-        if (SplitViewModel.IsRecycleBinView)
+        if (SplitViewModel.IsVirtualView)
         {
             return;
         }
 
-        if (Directory.GetParent(SplitViewModel.CurrentPath) is { } parent)
-        {
-            await NavigateSplitPaneAsync(parent.FullName);
-        }
+        await NavigateSplitPaneAsync(
+            Directory.GetParent(SplitViewModel.CurrentPath)?.FullName ?? MainPageViewModel.ComputerPath);
     }
 
     private async void SplitHome_Click(object sender, RoutedEventArgs e)
@@ -704,12 +702,21 @@ public sealed partial class MainPage : Page
         var segments = new Stack<string>();
         try
         {
-            for (var current = new DirectoryInfo(path); current is not null; current = current.Parent)
+            // Virtual locations (Trash, This PC) are not filesystem paths; DirectoryInfo would resolve
+            // them against the working directory and show unrelated folders.
+            for (var current = path.StartsWith("shell:", StringComparison.OrdinalIgnoreCase) ? null : new DirectoryInfo(path);
+                 current is not null;
+                 current = current.Parent)
             {
                 segments.Push(current.FullName);
             }
         }
         catch
+        {
+            segments.Clear();
+        }
+
+        if (segments.Count == 0)
         {
             segments.Push(path);
         }
@@ -1790,6 +1797,11 @@ public sealed partial class MainPage : Page
             return;
         }
 
+        if (RejectComputerViewMutation("Move to Trash"))
+        {
+            return;
+        }
+
         var selected = SelectedEntries();
         if (selected.Count == 0)
         {
@@ -1821,6 +1833,11 @@ public sealed partial class MainPage : Page
 
     private async void DeletePermanently_Click(object sender, RoutedEventArgs e)
     {
+        if (RejectComputerViewMutation("Delete"))
+        {
+            return;
+        }
+
         var selected = SelectedEntries();
         if (selected.Count == 0)
         {
@@ -3298,9 +3315,13 @@ public sealed partial class MainPage : Page
             return;
         }
 
-        // Search results can span folders, but one shell menu needs a single parent.
-        var folder = folderBackground ? browser.CurrentPath : Path.GetDirectoryName(items[0]);
-        if (folder is null || items.Any(item => !PathEquals(Path.GetDirectoryName(item), folder)))
+        // Search results can span folders, but one shell menu needs a single parent. Drives in This PC
+        // have no parent folder; the shell resolves them, and the background, by parsing name.
+        var folder = browser.IsComputerView
+            ? ThisPcParsingName
+            : folderBackground ? browser.CurrentPath : Path.GetDirectoryName(items[0]);
+        if (folder is null ||
+            (!browser.IsComputerView && items.Any(item => !PathEquals(Path.GetDirectoryName(item), folder))))
         {
             browser.StatusText = "Show More Options needs items from a single folder.";
             return;
@@ -3382,7 +3403,8 @@ public sealed partial class MainPage : Page
     {
         SetActivePaneForList(sender);
         var dragEntries = args.Items.OfType<FileSystemEntry>().ToArray();
-        if (dragEntries.Length == 0)
+        // Dragging a drive out of This PC would copy or move the whole drive.
+        if (dragEntries.Length == 0 || ActiveBrowser.IsComputerView)
         {
             args.Cancel = true;
             return;
@@ -3607,6 +3629,11 @@ public sealed partial class MainPage : Page
             return;
         }
 
+        if (RejectComputerViewMutation(move ? "Cut" : "Copy"))
+        {
+            return;
+        }
+
         var selected = SelectedEntries();
         if (selected.Count == 0)
         {
@@ -3782,11 +3809,11 @@ public sealed partial class MainPage : Page
         {
             Button { Tag: string path } button when Directory.Exists(path) =>
                 DirectoryDropTarget(path, button, false),
-            _ when ReferenceEquals(sender, SecondaryFileList) =>
+            _ when ReferenceEquals(sender, SecondaryFileList) && !SplitViewModel.IsComputerView =>
                 DirectoryDropTarget(SplitViewModel.CurrentPath, sender as Control, false),
-            _ when ReferenceEquals(sender, FileList) ||
-                   ReferenceEquals(sender, IconFileList) ||
-                   ReferenceEquals(sender, CompactFileList) =>
+            _ when (ReferenceEquals(sender, FileList) ||
+                    ReferenceEquals(sender, IconFileList) ||
+                    ReferenceEquals(sender, CompactFileList)) && !ViewModel.IsComputerView =>
                 DirectoryDropTarget(ViewModel.CurrentPath, sender as Control, false),
             _ => null
         };
@@ -4603,8 +4630,9 @@ public sealed partial class MainPage : Page
         var singleFolder = singleSelection && selected[0].IsDirectory;
         var singleFile = singleSelection && !selected[0].IsDirectory;
         var inTrash = ActiveBrowser.IsRecycleBinView;
+        var inComputer = ActiveBrowser.IsComputerView;
         var canCreate = CanWriteToCurrentFolder();
-        var canModifySelection = hasSelection && !inTrash && CanWriteSelectionParents(selected);
+        var canModifySelection = hasSelection && !inTrash && !inComputer && CanWriteSelectionParents(selected);
         var hasClipboardItems = ClipboardContainsStorageItems();
         var canPaste = canCreate && hasClipboardItems;
         var canPasteIntoFolder = singleFolder &&
@@ -4626,7 +4654,7 @@ public sealed partial class MainPage : Page
         ContextCutMenuItem.Visibility = inTrash ? Visibility.Collapsed : Visibility.Visible;
         ContextCopyMenuItem.Visibility = inTrash ? Visibility.Collapsed : Visibility.Visible;
         ContextCutMenuItem.IsEnabled = canModifySelection;
-        ContextCopyMenuItem.IsEnabled = hasSelection && !inTrash;
+        ContextCopyMenuItem.IsEnabled = hasSelection && !inTrash && !inComputer;
         ContextDuplicateMenuItem.Visibility = inTrash ? Visibility.Collapsed : Visibility.Visible;
         ContextDuplicateMenuItem.IsEnabled = hasSelection && canCreate;
         ContextRenameMenuItem.Visibility = inTrash ? Visibility.Collapsed : Visibility.Visible;
@@ -4635,7 +4663,7 @@ public sealed partial class MainPage : Page
         ContextMakeLinkMenuItem.IsEnabled = singleSelection && canCreate;
         ContextMoveToTrashMenuItem.Visibility = inTrash ? Visibility.Collapsed : Visibility.Visible;
         ContextMoveToTrashMenuItem.IsEnabled = canModifySelection;
-        ContextDeletePermanentlyMenuItem.IsEnabled = hasSelection;
+        ContextDeletePermanentlyMenuItem.IsEnabled = hasSelection && !inComputer;
 
         FileOpenMenuItem.Visibility = singleSelection && !inTrash ? Visibility.Visible : Visibility.Collapsed;
         FileOpenWithMenuItem.Visibility = singleFile && !inTrash ? Visibility.Visible : Visibility.Collapsed;
@@ -4652,16 +4680,16 @@ public sealed partial class MainPage : Page
         FolderPasteMenuItem.IsEnabled = canPaste;
 
         EditCutMenuItem.IsEnabled = canModifySelection;
-        EditCopyMenuItem.IsEnabled = hasSelection && !inTrash;
+        EditCopyMenuItem.IsEnabled = hasSelection && !inTrash && !inComputer;
         EditPasteMenuItem.IsEnabled = canPaste;
         EditMoveToTrashMenuItem.IsEnabled = canModifySelection;
-        EditDeletePermanentlyMenuItem.IsEnabled = hasSelection;
+        EditDeletePermanentlyMenuItem.IsEnabled = hasSelection && !inComputer;
         EditDuplicateMenuItem.IsEnabled = hasSelection && canCreate;
         EditRenameMenuItem.IsEnabled = canModifySelection;
     }
 
     private bool CanWriteToCurrentFolder() =>
-        !ActiveBrowser.IsRecycleBinView &&
+        !ActiveBrowser.IsVirtualView &&
         !ActiveBrowser.IsSearchMode &&
         IsDirectoryPotentiallyWritable(ActiveBrowser.CurrentPath);
 
@@ -5071,8 +5099,24 @@ public sealed partial class MainPage : Page
         }
     }
 
+    private bool RejectComputerViewMutation(string action)
+    {
+        if (!ActiveBrowser.IsComputerView)
+        {
+            return false;
+        }
+
+        ViewModel.StatusText = $"{action} is not available for drives in This PC.";
+        return true;
+    }
+
     private bool RejectRecycleBinMutation(string action)
     {
+        if (RejectComputerViewMutation(action))
+        {
+            return true;
+        }
+
         if (!ActiveBrowser.IsRecycleBinView)
         {
             return false;
@@ -5084,6 +5128,11 @@ public sealed partial class MainPage : Page
 
     private bool RejectDestinationMutation(string action, string? destinationPath = null)
     {
+        if (destinationPath is null && RejectComputerViewMutation(action))
+        {
+            return true;
+        }
+
         if (ActiveBrowser.IsRecycleBinView)
         {
             ViewModel.StatusText = $"{action} is not available while viewing Trash.";

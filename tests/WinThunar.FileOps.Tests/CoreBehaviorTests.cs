@@ -325,6 +325,23 @@ public sealed class CoreBehaviorTests : IDisposable
         Assert.Equal(Path.GetFullPath(target), resolved, StringComparer.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public async Task RefusesToDeleteDriveRootsBeforeTouchingAnything()
+    {
+        // An unused drive letter: if the guard ever regressed, deletion would only find nothing there.
+        var unusedRoot = Enumerable.Range('D', 23)
+            .Select(letter => $"{(char)letter}:\\")
+            .First(root => !Directory.Exists(root));
+        var bystander = Path.Combine(_root, "keep.txt");
+        await File.WriteAllTextAsync(bystander, "contents");
+        var service = new FileOperationService();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.DeletePermanentlyAsync([bystander, unusedRoot]));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.MoveToTrashAsync([bystander, unusedRoot]));
+
+        Assert.True(File.Exists(bystander));
+    }
+
     public void Dispose()
     {
         var expectedParent = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "WinThunar.FileOps.Tests"));

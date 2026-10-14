@@ -3,7 +3,7 @@
 ## 1. Browser foundation
 
 - [x] Classic Thunar window layout
-- [x] Places and Devices side pane
+- [x] Places and Devices side pane, This PC, and OneDrive
 - [x] Details, icon, and compact views
 - [x] Browser tabs with per-tab navigation history
 - [x] Split panes with independent navigation and active-pane file commands

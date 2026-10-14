@@ -35,6 +35,7 @@ public sealed partial class MainPage : Page
     private CancellationTokenSource? _searchInputDelay;
     private MainPageViewModel? _searchBrowser;
     private LaunchRequest _launchRequest = LaunchRequest.Empty;
+    private (int X, int Y)? _contextMenuScreenPoint;
     private bool _confirmMoveToTrash;
     private bool _restoreTabs = true;
     private bool _treeSidePane;
@@ -2577,6 +2578,7 @@ public sealed partial class MainPage : Page
         }
 
         UpdateCommandState();
+        ContextShowMoreOptionsMenuItem.Visibility = ActiveBrowser.IsRecycleBinView ? Visibility.Collapsed : Visibility.Visible;
 
         foreach (var generated in _generatedPluginMenuItems)
         {
@@ -2618,6 +2620,7 @@ public sealed partial class MainPage : Page
     {
         RefreshCreateDocumentMenus();
         UpdateCommandState();
+        FolderShowMoreOptionsMenuItem.Visibility = ActiveBrowser.IsRecycleBinView ? Visibility.Collapsed : Visibility.Visible;
         if (sender is not MenuFlyout menu)
         {
             return;
@@ -3208,8 +3211,9 @@ public sealed partial class MainPage : Page
 
         SetActivePaneForList(sender);
         var hasPosition = e.TryGetPosition(list, out var position);
+        // FindElementsInHostCoordinates takes window coordinates, not list-relative ones.
         var entry = hasPosition
-            ? VisualTreeHelper.FindElementsInHostCoordinates(position, list)
+            ? VisualTreeHelper.FindElementsInHostCoordinates(list.TransformToVisual(null).TransformPoint(position), list)
                 .OfType<FrameworkElement>()
                 .Select(element => element.DataContext)
                 .OfType<FileSystemEntry>()
@@ -3233,6 +3237,21 @@ public sealed partial class MainPage : Page
         }
 
         e.Handled = true;
+        _contextMenuScreenPoint = hasPosition
+            ? ToScreenPoint(list, position)
+            : entry is not null && list.ContainerFromItem(entry) is UIElement container
+                ? ToScreenPoint(container, new Windows.Foundation.Point(24, 12))
+                : ToScreenPoint(list, new Windows.Foundation.Point(24, 24));
+
+        // Shift+right-click goes straight to the full Windows menu with extended verbs, as in Explorer.
+        if (!ActiveBrowser.IsRecycleBinView &&
+            Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Shift)
+                .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down))
+        {
+            ShowNativeContextMenu(entry is null, true);
+            return;
+        }
+
         if (menu is not null)
         {
             if (hasPosition)
@@ -3243,6 +3262,59 @@ public sealed partial class MainPage : Page
             {
                 menu.ShowAt(list);
             }
+        }
+    }
+
+    private (int X, int Y) ToScreenPoint(UIElement element, Windows.Foundation.Point point)
+    {
+        var inRoot = element.TransformToVisual(null).TransformPoint(point);
+        var scale = XamlRoot?.RasterizationScale ?? 1;
+        return ShellContextMenu.ClientToScreen(HostWindowHandle, (int)(inRoot.X * scale), (int)(inRoot.Y * scale));
+    }
+
+    private void ShowMoreItemOptions_Click(object sender, RoutedEventArgs e) =>
+        DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () => ShowNativeContextMenu(false, false));
+
+    private void ShowMoreFolderOptions_Click(object sender, RoutedEventArgs e) =>
+        DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () => ShowNativeContextMenu(true, false));
+
+    /// <summary>
+    /// Shows the Windows shell menu, which carries third-party extensions, Send To, and Open With.
+    /// Queued at low priority from flyout items so the WinUI flyout has closed first.
+    /// </summary>
+    private void ShowNativeContextMenu(bool folderBackground, bool extendedVerbs)
+    {
+        var browser = ActiveBrowser;
+        if (browser.IsRecycleBinView || string.IsNullOrEmpty(browser.CurrentPath))
+        {
+            return;
+        }
+
+        IReadOnlyList<string> items = folderBackground
+            ? []
+            : SelectedEntries().Select(entry => entry.FullPath).ToList();
+        if (!folderBackground && items.Count == 0)
+        {
+            return;
+        }
+
+        // Search results can span folders, but one shell menu needs a single parent.
+        var folder = folderBackground ? browser.CurrentPath : Path.GetDirectoryName(items[0]);
+        if (folder is null || items.Any(item => !PathEquals(Path.GetDirectoryName(item), folder)))
+        {
+            browser.StatusText = "Show More Options needs items from a single folder.";
+            return;
+        }
+
+        var (x, y) = _contextMenuScreenPoint ?? ShellContextMenu.GetCursorPosition();
+        _contextMenuScreenPoint = null;
+        try
+        {
+            ShellContextMenu.Show(HostWindowHandle, folder, items, x, y, extendedVerbs);
+        }
+        catch (Exception exception) when (exception is COMException or ArgumentException or UnauthorizedAccessException or IOException)
+        {
+            browser.StatusText = $"The Windows menu could not be shown: {exception.Message}";
         }
     }
 
@@ -3634,7 +3706,8 @@ public sealed partial class MainPage : Page
     {
         if (sender is UIElement dropSurface)
         {
-            var pointerPosition = args.GetPosition(dropSurface);
+            // FindElementsInHostCoordinates takes window coordinates, not surface-relative ones.
+            var pointerPosition = args.GetPosition(null);
             foreach (var hit in VisualTreeHelper.FindElementsInHostCoordinates(
                          pointerPosition,
                          dropSurface,

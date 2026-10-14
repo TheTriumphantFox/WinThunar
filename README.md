@@ -37,6 +37,7 @@ The project is open source under the MIT License. It does not contain code copie
 - Renameable, reorderable persistent bookmarks
 - Pathbar and editable-toolbar location selector styles
 - Native Windows Properties and Open With dialogs, new windows, and Open in New Tab
+- The full Windows shell context menu, including third-party extensions and Send To, from `Show More Options` or Shift+right-click
 - Create-from-Templates, symbolic links, select-by-pattern, and invert-selection commands
 - Previewed, collision-safe bulk rename with grouped Undo/Redo
 - Preferences for thumbnails, sorting, recursive search, trash confirmation, tab restoration, and default view

@@ -33,6 +33,7 @@
 - [x] Previewed, collision-safe bulk rename with grouped Undo/Redo
 - [x] Custom actions with file-pattern filters, confirmation, and argument-list execution
 - [x] Native Windows Properties including Security/permissions
+- [x] Windows shell context menu ("Show More Options" and Shift+right-click) with third-party extensions, Send To, and Open With
 - [x] Mapped network shares, direct UNC connections, and Windows network browser
 - [x] Removable-device eject and safe removal request
 - [x] Native Open With, document templates, symbolic links, selection patterns, and invert selection

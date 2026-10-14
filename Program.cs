@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using Microsoft.UI.Dispatching;
 using Microsoft.Windows.AppLifecycle;
+using Velopack;
 using WinThunar.Services;
 
 namespace WinThunar;
@@ -16,6 +17,14 @@ public static class Program
     [STAThread]
     private static int Main(string[] args)
     {
+        // Must run first: the installer launches the app with hook arguments and expects it to exit.
+        // An all-users install needs administrator permission to update, so a pending update must not
+        // raise a UAC prompt every time WinThunar starts; the update bar offers it instead.
+        VelopackApp.Build()
+            .SetAutoApplyOnStartup(UpdateService.IsInstallFolderWritable())
+            .OnBeforeUninstallFastCallback(_ => ReleaseShellRegistration())
+            .Run();
+
         WinRT.ComWrappersSupport.InitializeComWrappers();
         if (args is [var switchArgument] && TryRunRegistrationSwitch(switchArgument, out var exitCode))
         {
@@ -83,6 +92,27 @@ public static class Program
         }
 
         return true;
+    }
+
+    /// <summary>
+    /// Uninstalling deletes the executable, so Explorer must stop launching it. A portable copy's
+    /// registration is left in place.
+    /// </summary>
+    private static void ReleaseShellRegistration()
+    {
+        if (!ShellRegistrationService.IsSupported || Environment.ProcessPath is not { } executable)
+        {
+            return;
+        }
+
+        try
+        {
+            new ShellRegistrationService(executable).UnregisterIfOwned();
+        }
+        catch (Exception exception) when (exception is UnauthorizedAccessException or System.Security.SecurityException or IOException)
+        {
+            // Never block an uninstall; the stale verb is harmless and the next copy repairs it.
+        }
     }
 
     private static bool TryRedirectToRunningInstance()

@@ -25,6 +25,7 @@
     <Compile Include="..\..\Services\LaunchRequest.cs" Link="Services\LaunchRequest.cs" />
     <Compile Include="..\..\Services\ShellRegistrationService.cs" Link="Services\ShellRegistrationService.cs" />
     <Compile Include="..\..\Services\ShellFileOperation.cs" Link="Services\ShellFileOperation.cs" />
+    <Compile Include="..\..\Services\UpdateSettings.cs" Link="Services\UpdateSettings.cs" />
     <Compile Include="..\..\Models\FileTransferJob.cs" Link="Models\FileTransferJob.cs" />
     <Compile Include="..\..\Models\BrowserState.cs" Link="Models\BrowserState.cs" />
     <Compile Include="..\..\Models\PluginManifest.cs" Link="Models\PluginManifest.cs" />

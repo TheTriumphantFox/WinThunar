@@ -164,6 +164,22 @@ public sealed class ShellRegistrationService
     }
 
     /// <summary>
+    /// Removes the registration only when it launches this executable, so uninstalling one copy never
+    /// strips another copy's registration. Returns true when something was removed.
+    /// </summary>
+    public bool UnregisterIfOwned()
+    {
+        if (RegisteredExecutable is not { } registered ||
+            !string.Equals(registered, _executablePath, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        SetOpenVerb(false);
+        return true;
+    }
+
+    /// <summary>
     /// Deletes a key and then its parents while they are empty, stopping at the classes root. An empty
     /// HKCU class key can otherwise mask the machine-wide one in the merged HKCR view.
     /// </summary>

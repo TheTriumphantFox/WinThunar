@@ -93,6 +93,22 @@ public sealed class ShellRegistrationTests : IDisposable
         Assert.Equal(existing, Create().RegisteredExecutable);
     }
 
+    [Fact]
+    public void UninstallRemovesOnlyItsOwnRegistration()
+    {
+        Write(@"Directory\shell", string.Empty, "previousVerb");
+        var portable = Path.Combine(Path.GetTempPath(), "Portable WinThunar", "WinThunar.exe");
+        Create(portable).SetDefaultFileManager(true);
+
+        Assert.False(Create().UnregisterIfOwned());
+        Assert.Equal(portable, Create().RegisteredExecutable);
+
+        Assert.True(Create(portable.ToUpperInvariant()).UnregisterIfOwned());
+        Assert.False(Create().IsOpenVerbRegistered);
+        Assert.Equal("previousVerb", Read(@"Directory\shell"));
+        Assert.False(Create().UnregisterIfOwned());
+    }
+
     private string? Read(string path, string name = "")
     {
         using var key = Registry.CurrentUser.OpenSubKey($@"{Classes}\{path}");

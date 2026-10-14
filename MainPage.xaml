@@ -281,6 +281,8 @@
                 <MenuFlyoutItem Text="Move Current Bookmark Down" Click="MoveBookmarkDown_Click" />
             </MenuBarItem>
             <MenuBarItem Title="Help" AccessKey="H">
+                <MenuFlyoutItem Text="Check for Updates..." Click="CheckForUpdates_Click" />
+                <MenuFlyoutSeparator />
                 <MenuFlyoutItem Text="About WinThunar" Click="About_Click" />
             </MenuBarItem>
         </MenuBar>
@@ -864,8 +866,20 @@
             </Grid>
         </Border>
 
-        <Border Grid.Row="7" Padding="8,5" Background="#FFECECEC" BorderBrush="#FFD0D0D0" BorderThickness="0,1,0,0">
-            <TextBlock Text="{x:Bind ViewModel.StatusText, Mode=OneWay}" />
-        </Border>
+        <StackPanel Grid.Row="7">
+            <InfoBar
+                x:Name="UpdateInfoBar"
+                Title="Update ready"
+                Severity="Informational"
+                IsOpen="False"
+                CloseButtonClick="UpdateInfoBar_CloseButtonClick">
+                <InfoBar.ActionButton>
+                    <Button x:Name="RestartToUpdateButton" Content="Restart Now" Click="RestartToUpdate_Click" />
+                </InfoBar.ActionButton>
+            </InfoBar>
+            <Border Padding="8,5" Background="#FFECECEC" BorderBrush="#FFD0D0D0" BorderThickness="0,1,0,0">
+                <TextBlock Text="{x:Bind ViewModel.StatusText, Mode=OneWay}" />
+            </Border>
+        </StackPanel>
     </Grid>
 </Page>

@@ -1,10 +1,13 @@
 param(
     [Parameter()]
     [ValidatePattern('^\d+\.\d+(?:\.\d+)?(?:[-+][0-9A-Za-z.-]+)?$')]
-    [string]$Version = '0.4.1',
+    [string]$Version = '0.5.0',
 
     [Parameter()]
-    [switch]$PackageExistingPublish
+    [switch]$PackageExistingPublish,
+
+    [Parameter()]
+    [switch]$SkipInstaller
 )
 
 $ErrorActionPreference = 'Stop'
@@ -16,11 +19,37 @@ $publishDirectory = [System.IO.Path]::GetFullPath((Join-Path $artifactsRoot $rel
 $zipPath = [System.IO.Path]::GetFullPath((Join-Path $artifactsRoot "$releaseName.zip"))
 $checksumPath = "$zipPath.sha256"
 
+# The installer's package id is deliberately not "WinThunar": a per-user install goes to
+# %LOCALAPPDATA%\<packId> and uninstall deletes that folder, which would take the user's
+# session, plugins, and transfer-recovery records in %LOCALAPPDATA%\WinThunar with it.
+$installerPackId = 'WinThunar.App'
+# Every release's packages stay here so later versions can be built as delta updates.
+$installerReleasesDirectory = Join-Path $artifactsRoot 'installer'
+# The MSI is the installer people run: it asks whether to install for the current user or for
+# everyone, and (after Set-MsiShortcutChoices.ps1) which shortcuts to create. Velopack's Setup.exe
+# can do neither; it stays in the releases directory for scripted per-user installs.
+$msiPath = Join-Path $artifactsRoot "$releaseName.msi"
+$msiChecksumPath = "$msiPath.sha256"
+
 if (-not $publishDirectory.StartsWith($artifactsRoot + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)) {
     throw 'The publish directory escaped the workspace artifacts directory.'
 }
 
-foreach ($outputPath in @($zipPath, $checksumPath)) {
+if (-not $SkipInstaller) {
+    if ($Version -notmatch '^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$') {
+        throw "The installer needs a three-part version such as 1.2.3; '$Version' is not one. Pass -SkipInstaller for a ZIP-only build."
+    }
+    if (-not (Get-Command vpk -ErrorAction SilentlyContinue)) {
+        throw 'The Velopack CLI (vpk) is not installed. Run: dotnet tool install -g vpk --version 1.2.161, or pass -SkipInstaller.'
+    }
+}
+
+$plannedOutputs = @($zipPath, $checksumPath)
+if (-not $SkipInstaller) {
+    $plannedOutputs += @($msiPath, $msiChecksumPath)
+}
+
+foreach ($outputPath in $plannedOutputs) {
     if (Test-Path -LiteralPath $outputPath) {
         throw "Release output already exists: $outputPath. Move or remove that exact prior output before publishing again."
     }
@@ -92,10 +121,43 @@ if (-not $archiveCreated) {
 $hash = (Get-FileHash -LiteralPath $zipPath -Algorithm SHA256).Hash.ToLowerInvariant()
 Set-Content -LiteralPath $checksumPath -Value "$hash  $releaseName.zip" -Encoding ascii
 
+$msiHash = $null
+if (-not $SkipInstaller) {
+    & vpk pack `
+        --packId $installerPackId `
+        --runtime win-x64 `
+        --msi `
+        --instLocation Either `
+        --packVersion $Version `
+        --packDir $publishDirectory `
+        --mainExe 'WinThunar.exe' `
+        --packTitle 'WinThunar' `
+        --packAuthors 'TheTriumphantFox' `
+        --icon (Join-Path $projectRoot 'Assets\AppIcon.ico') `
+        --outputDir $installerReleasesDirectory
+
+    if ($LASTEXITCODE -ne 0) {
+        throw "vpk pack failed with exit code $LASTEXITCODE."
+    }
+
+    $builtMsi = Join-Path $installerReleasesDirectory "$installerPackId-win.msi"
+    if (-not (Test-Path -LiteralPath $builtMsi)) {
+        throw "vpk pack did not produce $builtMsi."
+    }
+
+    # Edited in place so the MSI that `vpk upload` publishes offers the same choices.
+    & (Join-Path $PSScriptRoot 'Set-MsiShortcutChoices.ps1') -MsiPath $builtMsi
+    Copy-Item -LiteralPath $builtMsi -Destination $msiPath
+    $msiHash = (Get-FileHash -LiteralPath $msiPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    Set-Content -LiteralPath $msiChecksumPath -Value "$msiHash  $releaseName.msi" -Encoding ascii
+}
+
 [pscustomobject]@{
     Executable = $executable
     Archive = $zipPath
     Checksum = $checksumPath
     Sha256 = $hash
+    Installer = if ($SkipInstaller) { $null } else { $msiPath }
+    InstallerSha256 = $msiHash
     PluginCount = $pluginCount
 }

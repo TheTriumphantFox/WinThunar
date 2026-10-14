@@ -41,9 +41,11 @@
 
 ## 4. Windows integration and distribution
 
-- “Open in WinThunar” shell command
+- [x] “Open in WinThunar” shell command
+- [x] Command-line folder and `/select` launches with single-instance window reuse
 - Taskbar jump list and notifications
-- Optional Explorer-launch redirection, kept separate because it modifies shell behavior
+- [x] Optional, reversible default handler for folders and drives (Win+E and apps that call
+  `SHOpenFolderAndSelectItems` still open Explorer)
 - Portable/self-contained x64 GitHub release
 - Optional installer or MSIX packaging and updates
 - [x] Transfer crash recovery journal and bounded thumbnail loading

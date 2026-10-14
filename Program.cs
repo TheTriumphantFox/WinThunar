@@ -17,9 +17,26 @@ public static class Program
     private static int Main(string[] args)
     {
         WinRT.ComWrappersSupport.InitializeComWrappers();
+        if (args is [var switchArgument] && TryRunRegistrationSwitch(switchArgument, out var exitCode))
+        {
+            return exitCode;
+        }
+
         if (TryRedirectToRunningInstance())
         {
             return 0;
+        }
+
+        if (ShellRegistrationService.IsSupported && Environment.ProcessPath is { } executable)
+        {
+            try
+            {
+                new ShellRegistrationService(executable).RepairExecutablePath();
+            }
+            catch (Exception exception) when (exception is UnauthorizedAccessException or System.Security.SecurityException or IOException)
+            {
+                // Startup must not depend on registry access.
+            }
         }
 
         var request = LaunchRequest.Parse(args);
@@ -30,6 +47,42 @@ public static class Program
             _ = new App(request);
         });
         return 0;
+    }
+
+    /// <summary>
+    /// Scriptable registration, including the recovery path that works even when the UI cannot start.
+    /// </summary>
+    private static bool TryRunRegistrationSwitch(string argument, out int exitCode)
+    {
+        exitCode = 0;
+        var action = argument.ToLowerInvariant() switch
+        {
+            ShellRegistrationService.UnregisterSwitch => (Action<ShellRegistrationService>)(service => service.SetOpenVerb(false)),
+            ShellRegistrationService.RegisterSwitch => service => service.SetOpenVerb(true),
+            ShellRegistrationService.RegisterDefaultSwitch => service => service.SetDefaultFileManager(true),
+            _ => null
+        };
+        if (action is null)
+        {
+            return false;
+        }
+
+        if (!ShellRegistrationService.IsSupported || Environment.ProcessPath is not { } executable)
+        {
+            exitCode = 1;
+            return true;
+        }
+
+        try
+        {
+            action(new ShellRegistrationService(executable));
+        }
+        catch (Exception exception) when (exception is UnauthorizedAccessException or System.Security.SecurityException or IOException)
+        {
+            exitCode = 1;
+        }
+
+        return true;
     }
 
     private static bool TryRedirectToRunningInstance()

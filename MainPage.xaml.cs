@@ -2072,6 +2072,29 @@ public sealed partial class MainPage : Page
         var singleClick = new CheckBox { Content = "Single click opens files and folders", IsChecked = _singleClickActivation };
         var rememberFolders = new CheckBox { Content = "Remember view, zoom, and sorting for each folder", IsChecked = _rememberFolderViews };
         var previewImages = new CheckBox { Content = "Show image preview side pane", IsChecked = _showImagePreview };
+        var shellSupported = ShellRegistrationService.IsSupported && Environment.ProcessPath is not null;
+        var shellRegistration = new ShellRegistrationService(Environment.ProcessPath ?? string.Empty);
+        var openVerb = new CheckBox
+        {
+            Content = "Add \"Open in WinThunar\" to Explorer's folder menu",
+            IsChecked = shellSupported && shellRegistration.IsOpenVerbRegistered,
+            IsEnabled = shellSupported
+        };
+        var defaultManager = new CheckBox
+        {
+            Content = "Open folders and drives in WinThunar",
+            IsChecked = shellSupported && shellRegistration.IsDefaultFileManager,
+            IsEnabled = shellSupported
+        };
+        var integrationNote = new TextBlock
+        {
+            Text = shellSupported
+                ? $"Applies to your Windows account only and can be turned off here or with \"WinThunar.exe {ShellRegistrationService.UnregisterSwitch}\". Turn it off before moving or deleting WinThunar."
+                : "Windows integration is available in the portable build.",
+            TextWrapping = TextWrapping.Wrap,
+            MaxWidth = 430,
+            Foreground = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 90, 90, 90))
+        };
         var defaultView = new ComboBox
         {
             Header = "Default/last active view",
@@ -2096,6 +2119,10 @@ public sealed partial class MainPage : Page
         content.Children.Add(restoreTabs);
         content.Children.Add(singleClick);
         content.Children.Add(rememberFolders);
+        content.Children.Add(new TextBlock { Text = "Windows Integration", Margin = new Thickness(0, 8, 0, 0), FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+        content.Children.Add(openVerb);
+        content.Children.Add(defaultManager);
+        content.Children.Add(integrationNote);
 
         var dialog = new ContentDialog
         {
@@ -2131,6 +2158,30 @@ public sealed partial class MainPage : Page
         });
         UpdateViewMenu();
         SaveSession();
+        if (shellSupported)
+        {
+            ApplyShellIntegration(shellRegistration, openVerb.IsChecked == true, defaultManager.IsChecked == true);
+        }
+    }
+
+    private void ApplyShellIntegration(ShellRegistrationService registration, bool openVerb, bool defaultManager)
+    {
+        try
+        {
+            // The default handler needs the verb, so it implies it. Untouched settings are left alone
+            // so applying unrelated preferences never re-points registration at this executable.
+            var wantVerb = openVerb || defaultManager;
+            if (wantVerb != registration.IsOpenVerbRegistered)
+            {
+                registration.SetOpenVerb(wantVerb);
+            }
+
+            registration.SetDefaultFileManager(defaultManager);
+        }
+        catch (Exception exception) when (exception is UnauthorizedAccessException or System.Security.SecurityException or IOException)
+        {
+            ViewModel.StatusText = $"Windows integration could not be updated: {exception.Message}";
+        }
     }
 
     private async void About_Click(object sender, RoutedEventArgs e)

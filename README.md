@@ -48,6 +48,31 @@ The project is open source under the MIT License. It does not contain code copie
 - Selection-aware custom actions with file patterns, file/folder targeting, confirmation prompts, and argument-list execution without a command shell
 - Atomic, junction-safe bundled archive create/extract, media-tag editing, Git status/diff/log, and Windows sharing-management integrations
 
+## Using WinThunar as the default file manager
+
+`Edit > Preferences > Windows Integration` can add "Open in WinThunar" to Explorer's folder menu
+and make WinThunar the handler for opening folders and drives. Both settings write only to your
+own account's registry (`HKCU\Software\Classes`), record any value they replace, and restore it
+when turned off. They are available in the portable build; MSIX packages cannot register shell
+handlers this way.
+
+The same changes can be scripted, and `--unregister-shell` is the recovery path if WinThunar
+cannot start:
+
+```powershell
+.\WinThunar.exe --register-shell      # "Open in WinThunar" only
+.\WinThunar.exe --register-default    # also open folders and drives in WinThunar
+.\WinThunar.exe --unregister-shell    # undo both
+```
+
+Turn the setting off before moving or deleting the portable folder. If the registered copy has
+already been moved, launching WinThunar from its new location repairs the registration.
+
+WinThunar accepts a folder or file path, `file:` URIs, and Explorer-style `/select,<path>`,
+`/root,<path>`, `/n`, and `/e` switches. A second launch opens a new window in the running
+process. Windows still opens Explorer for Win+E and for apps that call
+`SHOpenFolderAndSelectItems` directly.
+
 Directory junction transfer is intentionally blocked until link-safe behavior is implemented. Transfer
 undo is intentionally withheld after Replace or directory Merge because the displaced data cannot yet
 be restored safely.

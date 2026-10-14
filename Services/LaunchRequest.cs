@@ -257,6 +257,11 @@ public sealed record LaunchRequest(string? FolderPath, string? SelectPath)
         }
 
         value = value.Trim().Trim('"');
+        // A shell command of "%V" for a drive root arrives as C:" because \" escapes the quote.
+        if (value.Length == 2 && char.IsAsciiLetter(value[0]) && value[1] == ':')
+        {
+            value += Path.DirectorySeparatorChar;
+        }
         if (value.StartsWith("::", StringComparison.Ordinal) ||
             value.StartsWith("shell:", StringComparison.OrdinalIgnoreCase))
         {

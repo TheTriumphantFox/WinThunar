@@ -43,6 +43,15 @@ public sealed class LaunchRequestTests : IDisposable
     }
 
     [Fact]
+    public void RecoversDriveRootsMangledByTrailingBackslashQuotes()
+    {
+        var drive = Path.GetPathRoot(_root)!;
+        var mangled = LaunchRequest.SplitCommandLine($"\"C:\\WinThunar.exe\" \"{drive}\"")[1];
+        Assert.Equal(drive[..2] + "\"", mangled);
+        Assert.Equal(new LaunchRequest(drive, null), LaunchRequest.Parse([mangled]));
+    }
+
+    [Fact]
     public void OpeningAFileSelectsItInItsFolder()
     {
         Assert.Equal(new LaunchRequest(_root, _file), LaunchRequest.Parse([_file]));

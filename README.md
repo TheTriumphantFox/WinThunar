@@ -74,7 +74,11 @@ WinThunar accepts a folder or file path, `file:` URIs, and Explorer-style `/sele
 process. Windows still opens Explorer for Win+E and for apps that call
 `SHOpenFolderAndSelectItems` directly.
 
-Directory junction transfer is intentionally blocked until link-safe behavior is implemented. Transfer
+When WinThunar is denied access (for example in `Program Files`), it offers to let the Windows copy
+engine finish the copy, move, trash, delete, new-folder, or rename, which asks for administrator
+permission itself. WinThunar's own engine does not copy directory links or junctions yet; it offers
+the same hand-off, and Windows copies the linked folder's contents as Explorer does. Operations
+finished by Windows are not in WinThunar's Undo history. Transfer
 undo is intentionally withheld after Replace or directory Merge because the displaced data cannot yet
 be restored safely.
 

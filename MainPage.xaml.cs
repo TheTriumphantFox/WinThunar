@@ -1361,9 +1361,11 @@ public sealed partial class MainPage : Page
         }
 
         string? createdPath = null;
+        var parentFolder = ActiveBrowser.CurrentPath;
         if (await RunFileOperationAsync(
             $"Creating folder '{name}'...",
-            async () => createdPath = await _fileOperations.CreateDirectoryAsync(ActiveBrowser.CurrentPath, name)) &&
+            async () => createdPath = await _fileOperations.CreateDirectoryAsync(parentFolder, name),
+            owner => ShellFileOperation.CreateFolder(owner, parentFolder, name, true)) &&
             createdPath is not null)
         {
             await PushCreateHistoryAsync(createdPath, true);
@@ -1665,7 +1667,8 @@ public sealed partial class MainPage : Page
         string? destinationPath = null;
         if (await RunFileOperationAsync(
             $"Renaming '{entry.Name}'...",
-            async () => destinationPath = await _fileOperations.RenameAsync(entry.FullPath, newName)) &&
+            async () => destinationPath = await _fileOperations.RenameAsync(entry.FullPath, newName),
+            owner => ShellFileOperation.Rename(owner, entry.FullPath, newName, true)) &&
             destinationPath is not null)
         {
             PushRenameHistory(entry.FullPath, destinationPath);
@@ -1826,9 +1829,11 @@ public sealed partial class MainPage : Page
             }
         }
 
+        var trashPaths = selected.Select(entry => entry.FullPath).ToArray();
         await RunFileOperationAsync(
             $"Moving {selected.Count} item{(selected.Count == 1 ? string.Empty : "s")} to Trash...",
-            () => _fileOperations.MoveToTrashAsync(selected.Select(entry => entry.FullPath)));
+            () => _fileOperations.MoveToTrashAsync(trashPaths),
+            owner => ShellFileOperation.Run(owner, ShellFileOperation.Kind.Recycle, ExistingPaths(trashPaths), null, true));
     }
 
     private async void DeletePermanently_Click(object sender, RoutedEventArgs e)
@@ -1873,8 +1878,12 @@ public sealed partial class MainPage : Page
             .ToArray();
         await RunFileOperationAsync(
             $"Permanently deleting {selected.Count} item{(selected.Count == 1 ? string.Empty : "s")}...",
-            () => _fileOperations.DeletePermanentlyAsync(pathsToDelete));
+            () => _fileOperations.DeletePermanentlyAsync(pathsToDelete),
+            owner => ShellFileOperation.Run(owner, ShellFileOperation.Kind.Delete, ExistingPaths(pathsToDelete), null, true));
     }
+
+    private static IReadOnlyList<string> ExistingPaths(IEnumerable<string> paths) =>
+        paths.Where(path => File.Exists(path) || Directory.Exists(path)).ToList();
 
     private void SelectAll_Click(object sender, RoutedEventArgs e) => ActiveFileList.SelectAll();
 
@@ -4191,7 +4200,7 @@ public sealed partial class MainPage : Page
                 FileTransferMode.Link => "Create Link",
                 _ => "Copy"
             };
-            await FinishTransferAsync(result, operationName);
+            await FinishTransferAsync(result, operationName, destination, mode);
             PushTransferHistory(result.Transfers, operationName);
             return result;
         }
@@ -4227,15 +4236,49 @@ public sealed partial class MainPage : Page
         }
     }
 
-    private async Task FinishTransferAsync(FileOperationResult result, string operationName)
+    private async Task FinishTransferAsync(
+        FileOperationResult result,
+        string operationName,
+        string destination,
+        FileTransferMode mode)
     {
-        await RefreshVisiblePanesAsync();
-        if (result.Errors.Count > 0)
+        IReadOnlyList<string> errors = result.Errors;
+        var assistSources = result.WindowsAssistSources;
+        if (assistSources.Count > 0 && !result.Cancelled)
         {
-            var details = string.Join(Environment.NewLine, result.Errors.Take(6));
-            if (result.Errors.Count > 6)
+            var single = assistSources.Count == 1;
+            var count = single ? "1 item" : $"{assistSources.Count} items";
+            var them = single ? "it" : "them";
+            var verb = mode == FileTransferMode.Move ? "moved" : "copied";
+            var (title, message, continueText) = result.WindowsAssistNeedsElevation
+                ? ("Administrator Permission Needed",
+                   $"{count} could not be {verb} because this location needs administrator permission. Windows can finish {them} and will ask you to confirm.",
+                   "Continue")
+                : ("Folder Links",
+                   $"{count} could not be {verb} because {(single ? "it is or contains a folder link" : "they are or contain folder links")}, which WinThunar does not copy itself yet. Windows can finish {them} the way Explorer does.",
+                   "Let Windows Finish");
+            if (await ConfirmWindowsAssistAsync(title, message, continueText))
             {
-                details += $"{Environment.NewLine}...and {result.Errors.Count - 6} more error(s).";
+                RunWindowsAssist(() => ShellFileOperation.Run(
+                    HostWindowHandle,
+                    mode == FileTransferMode.Move ? ShellFileOperation.Kind.Move : ShellFileOperation.Kind.Copy,
+                    ExistingPaths(assistSources),
+                    destination,
+                    result.WindowsAssistNeedsElevation));
+                errors = errors
+                    .Where(error => !assistSources.Any(source =>
+                        error.StartsWith(source + ": ", StringComparison.OrdinalIgnoreCase)))
+                    .ToList();
+            }
+        }
+
+        await RefreshVisiblePanesAsync();
+        if (errors.Count > 0)
+        {
+            var details = string.Join(Environment.NewLine, errors.Take(6));
+            if (errors.Count > 6)
+            {
+                details += $"{Environment.NewLine}...and {errors.Count - 6} more error(s).";
             }
 
             await ShowMessageAsync($"{operationName} Incomplete", details);
@@ -4245,7 +4288,11 @@ public sealed partial class MainPage : Page
         {
             ViewModel.StatusText = $"{operationName} cancelled.";
         }
-        else if (result.Errors.Count == 0)
+        else if (errors.Count == 0 && assistSources.Count > 0)
+        {
+            // RunWindowsAssist already reported how the Windows part ended.
+        }
+        else if (errors.Count == 0)
         {
             ViewModel.StatusText = $"{operationName} complete: {result.CompletedItems} completed, {result.SkippedItems} skipped.";
         }
@@ -4560,7 +4607,11 @@ public sealed partial class MainPage : Page
             : null;
     }
 
-    private async Task<bool> RunFileOperationAsync(string status, Func<Task> operation)
+    /// <param name="windowsFallback">
+    /// Repeats the operation through the Windows copy engine with an elevation prompt when WinThunar's
+    /// own attempt is denied access. It is not added to undo history, so the call reports false.
+    /// </param>
+    private async Task<bool> RunFileOperationAsync(string status, Func<Task> operation, Func<nint, bool>? windowsFallback = null)
     {
         if (ViewModel.IsBusy)
         {
@@ -4575,6 +4626,19 @@ public sealed partial class MainPage : Page
             await RefreshVisiblePanesAsync();
             return true;
         }
+        catch (Exception ex) when (windowsFallback is not null && FileOperationService.IsAccessDenied(ex))
+        {
+            if (await ConfirmWindowsAssistAsync(
+                    "Administrator Permission Needed",
+                    "This location needs administrator permission. Windows can finish the operation and will ask you to confirm.",
+                    "Continue"))
+            {
+                RunWindowsAssist(() => windowsFallback(HostWindowHandle));
+            }
+
+            await RefreshVisiblePanesAsync();
+            return false;
+        }
         catch (Exception ex)
         {
             await ShowMessageAsync("File Operation Failed", ex.Message);
@@ -4584,6 +4648,35 @@ public sealed partial class MainPage : Page
         finally
         {
             ViewModel.IsBusy = false;
+        }
+    }
+
+    private async Task<bool> ConfirmWindowsAssistAsync(string title, string message, string continueText)
+    {
+        var dialog = new ContentDialog
+        {
+            XamlRoot = XamlRoot,
+            Title = title,
+            Content = new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap, MaxWidth = 520 },
+            PrimaryButtonText = continueText,
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary
+        };
+        return await dialog.ShowAsync() == ContentDialogResult.Primary;
+    }
+
+    /// <summary>Runs a Windows copy-engine operation, which shows its own progress and prompts.</summary>
+    private void RunWindowsAssist(Func<bool> operation)
+    {
+        try
+        {
+            ViewModel.StatusText = operation()
+                ? "Windows finished the operation."
+                : "The operation was cancelled or did not finish.";
+        }
+        catch (Exception exception) when (exception is COMException or ArgumentException or FileNotFoundException)
+        {
+            ViewModel.StatusText = $"Windows could not finish the operation: {exception.Message}";
         }
     }
 

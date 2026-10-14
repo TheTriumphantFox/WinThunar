@@ -24,8 +24,10 @@
 - [x] Explicit sequential transfer queue with progress and active-job cancel controls
 - [x] Undo and redo for the ten most recent safely reversible file operations
 - [x] Drag-and-drop rules based on source and destination volumes, including folder-row targets
-- Elevation only when an operation requires it
-- Safe handling for directory links and junctions
+- [x] Elevation only when an operation requires it (copies, moves, trash, delete, new folder, and
+  rename that are denied access can be finished by the Windows copy engine with a UAC prompt)
+- Safe handling for directory links and junctions (they are currently handed to the Windows copy
+  engine, which follows them as Explorer does; native link-preserving copies remain to do)
 
 ## 3. Discovery and power features
 

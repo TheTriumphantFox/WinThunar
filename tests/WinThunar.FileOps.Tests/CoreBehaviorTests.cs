@@ -326,6 +326,67 @@ public sealed class CoreBehaviorTests : IDisposable
     }
 
     [Fact]
+    public async Task ReportsAccessDeniedTransfersForWindowsElevation()
+    {
+        var source = Path.Combine(_root, "item.txt");
+        await File.WriteAllTextAsync(source, "contents");
+        var locked = Directory.CreateDirectory(Path.Combine(_root, "locked"));
+        var identity = System.Security.Principal.WindowsIdentity.GetCurrent().User!;
+        var deny = new System.Security.AccessControl.FileSystemAccessRule(
+            identity,
+            System.Security.AccessControl.FileSystemRights.WriteData | System.Security.AccessControl.FileSystemRights.CreateDirectories,
+            System.Security.AccessControl.AccessControlType.Deny);
+        var security = locked.GetAccessControl();
+        security.AddAccessRule(deny);
+        locked.SetAccessControl(security);
+        try
+        {
+            var result = await new FileOperationService().TransferAsync(
+                [source], locked.FullName, FileTransferMode.Copy, ReplaceConflict);
+
+            Assert.Equal([Path.GetFullPath(source)], result.WindowsAssistSources);
+            Assert.True(result.WindowsAssistNeedsElevation);
+            Assert.True(File.Exists(source));
+        }
+        finally
+        {
+            security.RemoveAccessRule(deny);
+            locked.SetAccessControl(security);
+        }
+    }
+
+    [Fact]
+    public async Task ReportsJunctionTransfersForWindowsWithoutElevation()
+    {
+        var target = Directory.CreateDirectory(Path.Combine(_root, "target")).FullName;
+        var junction = Path.Combine(_root, "junction");
+        var mklink = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("cmd.exe")
+        {
+            ArgumentList = { "/c", "mklink", "/J", junction, target },
+            CreateNoWindow = true,
+            UseShellExecute = false
+        })!;
+        await mklink.WaitForExitAsync();
+        try
+        {
+            Assert.True(Directory.Exists(junction));
+            var destination = Directory.CreateDirectory(Path.Combine(_root, "destination")).FullName;
+
+            var result = await new FileOperationService().TransferAsync(
+                [junction], destination, FileTransferMode.Copy, ReplaceConflict);
+
+            Assert.Equal([Path.GetFullPath(junction)], result.WindowsAssistSources);
+            Assert.False(result.WindowsAssistNeedsElevation);
+            Assert.False(Directory.Exists(Path.Combine(destination, "junction")));
+        }
+        finally
+        {
+            // Removes only the link; a recursive delete of the test root trips over it.
+            Directory.Delete(junction);
+        }
+    }
+
+    [Fact]
     public async Task RefusesToDeleteDriveRootsBeforeTouchingAnything()
     {
         // An unused drive letter: if the guard ever regressed, deletion would only find nothing there.

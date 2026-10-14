@@ -37,6 +37,9 @@ public sealed class FileSystemEntry : ObservableObject
 
     public string Name { get; }
     public string FullPath { get; }
+
+    // List items without an explicit automation name are announced by ToString().
+    public override string ToString() => Name;
     public bool IsDirectory { get; }
     public string Size { get; }
     public string Type { get; }

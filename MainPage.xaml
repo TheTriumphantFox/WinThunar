@@ -32,6 +32,7 @@
             <MenuFlyoutItem x:Name="ContextMoveToTrashMenuItem" Text="Move to Trash" Click="MoveToTrash_Click" />
             <MenuFlyoutItem x:Name="ContextDeletePermanentlyMenuItem" Text="Delete Permanently" Click="DeletePermanently_Click" />
             <MenuFlyoutSeparator />
+            <MenuFlyoutItem x:Name="ContextShowMoreOptionsMenuItem" Text="Show More Options" Click="ShowMoreItemOptions_Click" />
             <MenuFlyoutItem Text="Properties" Click="Properties_Click" />
         </MenuFlyout>
         <MenuFlyout x:Key="FolderContextMenu" Opened="FolderContextMenu_Opened">
@@ -58,6 +59,7 @@
             </MenuFlyoutSubItem>
             <MenuFlyoutItem Text="Custom Actions..." Click="CustomActions_Click" />
             <MenuFlyoutSeparator />
+            <MenuFlyoutItem x:Name="FolderShowMoreOptionsMenuItem" Text="Show More Options" Click="ShowMoreFolderOptions_Click" />
             <MenuFlyoutItem Text="Properties" Click="Properties_Click" />
         </MenuFlyout>
     </Page.Resources>

@@ -48,6 +48,14 @@ public partial class MainPageViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     public partial bool IsRecycleBinView { get; set; }
 
+    /// <summary>This PC: drives listed as folders. Read-only; nothing here can be created or deleted.</summary>
+    [ObservableProperty]
+    public partial bool IsComputerView { get; set; }
+
+    public const string ComputerPath = "shell:MyComputerFolder";
+
+    public bool IsVirtualView => IsRecycleBinView || IsComputerView;
+
     [ObservableProperty]
     public partial BrowserViewMode ViewMode { get; set; } = BrowserViewMode.Details;
 
@@ -124,6 +132,7 @@ public partial class MainPageViewModel : ObservableObject, IDisposable
 
     public MainPageViewModel()
     {
+        Places.Add(new NavigationLocation("This PC", ComputerPath, "\uEC4E", NavigationLocationKind.Computer));
         AddPlace("Home", HomePath, "\uE80F");
         AddPlace("Desktop", Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "\uE8FC");
         AddPlace("Documents", Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "\uE8A5");
@@ -131,6 +140,17 @@ public partial class MainPageViewModel : ObservableObject, IDisposable
         AddPlace("Music", Environment.GetFolderPath(Environment.SpecialFolder.MyMusic), "\uE8D6");
         AddPlace("Pictures", Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "\uEB9F");
         AddPlace("Videos", Environment.GetFolderPath(Environment.SpecialFolder.MyVideos), "\uE8B2");
+        // OneDrive sets this for the signed-in personal account; business accounts use OneDriveCommercial.
+        foreach (var variable in new[] { "OneDrive", "OneDriveCommercial" })
+        {
+            if (Environment.GetEnvironmentVariable(variable) is { Length: > 0 } oneDrive &&
+                Directory.Exists(oneDrive) &&
+                !Places.Any(place => PathEquals(place.Path, oneDrive)))
+            {
+                Places.Add(new NavigationLocation(Path.GetFileName(oneDrive), oneDrive, "\uE753"));
+            }
+        }
+
         Places.Add(new NavigationLocation("Trash", "shell:RecycleBinFolder", "\uE74D", NavigationLocationKind.RecycleBin));
 
         NetworkLocations.Add(new NavigationLocation(
@@ -143,7 +163,12 @@ public partial class MainPageViewModel : ObservableObject, IDisposable
     }
 
     public async Task InitializeAsync(string? initialPath = null) =>
-        await NavigateAsync(Directory.Exists(initialPath) ? initialPath! : HomePath);
+        await NavigateAsync(
+            Directory.Exists(initialPath) ||
+            string.Equals(initialPath, RecycleBinService.VirtualPath, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(initialPath, ComputerPath, StringComparison.OrdinalIgnoreCase)
+                ? initialPath!
+                : HomePath);
 
     public void SetBookmarks(IEnumerable<string> paths)
     {
@@ -279,6 +304,12 @@ public partial class MainPageViewModel : ObservableObject, IDisposable
             return;
         }
 
+        if (string.Equals(requestedPath, ComputerPath, StringComparison.OrdinalIgnoreCase))
+        {
+            await NavigateComputerAsync(navigationVersion, addToHistory, cancellationToken);
+            return;
+        }
+
         string path;
         try
         {
@@ -333,6 +364,7 @@ public partial class MainPageViewModel : ObservableObject, IDisposable
             var entriesChanged = SynchronizeEntries(entries);
 
             IsRecycleBinView = false;
+            IsComputerView = false;
             CurrentPath = path;
             StatusText = FormatStatus(entries, path);
             ConfigureFolderWatcher(path);
@@ -410,16 +442,14 @@ public partial class MainPageViewModel : ObservableObject, IDisposable
 
     public async Task GoUpAsync()
     {
-        if (IsRecycleBinView)
+        if (IsVirtualView)
         {
             return;
         }
 
         var parent = Directory.GetParent(CurrentPath);
-        if (parent is not null)
-        {
-            await NavigateAsync(parent.FullName);
-        }
+        // Above a drive root is This PC, as in Explorer.
+        await NavigateAsync(parent?.FullName ?? ComputerPath);
     }
 
     public async Task RefreshAsync()
@@ -436,9 +466,11 @@ public partial class MainPageViewModel : ObservableObject, IDisposable
 
     public async Task SearchAsync(string query)
     {
-        if (IsRecycleBinView)
+        if (IsVirtualView)
         {
-            StatusText = "Search is not available while viewing Trash.";
+            StatusText = IsRecycleBinView
+                ? "Search is not available while viewing Trash."
+                : "Open a drive to search it.";
             return;
         }
 
@@ -608,6 +640,7 @@ public partial class MainPageViewModel : ObservableObject, IDisposable
             _folderWatcher?.Dispose();
             _folderWatcher = null;
             IsRecycleBinView = true;
+            IsComputerView = false;
             CurrentPath = RecycleBinService.VirtualPath;
             StatusText = $"{entries.Count} item{(entries.Count == 1 ? string.Empty : "s")} in Trash";
 
@@ -648,6 +681,121 @@ public partial class MainPageViewModel : ObservableObject, IDisposable
             }
         }
     }
+
+    private async Task NavigateComputerAsync(
+        int navigationVersion,
+        bool addToHistory,
+        CancellationToken cancellationToken)
+    {
+        CancelSearchCore();
+        IsSearchMode = false;
+        try
+        {
+            var entries = await Task.Run(ReadDrives, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!_navigationGeneration.IsCurrent(navigationVersion))
+            {
+                return;
+            }
+
+            foreach (var entry in entries)
+            {
+                entry.ZoomLevel = ZoomLevel;
+                entry.ConfigureColumns(ShowSizeColumn, ShowTypeColumn, ShowModifiedColumn, SizeColumnWidth, TypeColumnWidth, ModifiedColumnWidth);
+            }
+
+            var entriesChanged = SynchronizeEntries(entries);
+            _folderWatcher?.Dispose();
+            _folderWatcher = null;
+            IsRecycleBinView = false;
+            IsComputerView = true;
+            CurrentPath = ComputerPath;
+            StatusText = $"{entries.Count} drive{(entries.Count == 1 ? string.Empty : "s")}";
+            if (entriesChanged)
+            {
+                BeginLoadingImages(Entries.ToList());
+            }
+
+            if (addToHistory)
+            {
+                if (_historyIndex < _history.Count - 1)
+                {
+                    _history.RemoveRange(_historyIndex + 1, _history.Count - _historyIndex - 1);
+                }
+
+                if (_history.Count == 0 || !PathEquals(_history[^1], ComputerPath))
+                {
+                    _history.Add(ComputerPath);
+                }
+
+                _historyIndex = _history.Count - 1;
+            }
+
+            OnPropertyChanged(nameof(CanGoBack));
+            OnPropertyChanged(nameof(CanGoForward));
+        }
+        catch (OperationCanceledException)
+        {
+            // A newer navigation owns the view now.
+        }
+        finally
+        {
+            if (_navigationGeneration.IsCurrent(navigationVersion))
+            {
+                IsBusy = false;
+            }
+        }
+    }
+
+    private static List<FileSystemEntry> ReadDrives()
+    {
+        var entries = new List<FileSystemEntry>();
+        foreach (var drive in DriveInfo.GetDrives())
+        {
+            var letter = drive.Name.TrimEnd('\\');
+            var name = $"{DriveTypeName(drive.DriveType)} ({letter})";
+            var size = string.Empty;
+            long free = 0;
+            try
+            {
+                if (drive.IsReady)
+                {
+                    if (!string.IsNullOrWhiteSpace(drive.VolumeLabel))
+                    {
+                        name = $"{drive.VolumeLabel} ({letter})";
+                    }
+
+                    free = drive.AvailableFreeSpace;
+                    size = $"{FormatSize(free)} free of {FormatSize(drive.TotalSize)}";
+                }
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                // The drive can disappear or deny access between discovery and inspection.
+            }
+
+            entries.Add(new FileSystemEntry(
+                name,
+                drive.RootDirectory.FullName,
+                true,
+                size,
+                DriveTypeName(drive.DriveType),
+                string.Empty,
+                "\uEDA2",
+                free));
+        }
+
+        return entries;
+    }
+
+    private static string DriveTypeName(DriveType type) => type switch
+    {
+        DriveType.Removable => "Removable Disk",
+        DriveType.Network => "Network Drive",
+        DriveType.CDRom => "CD Drive",
+        DriveType.Ram => "RAM Disk",
+        _ => "Local Disk"
+    };
 
     private void RefreshDevices()
     {

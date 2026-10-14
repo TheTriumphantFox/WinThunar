@@ -20,6 +20,7 @@ public sealed record NavigationHistoryEntry(int Index, string Path);
 public sealed class BrowserTabState
 {
     private const string RecycleBinVirtualPath = "shell:RecycleBinFolder";
+    private const string ComputerVirtualPath = "shell:MyComputerFolder";
     private readonly List<string> _history;
     private int _historyIndex;
 
@@ -105,6 +106,11 @@ public sealed class BrowserTabState
             return "Trash";
         }
 
+        if (string.Equals(path, ComputerVirtualPath, StringComparison.OrdinalIgnoreCase))
+        {
+            return "This PC";
+        }
+
         var trimmed = System.IO.Path.TrimEndingDirectorySeparator(path);
         var title = System.IO.Path.GetFileName(trimmed);
         return string.IsNullOrWhiteSpace(title) ? path : title;
@@ -112,8 +118,8 @@ public sealed class BrowserTabState
 
     private static bool PathsEqual(string left, string right)
     {
-        if (string.Equals(left, RecycleBinVirtualPath, StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(right, RecycleBinVirtualPath, StringComparison.OrdinalIgnoreCase))
+        if (left.StartsWith("shell:", StringComparison.OrdinalIgnoreCase) ||
+            right.StartsWith("shell:", StringComparison.OrdinalIgnoreCase))
         {
             return string.Equals(left, right, StringComparison.OrdinalIgnoreCase);
         }

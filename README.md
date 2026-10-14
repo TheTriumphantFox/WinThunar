@@ -8,7 +8,7 @@ The project is open source under the MIT License. It does not contain code copie
 ## Current milestone
 
 - Classic menu, toolbar, location bar, side pane, detail view, and status bar
-- Places and detected drives
+- Places, detected drives, a This PC drive overview (Up from a drive root), and OneDrive when signed in
 - Real directory enumeration
 - Back, Forward, Up, Home, Refresh, direct-path navigation, and folder opening
 - Multiple selection and selection totals
@@ -37,6 +37,7 @@ The project is open source under the MIT License. It does not contain code copie
 - Renameable, reorderable persistent bookmarks
 - Pathbar and editable-toolbar location selector styles
 - Native Windows Properties and Open With dialogs, new windows, and Open in New Tab
+- The full Windows shell context menu, including third-party extensions and Send To, from `Show More Options` or Shift+right-click
 - Create-from-Templates, symbolic links, select-by-pattern, and invert-selection commands
 - Previewed, collision-safe bulk rename with grouped Undo/Redo
 - Preferences for thumbnails, sorting, recursive search, trash confirmation, tab restoration, and default view
@@ -48,7 +49,36 @@ The project is open source under the MIT License. It does not contain code copie
 - Selection-aware custom actions with file patterns, file/folder targeting, confirmation prompts, and argument-list execution without a command shell
 - Atomic, junction-safe bundled archive create/extract, media-tag editing, Git status/diff/log, and Windows sharing-management integrations
 
-Directory junction transfer is intentionally blocked until link-safe behavior is implemented. Transfer
+## Using WinThunar as the default file manager
+
+`Edit > Preferences > Windows Integration` can add "Open in WinThunar" to Explorer's folder menu
+and make WinThunar the handler for opening folders and drives. Both settings write only to your
+own account's registry (`HKCU\Software\Classes`), record any value they replace, and restore it
+when turned off. They are available in the portable build; MSIX packages cannot register shell
+handlers this way.
+
+The same changes can be scripted, and `--unregister-shell` is the recovery path if WinThunar
+cannot start:
+
+```powershell
+.\WinThunar.exe --register-shell      # "Open in WinThunar" only
+.\WinThunar.exe --register-default    # also open folders and drives in WinThunar
+.\WinThunar.exe --unregister-shell    # undo both
+```
+
+Turn the setting off before moving or deleting the portable folder. If the registered copy has
+already been moved, launching WinThunar from its new location repairs the registration.
+
+WinThunar accepts a folder or file path, `file:` URIs, and Explorer-style `/select,<path>`,
+`/root,<path>`, `/n`, and `/e` switches. A second launch opens a new window in the running
+process. Windows still opens Explorer for Win+E and for apps that call
+`SHOpenFolderAndSelectItems` directly.
+
+When WinThunar is denied access (for example in `Program Files`), it offers to let the Windows copy
+engine finish the copy, move, trash, delete, new-folder, or rename, which asks for administrator
+permission itself. WinThunar's own engine does not copy directory links or junctions yet; it offers
+the same hand-off, and Windows copies the linked folder's contents as Explorer does. Operations
+finished by Windows are not in WinThunar's Undo history. Transfer
 undo is intentionally withheld after Replace or directory Merge because the displaced data cannot yet
 be restored safely.
 
@@ -73,7 +103,7 @@ Developer Mode must be enabled in Windows Settings to register and launch the de
 Create a self-contained, unpackaged x64 release folder, ZIP, and SHA-256 checksum:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.3.1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.4.1
 ```
 
 The generated `artifacts\WinThunar-<version>-win-x64.zip` can be extracted and run with
@@ -82,6 +112,12 @@ The generated `artifacts\WinThunar-<version>-win-x64.zip` can be extracted and r
 The bundled plugin manifests live beside the executable in `Plugins`. Personal manifests and
 custom actions are stored under `%LOCALAPPDATA%\WinThunar\Plugins`, so updating the portable app
 does not overwrite them.
+
+## Icon
+
+WinThunar's icon is an original design (a folder with a lightning bolt) and is covered by the
+project's MIT License. It is drawn by `scripts\New-AppIcons.ps1`, which writes `Assets\AppIcon.ico`
+and the MSIX logo images; change the shapes there and re-run it rather than editing the images.
 
 ## License
 

@@ -58,7 +58,19 @@ public sealed record FileOperationResult(
     IReadOnlyList<FileTransferRecord> Transfers)
 {
     public bool Succeeded => !Cancelled && Errors.Count == 0;
+
+    /// <summary>
+    /// Failed sources the Windows copy engine can still finish: access was denied, or the item is or
+    /// contains a folder link. Each also has an entry in <see cref="Errors"/>.
+    /// </summary>
+    public IReadOnlyList<string> WindowsAssistSources { get; init; } = [];
+
+    /// <summary>True when at least one assist source failed for lack of permission.</summary>
+    public bool WindowsAssistNeedsElevation { get; init; }
 }
+
+/// <summary>A directory link or junction, which WinThunar does not copy or move itself yet.</summary>
+public sealed class LinkTransferException(string message) : IOException(message);
 
 public sealed class FileOperationService
 {
@@ -264,6 +276,8 @@ public sealed class FileOperationService
 
         var sources = RemoveNestedSelections(sourcePaths);
         var errors = new List<string>();
+        var assistSources = new List<string>();
+        var assistNeedsElevation = false;
         var completed = 0;
         var skipped = 0;
         var cancelled = false;
@@ -351,10 +365,20 @@ public sealed class FileOperationService
             {
                 transfers.AddRange(itemJournal);
                 errors.Add($"{sourcePath}: {ex.Message}");
+                // Links cannot be made by the shell engine either, so only copies and moves qualify.
+                if (mode != FileTransferMode.Link && (ex is LinkTransferException || IsAccessDenied(ex)))
+                {
+                    assistSources.Add(sourcePath);
+                    assistNeedsElevation |= IsAccessDenied(ex);
+                }
             }
         }
 
-        return new FileOperationResult(completed, skipped, errors, cancelled, transfers);
+        return new FileOperationResult(completed, skipped, errors, cancelled, transfers)
+        {
+            WindowsAssistSources = assistSources,
+            WindowsAssistNeedsElevation = assistNeedsElevation
+        };
     }
 
     public async Task<FileOperationResult> TransferExactAsync(
@@ -423,6 +447,7 @@ public sealed class FileOperationService
         CancellationToken cancellationToken = default)
     {
         var selectedPaths = RemoveNestedSelections(paths);
+        EnsureNoFilesystemRoots(selectedPaths);
         await Task.Run(() =>
         {
             foreach (var path in selectedPaths)
@@ -541,6 +566,7 @@ public sealed class FileOperationService
         CancellationToken cancellationToken = default)
     {
         var selectedPaths = RemoveNestedSelections(paths);
+        EnsureNoFilesystemRoots(selectedPaths);
         await Task.Run(() =>
         {
             foreach (var path in selectedPaths)
@@ -619,7 +645,7 @@ public sealed class FileOperationService
 
         if (sourceIsDirectory && File.GetAttributes(sourcePath).HasFlag(FileAttributes.ReparsePoint))
         {
-            throw new IOException("Directory links and junctions are not supported yet.");
+            throw new LinkTransferException("Directory links and junctions are not supported yet.");
         }
 
         var resolution = await ResolveDestinationAsync(
@@ -1132,7 +1158,7 @@ public sealed class FileOperationService
         var attributes = File.GetAttributes(sourcePath);
         if (attributes.HasFlag(FileAttributes.ReparsePoint))
         {
-            throw new IOException($"Directory links and junctions cannot be copied: {sourcePath}");
+            throw new LinkTransferException($"Directory links and junctions cannot be copied: {sourcePath}");
         }
 
         Directory.CreateDirectory(destinationPath);
@@ -1426,6 +1452,30 @@ public sealed class FileOperationService
             StringComparison.Ordinal);
 
     private static bool PathExists(string path) => File.Exists(path) || Directory.Exists(path);
+
+    /// <summary>True for failures the Windows copy engine can get past with an elevation prompt.</summary>
+    public static bool IsAccessDenied(Exception exception) =>
+        exception is UnauthorizedAccessException or System.ComponentModel.Win32Exception { NativeErrorCode: 5 } ||
+        exception.HResult == unchecked((int)0x80070005);
+
+    /// <summary>
+    /// Drive and share roots can be listed (This PC) but never deleted. Checked for every path before
+    /// any work starts, so a mixed selection fails without deleting anything.
+    /// </summary>
+    private static void EnsureNoFilesystemRoots(IEnumerable<string> paths)
+    {
+        foreach (var path in paths)
+        {
+            var fullPath = Path.GetFullPath(path);
+            if (string.Equals(
+                    Path.TrimEndingDirectorySeparator(fullPath),
+                    Path.TrimEndingDirectorySeparator(Path.GetPathRoot(fullPath) ?? string.Empty),
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException($"{fullPath} is a drive or share root and cannot be deleted.");
+            }
+        }
+    }
 
     private static void EnsurePathExists(string path)
     {

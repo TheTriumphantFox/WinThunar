@@ -34,8 +34,9 @@ public sealed partial class MainPage : Page
     private BrowserTabState? _splitTab;
     private CancellationTokenSource? _searchInputDelay;
     private MainPageViewModel? _searchBrowser;
-    private string? _launchPath;
-    private readonly List<Window> _ownedWindows = [];
+    private LaunchRequest _launchRequest = LaunchRequest.Empty;
+    private (int X, int Y)? _contextMenuScreenPoint;
+    private const string ThisPcParsingName = "::{20D04FE0-3AEA-1069-A2D8-08002B30309D}";
     private bool _confirmMoveToTrash;
     private bool _restoreTabs = true;
     private bool _treeSidePane;
@@ -97,7 +98,7 @@ public sealed partial class MainPage : Page
     protected override void OnNavigatedTo(NavigationEventArgs e)
     {
         base.OnNavigatedTo(e);
-        _launchPath = e.Parameter as string;
+        _launchRequest = e.Parameter as LaunchRequest ?? LaunchRequest.Empty;
     }
 
     private async void Page_Loaded(object sender, RoutedEventArgs e)
@@ -166,15 +167,15 @@ public sealed partial class MainPage : Page
         ApplyImagePreview();
         ApplyTerminalPanel();
 
-        var tabPaths = (_restoreTabs ? session.Tabs : [])
+        // An explicit folder request (command line, another app, New Window) replaces tab restore.
+        var tabPaths = (_restoreTabs && _launchRequest.IsEmpty ? session.Tabs : [])
             .Where(Directory.Exists)
             .Select(Path.GetFullPath)
             .ToList();
         if (tabPaths.Count == 0)
         {
-            tabPaths.Add(Directory.Exists(_launchPath)
-                ? Path.GetFullPath(_launchPath!)
-                : Directory.Exists(session.LastPath) ? session.LastPath! : ViewModel.HomePath);
+            tabPaths.Add(_launchRequest.FolderPath
+                ?? (Directory.Exists(session.LastPath) ? session.LastPath! : ViewModel.HomePath));
         }
 
         foreach (var path in tabPaths)
@@ -182,12 +183,18 @@ public sealed partial class MainPage : Page
             AddBrowserTab(path, false);
         }
 
-        BrowserTabs.SelectedIndex = Math.Clamp(session.ActiveTabIndex, 0, BrowserTabs.TabItems.Count - 1);
-        var initialPath = ActiveTab?.Path ?? ViewModel.HomePath;
+        var selectedTabIndex = Math.Clamp(session.ActiveTabIndex, 0, tabPaths.Count - 1);
+        BrowserTabs.SelectedIndex = selectedTabIndex;
+        // TabView may not report SelectedItem until it is realized, so read the path directly.
+        var initialPath = tabPaths[selectedTabIndex];
         ApplyFolderViewSettings(ViewModel, initialPath);
         await ViewModel.InitializeAsync(initialPath);
+        if (_launchRequest.SelectPath is { } selectPath)
+        {
+            SelectLaunchItem(selectPath);
+        }
         ApplyToolbarOrder();
-        if (session.SplitPaneOpen && Directory.Exists(session.SplitPath))
+        if (_launchRequest.IsEmpty && session.SplitPaneOpen && Directory.Exists(session.SplitPath))
         {
             await OpenSplitPaneAsync(session.SplitPath!, false);
         }
@@ -200,6 +207,26 @@ public sealed partial class MainPage : Page
             ViewModel.StatusText = recovery.Errors.Count == 0
                 ? $"Recovered {recovery.RecoveredOperations} interrupted transfer{(recovery.RecoveredOperations == 1 ? string.Empty : "s")}."
                 : $"Recovered {recovery.RecoveredOperations} interrupted transfers; {recovery.Errors.Count} need attention.";
+        }
+    }
+
+    private void SelectLaunchItem(string path)
+    {
+        var entry = ViewModel.Entries.FirstOrDefault(candidate =>
+            string.Equals(candidate.FullPath, path, StringComparison.OrdinalIgnoreCase));
+        if (entry is null)
+        {
+            ViewModel.StatusText = $"\"{Path.GetFileName(path)}\" is hidden. Press Ctrl+H to show hidden files.";
+            return;
+        }
+
+        var list = ActiveFileList;
+        list.SelectedItems.Clear();
+        list.SelectedItems.Add(entry);
+        list.ScrollIntoView(entry);
+        if (list.ContainerFromItem(entry) is Control container)
+        {
+            container.Focus(FocusState.Programmatic);
         }
     }
 
@@ -226,12 +253,12 @@ public sealed partial class MainPage : Page
         _transferQueue.Dispose();
         ViewModel.Dispose();
         SplitViewModel.Dispose();
-        foreach (var window in _ownedWindows.ToArray())
-        {
-            window.Close();
-        }
-        _ownedWindows.Clear();
     }
+
+    /// <summary>The HWND of the window hosting this page, for parenting native shell dialogs.</summary>
+    private nint HostWindowHandle => XamlRoot?.ContentIslandEnvironment is { } environment
+        ? Microsoft.UI.Win32Interop.GetWindowFromWindowId(environment.AppWindowId)
+        : App.WindowHandle;
 
     private async void Back_Click(object sender, RoutedEventArgs e)
     {
@@ -320,15 +347,14 @@ public sealed partial class MainPage : Page
 
     private async void Up_Click(object sender, RoutedEventArgs e)
     {
-        if (ActiveBrowser.IsRecycleBinView)
+        if (ActiveBrowser.IsVirtualView)
         {
             return;
         }
 
-        if (Directory.GetParent(ActiveBrowser.CurrentPath) is { } parent)
-        {
-            await NavigateActivePaneAsync(parent.FullName);
-        }
+        // Above a drive root is This PC, as in Explorer.
+        await NavigateActivePaneAsync(
+            Directory.GetParent(ActiveBrowser.CurrentPath)?.FullName ?? MainPageViewModel.ComputerPath);
     }
 
     private async void Home_Click(object sender, RoutedEventArgs e) => await NavigateActivePaneAsync(ViewModel.HomePath);
@@ -425,15 +451,13 @@ public sealed partial class MainPage : Page
     private async void SplitUp_Click(object sender, RoutedEventArgs e)
     {
         SetActivePane(BrowserPane.Secondary);
-        if (SplitViewModel.IsRecycleBinView)
+        if (SplitViewModel.IsVirtualView)
         {
             return;
         }
 
-        if (Directory.GetParent(SplitViewModel.CurrentPath) is { } parent)
-        {
-            await NavigateSplitPaneAsync(parent.FullName);
-        }
+        await NavigateSplitPaneAsync(
+            Directory.GetParent(SplitViewModel.CurrentPath)?.FullName ?? MainPageViewModel.ComputerPath);
     }
 
     private async void SplitHome_Click(object sender, RoutedEventArgs e)
@@ -678,12 +702,21 @@ public sealed partial class MainPage : Page
         var segments = new Stack<string>();
         try
         {
-            for (var current = new DirectoryInfo(path); current is not null; current = current.Parent)
+            // Virtual locations (Trash, This PC) are not filesystem paths; DirectoryInfo would resolve
+            // them against the working directory and show unrelated folders.
+            for (var current = path.StartsWith("shell:", StringComparison.OrdinalIgnoreCase) ? null : new DirectoryInfo(path);
+                 current is not null;
+                 current = current.Parent)
             {
                 segments.Push(current.FullName);
             }
         }
         catch
+        {
+            segments.Clear();
+        }
+
+        if (segments.Count == 0)
         {
             segments.Push(path);
         }
@@ -1237,10 +1270,7 @@ public sealed partial class MainPage : Page
 
     private void NewWindow_Click(object sender, RoutedEventArgs e)
     {
-        var window = new MainWindow(ActiveBrowser.CurrentPath);
-        _ownedWindows.Add(window);
-        window.Closed += (_, _) => _ownedWindows.Remove(window);
-        window.Activate();
+        App.OpenWindow(new LaunchRequest(ActiveBrowser.CurrentPath, null));
     }
 
     private void OpenSelectedInNewWindow_Click(object sender, RoutedEventArgs e)
@@ -1250,10 +1280,7 @@ public sealed partial class MainPage : Page
             return;
         }
 
-        var window = new MainWindow(folder.FullPath);
-        _ownedWindows.Add(window);
-        window.Closed += (_, _) => _ownedWindows.Remove(window);
-        window.Activate();
+        App.OpenWindow(new LaunchRequest(folder.FullPath, null));
     }
 
     private void OpenSelectedTerminal_Click(object sender, RoutedEventArgs e)
@@ -1334,9 +1361,11 @@ public sealed partial class MainPage : Page
         }
 
         string? createdPath = null;
+        var parentFolder = ActiveBrowser.CurrentPath;
         if (await RunFileOperationAsync(
             $"Creating folder '{name}'...",
-            async () => createdPath = await _fileOperations.CreateDirectoryAsync(ActiveBrowser.CurrentPath, name)) &&
+            async () => createdPath = await _fileOperations.CreateDirectoryAsync(parentFolder, name),
+            owner => ShellFileOperation.CreateFolder(owner, parentFolder, name, true)) &&
             createdPath is not null)
         {
             await PushCreateHistoryAsync(createdPath, true);
@@ -1638,7 +1667,8 @@ public sealed partial class MainPage : Page
         string? destinationPath = null;
         if (await RunFileOperationAsync(
             $"Renaming '{entry.Name}'...",
-            async () => destinationPath = await _fileOperations.RenameAsync(entry.FullPath, newName)) &&
+            async () => destinationPath = await _fileOperations.RenameAsync(entry.FullPath, newName),
+            owner => ShellFileOperation.Rename(owner, entry.FullPath, newName, true)) &&
             destinationPath is not null)
         {
             PushRenameHistory(entry.FullPath, destinationPath);
@@ -1770,6 +1800,11 @@ public sealed partial class MainPage : Page
             return;
         }
 
+        if (RejectComputerViewMutation("Move to Trash"))
+        {
+            return;
+        }
+
         var selected = SelectedEntries();
         if (selected.Count == 0)
         {
@@ -1794,13 +1829,20 @@ public sealed partial class MainPage : Page
             }
         }
 
+        var trashPaths = selected.Select(entry => entry.FullPath).ToArray();
         await RunFileOperationAsync(
             $"Moving {selected.Count} item{(selected.Count == 1 ? string.Empty : "s")} to Trash...",
-            () => _fileOperations.MoveToTrashAsync(selected.Select(entry => entry.FullPath)));
+            () => _fileOperations.MoveToTrashAsync(trashPaths),
+            owner => ShellFileOperation.Run(owner, ShellFileOperation.Kind.Recycle, ExistingPaths(trashPaths), null, true));
     }
 
     private async void DeletePermanently_Click(object sender, RoutedEventArgs e)
     {
+        if (RejectComputerViewMutation("Delete"))
+        {
+            return;
+        }
+
         var selected = SelectedEntries();
         if (selected.Count == 0)
         {
@@ -1836,8 +1878,12 @@ public sealed partial class MainPage : Page
             .ToArray();
         await RunFileOperationAsync(
             $"Permanently deleting {selected.Count} item{(selected.Count == 1 ? string.Empty : "s")}...",
-            () => _fileOperations.DeletePermanentlyAsync(pathsToDelete));
+            () => _fileOperations.DeletePermanentlyAsync(pathsToDelete),
+            owner => ShellFileOperation.Run(owner, ShellFileOperation.Kind.Delete, ExistingPaths(pathsToDelete), null, true));
     }
+
+    private static IReadOnlyList<string> ExistingPaths(IEnumerable<string> paths) =>
+        paths.Where(path => File.Exists(path) || Directory.Exists(path)).ToList();
 
     private void SelectAll_Click(object sender, RoutedEventArgs e) => ActiveFileList.SelectAll();
 
@@ -1968,7 +2014,7 @@ public sealed partial class MainPage : Page
         }
 
         var path = selected.FirstOrDefault()?.FullPath ?? ActiveBrowser.CurrentPath;
-        if (!ShellIntegrationService.ShowProperties(path, App.WindowHandle))
+        if (!ShellIntegrationService.ShowProperties(path, HostWindowHandle))
         {
             await ShowMessageAsync("Properties", "Windows could not open the Properties dialog for this item.");
         }
@@ -2053,6 +2099,29 @@ public sealed partial class MainPage : Page
         var singleClick = new CheckBox { Content = "Single click opens files and folders", IsChecked = _singleClickActivation };
         var rememberFolders = new CheckBox { Content = "Remember view, zoom, and sorting for each folder", IsChecked = _rememberFolderViews };
         var previewImages = new CheckBox { Content = "Show image preview side pane", IsChecked = _showImagePreview };
+        var shellSupported = ShellRegistrationService.IsSupported && Environment.ProcessPath is not null;
+        var shellRegistration = new ShellRegistrationService(Environment.ProcessPath ?? string.Empty);
+        var openVerb = new CheckBox
+        {
+            Content = "Add \"Open in WinThunar\" to Explorer's folder menu",
+            IsChecked = shellSupported && shellRegistration.IsOpenVerbRegistered,
+            IsEnabled = shellSupported
+        };
+        var defaultManager = new CheckBox
+        {
+            Content = "Open folders and drives in WinThunar",
+            IsChecked = shellSupported && shellRegistration.IsDefaultFileManager,
+            IsEnabled = shellSupported
+        };
+        var integrationNote = new TextBlock
+        {
+            Text = shellSupported
+                ? $"Applies to your Windows account only and can be turned off here or with \"WinThunar.exe {ShellRegistrationService.UnregisterSwitch}\". Turn it off before moving or deleting WinThunar."
+                : "Windows integration is available in the portable build.",
+            TextWrapping = TextWrapping.Wrap,
+            MaxWidth = 430,
+            Foreground = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 90, 90, 90))
+        };
         var defaultView = new ComboBox
         {
             Header = "Default/last active view",
@@ -2077,6 +2146,10 @@ public sealed partial class MainPage : Page
         content.Children.Add(restoreTabs);
         content.Children.Add(singleClick);
         content.Children.Add(rememberFolders);
+        content.Children.Add(new TextBlock { Text = "Windows Integration", Margin = new Thickness(0, 8, 0, 0), FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+        content.Children.Add(openVerb);
+        content.Children.Add(defaultManager);
+        content.Children.Add(integrationNote);
 
         var dialog = new ContentDialog
         {
@@ -2112,6 +2185,30 @@ public sealed partial class MainPage : Page
         });
         UpdateViewMenu();
         SaveSession();
+        if (shellSupported)
+        {
+            ApplyShellIntegration(shellRegistration, openVerb.IsChecked == true, defaultManager.IsChecked == true);
+        }
+    }
+
+    private void ApplyShellIntegration(ShellRegistrationService registration, bool openVerb, bool defaultManager)
+    {
+        try
+        {
+            // The default handler needs the verb, so it implies it. Untouched settings are left alone
+            // so applying unrelated preferences never re-points registration at this executable.
+            var wantVerb = openVerb || defaultManager;
+            if (wantVerb != registration.IsOpenVerbRegistered)
+            {
+                registration.SetOpenVerb(wantVerb);
+            }
+
+            registration.SetDefaultFileManager(defaultManager);
+        }
+        catch (Exception exception) when (exception is UnauthorizedAccessException or System.Security.SecurityException or IOException)
+        {
+            ViewModel.StatusText = $"Windows integration could not be updated: {exception.Message}";
+        }
     }
 
     private async void About_Click(object sender, RoutedEventArgs e)
@@ -2507,6 +2604,7 @@ public sealed partial class MainPage : Page
         }
 
         UpdateCommandState();
+        ContextShowMoreOptionsMenuItem.Visibility = ActiveBrowser.IsRecycleBinView ? Visibility.Collapsed : Visibility.Visible;
 
         foreach (var generated in _generatedPluginMenuItems)
         {
@@ -2548,6 +2646,7 @@ public sealed partial class MainPage : Page
     {
         RefreshCreateDocumentMenus();
         UpdateCommandState();
+        FolderShowMoreOptionsMenuItem.Visibility = ActiveBrowser.IsRecycleBinView ? Visibility.Collapsed : Visibility.Visible;
         if (sender is not MenuFlyout menu)
         {
             return;
@@ -2710,7 +2809,7 @@ public sealed partial class MainPage : Page
                 await RunGitPluginAsync("log", selected);
                 break;
             case "builtin:share-manage":
-                ShellIntegrationService.ShowProperties(selected[0].FullPath, App.WindowHandle);
+                ShellIntegrationService.ShowProperties(selected[0].FullPath, HostWindowHandle);
                 break;
             default:
                 throw new NotSupportedException($"Unknown built-in plugin action: {action.Command}");
@@ -3053,7 +3152,7 @@ public sealed partial class MainPage : Page
         };
         if (await dialog.ShowAsync() == ContentDialogResult.Primary)
         {
-            var result = ShellIntegrationService.EmptyRecycleBin(App.WindowHandle);
+            var result = ShellIntegrationService.EmptyRecycleBin(HostWindowHandle);
             ViewModel.StatusText = result == 0 ? "Recycle Bin emptied." : $"Windows could not empty the Recycle Bin (error 0x{result:X8}).";
         }
     }
@@ -3138,8 +3237,9 @@ public sealed partial class MainPage : Page
 
         SetActivePaneForList(sender);
         var hasPosition = e.TryGetPosition(list, out var position);
+        // FindElementsInHostCoordinates takes window coordinates, not list-relative ones.
         var entry = hasPosition
-            ? VisualTreeHelper.FindElementsInHostCoordinates(position, list)
+            ? VisualTreeHelper.FindElementsInHostCoordinates(list.TransformToVisual(null).TransformPoint(position), list)
                 .OfType<FrameworkElement>()
                 .Select(element => element.DataContext)
                 .OfType<FileSystemEntry>()
@@ -3163,6 +3263,21 @@ public sealed partial class MainPage : Page
         }
 
         e.Handled = true;
+        _contextMenuScreenPoint = hasPosition
+            ? ToScreenPoint(list, position)
+            : entry is not null && list.ContainerFromItem(entry) is UIElement container
+                ? ToScreenPoint(container, new Windows.Foundation.Point(24, 12))
+                : ToScreenPoint(list, new Windows.Foundation.Point(24, 24));
+
+        // Shift+right-click goes straight to the full Windows menu with extended verbs, as in Explorer.
+        if (!ActiveBrowser.IsRecycleBinView &&
+            Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Shift)
+                .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down))
+        {
+            ShowNativeContextMenu(entry is null, true);
+            return;
+        }
+
         if (menu is not null)
         {
             if (hasPosition)
@@ -3173,6 +3288,63 @@ public sealed partial class MainPage : Page
             {
                 menu.ShowAt(list);
             }
+        }
+    }
+
+    private (int X, int Y) ToScreenPoint(UIElement element, Windows.Foundation.Point point)
+    {
+        var inRoot = element.TransformToVisual(null).TransformPoint(point);
+        var scale = XamlRoot?.RasterizationScale ?? 1;
+        return ShellContextMenu.ClientToScreen(HostWindowHandle, (int)(inRoot.X * scale), (int)(inRoot.Y * scale));
+    }
+
+    private void ShowMoreItemOptions_Click(object sender, RoutedEventArgs e) =>
+        DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () => ShowNativeContextMenu(false, false));
+
+    private void ShowMoreFolderOptions_Click(object sender, RoutedEventArgs e) =>
+        DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () => ShowNativeContextMenu(true, false));
+
+    /// <summary>
+    /// Shows the Windows shell menu, which carries third-party extensions, Send To, and Open With.
+    /// Queued at low priority from flyout items so the WinUI flyout has closed first.
+    /// </summary>
+    private void ShowNativeContextMenu(bool folderBackground, bool extendedVerbs)
+    {
+        var browser = ActiveBrowser;
+        if (browser.IsRecycleBinView || string.IsNullOrEmpty(browser.CurrentPath))
+        {
+            return;
+        }
+
+        IReadOnlyList<string> items = folderBackground
+            ? []
+            : SelectedEntries().Select(entry => entry.FullPath).ToList();
+        if (!folderBackground && items.Count == 0)
+        {
+            return;
+        }
+
+        // Search results can span folders, but one shell menu needs a single parent. Drives in This PC
+        // have no parent folder; the shell resolves them, and the background, by parsing name.
+        var folder = browser.IsComputerView
+            ? ThisPcParsingName
+            : folderBackground ? browser.CurrentPath : Path.GetDirectoryName(items[0]);
+        if (folder is null ||
+            (!browser.IsComputerView && items.Any(item => !PathEquals(Path.GetDirectoryName(item), folder))))
+        {
+            browser.StatusText = "Show More Options needs items from a single folder.";
+            return;
+        }
+
+        var (x, y) = _contextMenuScreenPoint ?? ShellContextMenu.GetCursorPosition();
+        _contextMenuScreenPoint = null;
+        try
+        {
+            ShellContextMenu.Show(HostWindowHandle, folder, items, x, y, extendedVerbs);
+        }
+        catch (Exception exception) when (exception is COMException or ArgumentException or UnauthorizedAccessException or IOException)
+        {
+            browser.StatusText = $"The Windows menu could not be shown: {exception.Message}";
         }
     }
 
@@ -3240,7 +3412,8 @@ public sealed partial class MainPage : Page
     {
         SetActivePaneForList(sender);
         var dragEntries = args.Items.OfType<FileSystemEntry>().ToArray();
-        if (dragEntries.Length == 0)
+        // Dragging a drive out of This PC would copy or move the whole drive.
+        if (dragEntries.Length == 0 || ActiveBrowser.IsComputerView)
         {
             args.Cancel = true;
             return;
@@ -3465,6 +3638,11 @@ public sealed partial class MainPage : Page
             return;
         }
 
+        if (RejectComputerViewMutation(move ? "Cut" : "Copy"))
+        {
+            return;
+        }
+
         var selected = SelectedEntries();
         if (selected.Count == 0)
         {
@@ -3564,7 +3742,8 @@ public sealed partial class MainPage : Page
     {
         if (sender is UIElement dropSurface)
         {
-            var pointerPosition = args.GetPosition(dropSurface);
+            // FindElementsInHostCoordinates takes window coordinates, not surface-relative ones.
+            var pointerPosition = args.GetPosition(null);
             foreach (var hit in VisualTreeHelper.FindElementsInHostCoordinates(
                          pointerPosition,
                          dropSurface,
@@ -3639,11 +3818,11 @@ public sealed partial class MainPage : Page
         {
             Button { Tag: string path } button when Directory.Exists(path) =>
                 DirectoryDropTarget(path, button, false),
-            _ when ReferenceEquals(sender, SecondaryFileList) =>
+            _ when ReferenceEquals(sender, SecondaryFileList) && !SplitViewModel.IsComputerView =>
                 DirectoryDropTarget(SplitViewModel.CurrentPath, sender as Control, false),
-            _ when ReferenceEquals(sender, FileList) ||
-                   ReferenceEquals(sender, IconFileList) ||
-                   ReferenceEquals(sender, CompactFileList) =>
+            _ when (ReferenceEquals(sender, FileList) ||
+                    ReferenceEquals(sender, IconFileList) ||
+                    ReferenceEquals(sender, CompactFileList)) && !ViewModel.IsComputerView =>
                 DirectoryDropTarget(ViewModel.CurrentPath, sender as Control, false),
             _ => null
         };
@@ -4021,7 +4200,7 @@ public sealed partial class MainPage : Page
                 FileTransferMode.Link => "Create Link",
                 _ => "Copy"
             };
-            await FinishTransferAsync(result, operationName);
+            await FinishTransferAsync(result, operationName, destination, mode);
             PushTransferHistory(result.Transfers, operationName);
             return result;
         }
@@ -4057,15 +4236,49 @@ public sealed partial class MainPage : Page
         }
     }
 
-    private async Task FinishTransferAsync(FileOperationResult result, string operationName)
+    private async Task FinishTransferAsync(
+        FileOperationResult result,
+        string operationName,
+        string destination,
+        FileTransferMode mode)
     {
-        await RefreshVisiblePanesAsync();
-        if (result.Errors.Count > 0)
+        IReadOnlyList<string> errors = result.Errors;
+        var assistSources = result.WindowsAssistSources;
+        if (assistSources.Count > 0 && !result.Cancelled)
         {
-            var details = string.Join(Environment.NewLine, result.Errors.Take(6));
-            if (result.Errors.Count > 6)
+            var single = assistSources.Count == 1;
+            var count = single ? "1 item" : $"{assistSources.Count} items";
+            var them = single ? "it" : "them";
+            var verb = mode == FileTransferMode.Move ? "moved" : "copied";
+            var (title, message, continueText) = result.WindowsAssistNeedsElevation
+                ? ("Administrator Permission Needed",
+                   $"{count} could not be {verb} because this location needs administrator permission. Windows can finish {them} and will ask you to confirm.",
+                   "Continue")
+                : ("Folder Links",
+                   $"{count} could not be {verb} because {(single ? "it is or contains a folder link" : "they are or contain folder links")}, which WinThunar does not copy itself yet. Windows can finish {them} the way Explorer does.",
+                   "Let Windows Finish");
+            if (await ConfirmWindowsAssistAsync(title, message, continueText))
             {
-                details += $"{Environment.NewLine}...and {result.Errors.Count - 6} more error(s).";
+                RunWindowsAssist(() => ShellFileOperation.Run(
+                    HostWindowHandle,
+                    mode == FileTransferMode.Move ? ShellFileOperation.Kind.Move : ShellFileOperation.Kind.Copy,
+                    ExistingPaths(assistSources),
+                    destination,
+                    result.WindowsAssistNeedsElevation));
+                errors = errors
+                    .Where(error => !assistSources.Any(source =>
+                        error.StartsWith(source + ": ", StringComparison.OrdinalIgnoreCase)))
+                    .ToList();
+            }
+        }
+
+        await RefreshVisiblePanesAsync();
+        if (errors.Count > 0)
+        {
+            var details = string.Join(Environment.NewLine, errors.Take(6));
+            if (errors.Count > 6)
+            {
+                details += $"{Environment.NewLine}...and {errors.Count - 6} more error(s).";
             }
 
             await ShowMessageAsync($"{operationName} Incomplete", details);
@@ -4075,7 +4288,11 @@ public sealed partial class MainPage : Page
         {
             ViewModel.StatusText = $"{operationName} cancelled.";
         }
-        else if (result.Errors.Count == 0)
+        else if (errors.Count == 0 && assistSources.Count > 0)
+        {
+            // RunWindowsAssist already reported how the Windows part ended.
+        }
+        else if (errors.Count == 0)
         {
             ViewModel.StatusText = $"{operationName} complete: {result.CompletedItems} completed, {result.SkippedItems} skipped.";
         }
@@ -4390,7 +4607,11 @@ public sealed partial class MainPage : Page
             : null;
     }
 
-    private async Task<bool> RunFileOperationAsync(string status, Func<Task> operation)
+    /// <param name="windowsFallback">
+    /// Repeats the operation through the Windows copy engine with an elevation prompt when WinThunar's
+    /// own attempt is denied access. It is not added to undo history, so the call reports false.
+    /// </param>
+    private async Task<bool> RunFileOperationAsync(string status, Func<Task> operation, Func<nint, bool>? windowsFallback = null)
     {
         if (ViewModel.IsBusy)
         {
@@ -4405,6 +4626,19 @@ public sealed partial class MainPage : Page
             await RefreshVisiblePanesAsync();
             return true;
         }
+        catch (Exception ex) when (windowsFallback is not null && FileOperationService.IsAccessDenied(ex))
+        {
+            if (await ConfirmWindowsAssistAsync(
+                    "Administrator Permission Needed",
+                    "This location needs administrator permission. Windows can finish the operation and will ask you to confirm.",
+                    "Continue"))
+            {
+                RunWindowsAssist(() => windowsFallback(HostWindowHandle));
+            }
+
+            await RefreshVisiblePanesAsync();
+            return false;
+        }
         catch (Exception ex)
         {
             await ShowMessageAsync("File Operation Failed", ex.Message);
@@ -4414,6 +4648,35 @@ public sealed partial class MainPage : Page
         finally
         {
             ViewModel.IsBusy = false;
+        }
+    }
+
+    private async Task<bool> ConfirmWindowsAssistAsync(string title, string message, string continueText)
+    {
+        var dialog = new ContentDialog
+        {
+            XamlRoot = XamlRoot,
+            Title = title,
+            Content = new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap, MaxWidth = 520 },
+            PrimaryButtonText = continueText,
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary
+        };
+        return await dialog.ShowAsync() == ContentDialogResult.Primary;
+    }
+
+    /// <summary>Runs a Windows copy-engine operation, which shows its own progress and prompts.</summary>
+    private void RunWindowsAssist(Func<bool> operation)
+    {
+        try
+        {
+            ViewModel.StatusText = operation()
+                ? "Windows finished the operation."
+                : "The operation was cancelled or did not finish.";
+        }
+        catch (Exception exception) when (exception is COMException or ArgumentException or FileNotFoundException)
+        {
+            ViewModel.StatusText = $"Windows could not finish the operation: {exception.Message}";
         }
     }
 
@@ -4460,8 +4723,9 @@ public sealed partial class MainPage : Page
         var singleFolder = singleSelection && selected[0].IsDirectory;
         var singleFile = singleSelection && !selected[0].IsDirectory;
         var inTrash = ActiveBrowser.IsRecycleBinView;
+        var inComputer = ActiveBrowser.IsComputerView;
         var canCreate = CanWriteToCurrentFolder();
-        var canModifySelection = hasSelection && !inTrash && CanWriteSelectionParents(selected);
+        var canModifySelection = hasSelection && !inTrash && !inComputer && CanWriteSelectionParents(selected);
         var hasClipboardItems = ClipboardContainsStorageItems();
         var canPaste = canCreate && hasClipboardItems;
         var canPasteIntoFolder = singleFolder &&
@@ -4483,7 +4747,7 @@ public sealed partial class MainPage : Page
         ContextCutMenuItem.Visibility = inTrash ? Visibility.Collapsed : Visibility.Visible;
         ContextCopyMenuItem.Visibility = inTrash ? Visibility.Collapsed : Visibility.Visible;
         ContextCutMenuItem.IsEnabled = canModifySelection;
-        ContextCopyMenuItem.IsEnabled = hasSelection && !inTrash;
+        ContextCopyMenuItem.IsEnabled = hasSelection && !inTrash && !inComputer;
         ContextDuplicateMenuItem.Visibility = inTrash ? Visibility.Collapsed : Visibility.Visible;
         ContextDuplicateMenuItem.IsEnabled = hasSelection && canCreate;
         ContextRenameMenuItem.Visibility = inTrash ? Visibility.Collapsed : Visibility.Visible;
@@ -4492,7 +4756,7 @@ public sealed partial class MainPage : Page
         ContextMakeLinkMenuItem.IsEnabled = singleSelection && canCreate;
         ContextMoveToTrashMenuItem.Visibility = inTrash ? Visibility.Collapsed : Visibility.Visible;
         ContextMoveToTrashMenuItem.IsEnabled = canModifySelection;
-        ContextDeletePermanentlyMenuItem.IsEnabled = hasSelection;
+        ContextDeletePermanentlyMenuItem.IsEnabled = hasSelection && !inComputer;
 
         FileOpenMenuItem.Visibility = singleSelection && !inTrash ? Visibility.Visible : Visibility.Collapsed;
         FileOpenWithMenuItem.Visibility = singleFile && !inTrash ? Visibility.Visible : Visibility.Collapsed;
@@ -4509,16 +4773,16 @@ public sealed partial class MainPage : Page
         FolderPasteMenuItem.IsEnabled = canPaste;
 
         EditCutMenuItem.IsEnabled = canModifySelection;
-        EditCopyMenuItem.IsEnabled = hasSelection && !inTrash;
+        EditCopyMenuItem.IsEnabled = hasSelection && !inTrash && !inComputer;
         EditPasteMenuItem.IsEnabled = canPaste;
         EditMoveToTrashMenuItem.IsEnabled = canModifySelection;
-        EditDeletePermanentlyMenuItem.IsEnabled = hasSelection;
+        EditDeletePermanentlyMenuItem.IsEnabled = hasSelection && !inComputer;
         EditDuplicateMenuItem.IsEnabled = hasSelection && canCreate;
         EditRenameMenuItem.IsEnabled = canModifySelection;
     }
 
     private bool CanWriteToCurrentFolder() =>
-        !ActiveBrowser.IsRecycleBinView &&
+        !ActiveBrowser.IsVirtualView &&
         !ActiveBrowser.IsSearchMode &&
         IsDirectoryPotentiallyWritable(ActiveBrowser.CurrentPath);
 
@@ -4928,8 +5192,24 @@ public sealed partial class MainPage : Page
         }
     }
 
+    private bool RejectComputerViewMutation(string action)
+    {
+        if (!ActiveBrowser.IsComputerView)
+        {
+            return false;
+        }
+
+        ViewModel.StatusText = $"{action} is not available for drives in This PC.";
+        return true;
+    }
+
     private bool RejectRecycleBinMutation(string action)
     {
+        if (RejectComputerViewMutation(action))
+        {
+            return true;
+        }
+
         if (!ActiveBrowser.IsRecycleBinView)
         {
             return false;
@@ -4941,6 +5221,11 @@ public sealed partial class MainPage : Page
 
     private bool RejectDestinationMutation(string action, string? destinationPath = null)
     {
+        if (destinationPath is null && RejectComputerViewMutation(action))
+        {
+            return true;
+        }
+
         if (ActiveBrowser.IsRecycleBinView)
         {
             ViewModel.StatusText = $"{action} is not available while viewing Trash.";

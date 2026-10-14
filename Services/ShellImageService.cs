@@ -13,6 +13,12 @@ public sealed class ShellImageService
     {
         cancellationToken.ThrowIfCancellationRequested();
 
+        // Reading an online-only cloud file downloads it. The provider's thumbnail does not.
+        if (IsCloudPlaceholder(path))
+        {
+            return await GetImageAsync(path, false, true, requestedSize, cancellationToken);
+        }
+
         try
         {
             var file = await StorageFile.GetFileFromPathAsync(path);
@@ -97,6 +103,20 @@ public sealed class ShellImageService
         {
             // Inaccessible and transient shell items retain the built-in fallback glyph.
             return null;
+        }
+    }
+
+    private static bool IsCloudPlaceholder(string path)
+    {
+        const System.IO.FileAttributes RecallOnOpen = (System.IO.FileAttributes)0x00040000;
+        const System.IO.FileAttributes RecallOnDataAccess = (System.IO.FileAttributes)0x00400000;
+        try
+        {
+            return (File.GetAttributes(path) & (RecallOnOpen | RecallOnDataAccess | System.IO.FileAttributes.Offline)) != 0;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            return false;
         }
     }
 }

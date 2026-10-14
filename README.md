@@ -113,6 +113,12 @@ The bundled plugin manifests live beside the executable in `Plugins`. Personal m
 custom actions are stored under `%LOCALAPPDATA%\WinThunar\Plugins`, so updating the portable app
 does not overwrite them.
 
+## Icon
+
+WinThunar's icon is an original design (a folder with a lightning bolt) and is covered by the
+project's MIT License. It is drawn by `scripts\New-AppIcons.ps1`, which writes `Assets\AppIcon.ico`
+and the MSIX logo images; change the shapes there and re-run it rather than editing the images.
+
 ## License
 
 WinThunar is available under the [MIT License](LICENSE).

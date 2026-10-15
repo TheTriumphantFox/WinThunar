@@ -1,0 +1,16 @@
+{
+    "version": "0.5.0",
+    "description": "Thunar-style file manager for Windows 11 (portable build; installed copies are better updated with the MSI).",
+    "homepage": "https://github.com/TheTriumphantFox/WinThunar",
+    "license": "MIT",
+    "url": "https://github.com/TheTriumphantFox/WinThunar/releases/download/v0.5.0/WinThunar.App-win-Portable.zip",
+    "hash": "5078f6fa8146178302502e369c5f5f87f870c09dd7136a80c052309ab8b99828",
+    "bin": "current\\WinThunar.exe",
+    "shortcuts": [
+        ["current\\WinThunar.exe", "WinThunar"]
+    ],
+    "checkver": "github",
+    "autoupdate": {
+        "url": "https://github.com/TheTriumphantFox/WinThunar/releases/download/v$version/WinThunar.App-win-Portable.zip"
+    }
+}

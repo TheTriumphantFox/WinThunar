@@ -1,11 +1,63 @@
-# WinThunar
+<p align="center">
+  <img src="docs/site/assets/logo.svg" width="112" alt="WinThunar logo: a blue folder with a lightning bolt">
+</p>
+
+<h1 align="center">WinThunar</h1>
+
+<p align="center">
+  <strong>The Thunar file manager experience, built natively for Windows 11.</strong><br>
+  Tabs, split panes, bulk rename, undo/redo, a transfer queue, and plugins. Free and open source.
+</p>
+
+<p align="center">
+  <a href="https://github.com/TheTriumphantFox/WinThunar/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/TheTriumphantFox/WinThunar?label=download"></a>
+  <a href="https://github.com/TheTriumphantFox/WinThunar/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/TheTriumphantFox/WinThunar/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-blue"></a>
+  <img alt="Windows 11" src="https://img.shields.io/badge/Windows-11-0078D4">
+</p>
+
+<!-- TODO: add a screenshot or short GIF here once captured on Windows, for example
+     <p align="center"><img src="docs/images/overview.png" width="860" alt="WinThunar with tabs and a split pane"></p> -->
 
 WinThunar is a clean-room, Windows-native recreation of the classic Thunar file manager experience.
 It targets Windows 11 and uses C#, .NET 10, WinUI 3, and the Windows App SDK.
 
-The project is open source under the MIT License. It does not contain code copied from Thunar.
+The project is open source under the MIT License. It does not contain code copied from Thunar. It is an
+independent project and is not affiliated with the Xfce project.
 
-## Current milestone
+## Why WinThunar?
+
+- **Familiar if you know Thunar.** The same menu, toolbar, location bar, side pane, and keyboard
+  habits, with Thunar-style drag-and-drop rules and duplicate naming.
+- **Careful with your files.** Copies are staged at the destination and replacements roll back on
+  failure, so an interrupted transfer cannot destroy the file you already had.
+- **Power features without the clutter.** Tabs, split panes, recursive search, previewed bulk rename,
+  ten-step undo/redo, and a built-in PowerShell panel.
+- **Extensible.** Plugins and custom actions are plain JSON manifests, no C# required.
+- **Native and portable.** WinUI 3 with Windows shell icons, thumbnails, the Recycle Bin, and NTFS
+  alternate data streams. Installer or portable ZIP, with no separate .NET install.
+
+## Get it
+
+Download the installer (`.msi`) or the portable ZIP from the
+**[latest release](https://github.com/TheTriumphantFox/WinThunar/releases/latest)**, then see
+[Installing](#installing) for details. Installed copies update themselves.
+
+## Keyboard shortcuts
+
+| Action | Shortcut |
+|---|---|
+| New tab / close tab | `Ctrl+T` / `Ctrl+W` |
+| Toggle split pane | `F3` |
+| Search the current folder | `Ctrl+F` |
+| Show or hide hidden files | `Ctrl+H` |
+| Icon / detailed / compact view | `Ctrl+1` / `Ctrl+2` / `Ctrl+3` |
+| Toggle the PowerShell panel | `F4` |
+| Delete to Recycle Bin / permanent delete | `Delete` / `Shift+Delete` |
+| Force copy / force move when dropping | `Ctrl` / `Shift` while dragging |
+
+<details>
+<summary><b>Full feature list</b> (click to expand)</summary>
 
 - Classic menu, toolbar, location bar, side pane, detail view, and status bar
 - Places, detected drives, a This PC drive overview (Up from a drive root), and OneDrive when signed in
@@ -49,10 +101,13 @@ The project is open source under the MIT License. It does not contain code copie
 - Selection-aware custom actions with file patterns, file/folder targeting, confirmation prompts, and argument-list execution without a command shell
 - Atomic, junction-safe bundled archive create/extract, media-tag editing, Git status/diff/log, and Windows sharing-management integrations
 
+</details>
+
 ## Installing
 
-Run `WinThunar-<version>-win-x64.msi`. The target Windows 11 computer does not need a separate
-.NET installation. The installer asks:
+Download `WinThunar.App-win.msi` from the
+[latest release](https://github.com/TheTriumphantFox/WinThunar/releases/latest) and run it. The target
+Windows 11 computer does not need a separate .NET installation. The installer asks:
 
 - **Just me or everyone.** Just me installs to `%LOCALAPPDATA%\WinThunar.App` without asking for
   administrator permission. Everyone installs to `C:\Program Files\WinThunar.App` for all accounts

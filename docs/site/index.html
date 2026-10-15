@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WinThunar: the Thunar file manager for Windows 11</title>
+<meta name="description" content="WinThunar is a free, open-source, Windows-native file manager inspired by Thunar. Tabs, split panes, bulk rename, undo/redo, a transfer queue, and plugins.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<meta property="og:title" content="WinThunar: the Thunar file manager for Windows 11">
+<meta property="og:description" content="Free, open-source, Windows-native file manager. Tabs, split panes, bulk rename, undo/redo, and plugins.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="assets/social-preview.png">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+  :root {
+    --bg: #ffffff;
+    --surface: #f3f6fc;
+    --text: #14213d;
+    --muted: #4a5a7a;
+    --accent: #1f4fd1;
+    --accent-text: #ffffff;
+    --border: #d7e0f2;
+    --gold: #f5a623;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b1226;
+      --surface: #131d3a;
+      --text: #eaf0ff;
+      --muted: #a9b8dc;
+      --accent: #5b92ff;
+      --accent-text: #0b1226;
+      --border: #26345e;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 17px/1.6 "Segoe UI", system-ui, -apple-system, Helvetica, Arial, sans-serif;
+  }
+  a { color: var(--accent); }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 20px; }
+  header.top { padding: 16px 0; border-bottom: 1px solid var(--border); }
+  header.top .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 20px; text-decoration: none; color: var(--text); }
+  .brand img { width: 32px; height: 32px; }
+  nav a { margin-left: 18px; text-decoration: none; color: var(--muted); }
+  nav a:hover { color: var(--accent); }
+  .hero { padding: 64px 0 48px; text-align: center; }
+  .hero img.logo { width: 112px; height: 112px; }
+  h1 { font-size: clamp(32px, 6vw, 52px); line-height: 1.15; margin: 16px 0 12px; }
+  .lead { font-size: 20px; color: var(--muted); max-width: 680px; margin: 0 auto 28px; }
+  .buttons { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .btn {
+    display: inline-block; padding: 12px 22px; border-radius: 8px; font-weight: 600;
+    text-decoration: none; border: 1px solid var(--accent);
+  }
+  .btn.primary { background: var(--accent); color: var(--accent-text); }
+  .btn.secondary { color: var(--accent); }
+  .meta { margin-top: 14px; font-size: 14px; color: var(--muted); }
+  section { padding: 44px 0; }
+  section.alt { background: var(--surface); }
+  h2 { font-size: 30px; margin: 0 0 8px; }
+  .sub { color: var(--muted); margin: 0 0 28px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; }
+  .card { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; }
+  section.alt .card { background: var(--bg); }
+  .card h3 { margin: 0 0 6px; font-size: 18px; }
+  .card p { margin: 0; color: var(--muted); font-size: 15.5px; }
+  code, kbd {
+    font-family: "Cascadia Mono", Consolas, monospace; font-size: 0.9em;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px;
+  }
+  section.alt code, section.alt kbd { background: var(--bg); }
+  pre {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    padding: 14px 16px; overflow-x: auto; font-size: 14.5px;
+  }
+  pre code { background: none; border: 0; padding: 0; }
+  ul.plain { padding-left: 20px; }
+  ul.plain li { margin: 6px 0; }
+  footer { padding: 32px 0 48px; border-top: 1px solid var(--border); color: var(--muted); font-size: 15px; }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#"><img src="assets/logo.svg" alt="">WinThunar</a>
+    <nav>
+      <a href="#features">Features</a>
+      <a href="#install">Install</a>
+      <a href="https://github.com/TheTriumphantFox/WinThunar">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap hero">
+    <img class="logo" src="assets/logo.svg" alt="WinThunar logo: a blue folder with a lightning bolt">
+    <h1>The Thunar file manager,<br>built for Windows 11.</h1>
+    <p class="lead">A fast, familiar, keyboard-friendly file manager with tabs, split panes, bulk rename,
+      undo/redo and plugins. Free and open source.</p>
+    <div class="buttons">
+      <a class="btn primary" href="https://github.com/TheTriumphantFox/WinThunar/releases/latest">Download for Windows</a>
+      <a class="btn secondary" href="https://github.com/TheTriumphantFox/WinThunar">View on GitHub</a>
+    </div>
+    <p class="meta">Windows 11 · installer or portable ZIP · no separate .NET install needed · MIT License</p>
+  </div>
+
+  <section class="alt" id="features">
+    <div class="wrap">
+      <h2>What you get</h2>
+      <p class="sub">The layout and habits of Thunar, on top of native Windows APIs.</p>
+      <div class="grid">
+        <div class="card"><h3>Tabs and split panes</h3>
+          <p><kbd>Ctrl</kbd>+<kbd>T</kbd> opens a tab with its own history. <kbd>F3</kbd> splits the window and
+          file commands follow the active pane.</p></div>
+        <div class="card"><h3>File jobs you can trust</h3>
+          <p>Copies are staged at the destination and replacements roll back on failure, so an interrupted
+          transfer cannot destroy the file you already had. Interrupted jobs are recovered on restart.</p></div>
+        <div class="card"><h3>Undo and redo</h3>
+          <p>Ten levels for create, rename, copy, move, and duplicate, with checks that the destination
+          still matches before anything is reversed.</p></div>
+        <div class="card"><h3>Transfer queue</h3>
+          <p>Byte progress, throughput, ETA, queued-job count, and cancel for the active job.</p></div>
+        <div class="card"><h3>Search and bulk rename</h3>
+          <p><kbd>Ctrl</kbd>+<kbd>F</kbd> searches subfolders with live results. Bulk rename previews every
+          change, avoids collisions, and undoes as one step.</p></div>
+        <div class="card"><h3>Thunar-style drag and drop</h3>
+          <p>Move on the same volume, copy across volumes. <kbd>Ctrl</kbd> forces copy and <kbd>Shift</kbd>
+          forces move.</p></div>
+        <div class="card"><h3>Built-in terminal panel</h3>
+          <p><kbd>F4</kbd> opens PowerShell that follows the folder you are browsing.</p></div>
+        <div class="card"><h3>Plugins in plain JSON</h3>
+          <p>Add custom actions with file patterns and confirmation prompts. Bundled plugins cover archives,
+          Git status/diff/log, media tags, and sharing.</p></div>
+        <div class="card"><h3>Windows-native</h3>
+          <p>Shell icons and thumbnails, the Recycle Bin, NTFS alternate data streams, network shares,
+          Properties, Open With, and the full Explorer context menu.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="default">
+    <div class="wrap">
+      <h2>Use it as your default file manager</h2>
+      <p class="sub">Optional, reversible, and limited to your own account.</p>
+      <p><code>Edit &gt; Preferences &gt; Windows Integration</code> adds "Open in WinThunar" to Explorer's folder
+        menu and can make WinThunar the handler for opening folders and drives. Changes are written only to
+        <code>HKCU</code>, remember what they replaced, and are undone when you turn the setting off. If WinThunar
+        ever fails to start, <code>WinThunar.exe --unregister-shell</code> restores everything.</p>
+    </div>
+  </section>
+
+  <section class="alt" id="install">
+    <div class="wrap">
+      <h2>Install</h2>
+      <p class="sub">Pick whichever suits you.</p>
+      <ul class="plain">
+        <li><strong>Installer (recommended).</strong> Download the <code>.msi</code> from the
+          <a href="https://github.com/TheTriumphantFox/WinThunar/releases/latest">latest release</a>. Choose
+          "Just me" (no administrator permission) or "Everyone", and which shortcuts to create. Installed copies
+          update themselves in the background.</li>
+        <li><strong>Portable.</strong> Download the portable ZIP, extract it anywhere, and run
+          <code>WinThunar.exe</code>.</li>
+        <li><strong>Build from source.</strong> You need Windows 11 and the .NET 10 SDK:
+<pre><code>dotnet restore .\WinThunar.csproj -r win-x64
+dotnet build .\WinThunar.csproj --configuration Debug -p:Platform=x64 --no-restore
+dotnet run --project .\WinThunar.csproj --configuration Debug -p:Platform=x64</code></pre></li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="open-source">
+    <div class="wrap">
+      <h2>Open source, clean-room</h2>
+      <p>WinThunar is released under the MIT License and does not contain code copied from Thunar. It is an
+        independent project and is not affiliated with the Xfce project. Bug reports, ideas, plugins, and pull
+        requests are welcome on <a href="https://github.com/TheTriumphantFox/WinThunar">GitHub</a>.</p>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    WinThunar · MIT License · <a href="https://github.com/TheTriumphantFox/WinThunar/blob/main/CHANGELOG.md">Changelog</a> ·
+    <a href="https://github.com/TheTriumphantFox/WinThunar/issues">Issues</a> ·
+    <a href="https://github.com/TheTriumphantFox/WinThunar/blob/main/CONTRIBUTING.md">Contribute</a>
+  </div>
+</footer>
+</body>
+</html>

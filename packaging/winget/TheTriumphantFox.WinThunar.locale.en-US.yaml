@@ -1,0 +1,23 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.6.0.schema.json
+PackageIdentifier: TheTriumphantFox.WinThunar
+PackageVersion: 0.5.0
+PackageLocale: en-US
+Publisher: TheTriumphantFox
+PublisherUrl: https://github.com/TheTriumphantFox
+PublisherSupportUrl: https://github.com/TheTriumphantFox/WinThunar/issues
+PackageName: WinThunar
+PackageUrl: https://github.com/TheTriumphantFox/WinThunar
+License: MIT
+LicenseUrl: https://github.com/TheTriumphantFox/WinThunar/blob/main/LICENSE
+ShortDescription: Thunar-style file manager for Windows 11.
+Description: WinThunar is a free, open-source, clean-room recreation of the Thunar file manager for Windows 11, with tabs, split panes, a transfer queue with rollback-safe copies, undo/redo, previewed bulk rename, an integrated PowerShell panel, and JSON plugins.
+Moniker: winthunar
+Tags:
+  - file-manager
+  - explorer-alternative
+  - tabs
+  - open-source
+  - thunar
+ReleaseNotesUrl: https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.0
+ManifestType: defaultLocale
+ManifestVersion: 1.6.0

@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.6.0.schema.json
+PackageIdentifier: TheTriumphantFox.WinThunar
+PackageVersion: 0.5.0
+MinimumOSVersion: 10.0.22000.0
+InstallerType: msi
+Scope: user
+InstallModes:
+  - interactive
+  - silent
+  - silentWithProgress
+UpgradeBehavior: install
+Installers:
+  - Architecture: x64
+    InstallerUrl: https://github.com/TheTriumphantFox/WinThunar/releases/download/v0.5.0/WinThunar.App-win.msi
+    InstallerSha256: 23CEEE14B0E0B01AE15D29800DC67F9FA677D1EC56895336D2D9B95ADBD058F0
+    # ProductCode: '{...}'   # Filled in by `wingetcreate update`, which reads it from the MSI.
+ManifestType: installer
+ManifestVersion: 1.6.0

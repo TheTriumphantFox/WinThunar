@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="WinThunar logo: a blue folder with a lightning bolt">
+  <defs>
+    <linearGradient id="front" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4c8df6"/>
+      <stop offset="1" stop-color="#1f4fd1"/>
+    </linearGradient>
+    <linearGradient id="bolt" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffe066"/>
+      <stop offset="1" stop-color="#f5a623"/>
+    </linearGradient>
+  </defs>
+  <path d="M28 66a16 16 0 0 1 16-16h48a16 16 0 0 1 12 5.4L116 70h96a16 16 0 0 1 16 16v110a16 16 0 0 1-16 16H44a16 16 0 0 1-16-16z" fill="#1c3a8c"/>
+  <rect x="28" y="84" width="200" height="118" rx="16" fill="url(#front)"/>
+  <path d="M142 90 100 156h26l-12 46 50-70h-28l14-42z" fill="url(#bolt)" stroke="#a8620c" stroke-width="4" stroke-linejoin="round"/>
+</svg>

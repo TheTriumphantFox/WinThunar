@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640" width="1280" height="640">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0f1b3d"/>
+      <stop offset="1" stop-color="#1a3a8f"/>
+    </linearGradient>
+    <linearGradient id="front" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4c8df6"/>
+      <stop offset="1" stop-color="#1f4fd1"/>
+    </linearGradient>
+    <linearGradient id="bolt" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffe066"/>
+      <stop offset="1" stop-color="#f5a623"/>
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="640" fill="url(#bg)"/>
+  <g transform="translate(90 150) scale(1.35)">
+    <path d="M28 66a16 16 0 0 1 16-16h48a16 16 0 0 1 12 5.4L116 70h96a16 16 0 0 1 16 16v110a16 16 0 0 1-16 16H44a16 16 0 0 1-16-16z" fill="#1c3a8c"/>
+    <rect x="28" y="84" width="200" height="118" rx="16" fill="url(#front)"/>
+    <path d="M142 90 100 156h26l-12 46 50-70h-28l14-42z" fill="url(#bolt)" stroke="#a8620c" stroke-width="4" stroke-linejoin="round"/>
+  </g>
+  <g font-family="Segoe UI, Inter, Helvetica, Arial, sans-serif" fill="#ffffff">
+    <text x="500" y="270" font-size="116" font-weight="700">WinThunar</text>
+    <text x="504" y="346" font-size="40" fill="#cfe0ff">The Thunar file manager experience,</text>
+    <text x="504" y="396" font-size="40" fill="#cfe0ff">built natively for Windows 11.</text>
+    <text x="504" y="490" font-size="27" fill="#ffe066">Tabs · Split panes · Bulk rename · Undo/Redo · Plugins</text>
+    <text x="504" y="545" font-size="28" fill="#9db8f0">Free and open source · MIT License</text>
+  </g>
+</svg>

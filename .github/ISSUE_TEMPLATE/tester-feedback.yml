@@ -1,0 +1,53 @@
+name: First tester feedback
+description: Tell us what happened when you tried WinThunar and what would make it more useful.
+title: "[Feedback]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for trying WinThunar. Share the workflow you tried and the result.
+        Remove personal paths, filenames, and other private details from public screenshots or logs.
+  - type: input
+    id: version
+    attributes:
+      label: WinThunar version
+      description: Use the version shown by Help > About WinThunar.
+      placeholder: "0.5.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: installation
+    attributes:
+      label: How did you run it?
+      options:
+        - MSI installer
+        - Setup EXE
+        - Portable ZIP
+        - Built from source
+        - Other / not sure
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version/build
+      placeholder: Windows 11; build number if known
+  - type: textarea
+    id: workflow
+    attributes:
+      label: What did you try?
+      description: Describe the folders, view, and commands you used with sample filenames.
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: What happened, and what did you expect?
+      description: Include any confusing steps or error text, and whether you can reproduce it.
+    validations:
+      required: true
+  - type: textarea
+    id: improvement
+    attributes:
+      label: What would make WinThunar useful for your everyday work?
+      description: A missing feature, a clearer interaction, or what already worked well.

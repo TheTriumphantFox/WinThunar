@@ -1,9 +1,50 @@
 # WinThunar
 
-WinThunar is a clean-room, Windows-native recreation of the classic Thunar file manager experience.
-It targets Windows 11 and uses C#, .NET 10, WinUI 3, and the Windows App SDK.
+**A classic file manager experience for Windows 11.**
 
-The project is open source under the MIT License. It does not contain code copied from Thunar.
+WinThunar is a free, open-source Windows file manager inspired by Thunar. Browse with tabs
+and split panes, preview bulk renames, and keep a PowerShell command panel beside your files.
+It is an independent, clean-room implementation built with C#, .NET 10, and WinUI 3,
+released under the MIT License. It is not an official Thunar or Xfce project and contains
+no code copied from Thunar.
+
+**[Download for Windows 11 (MSI)](https://github.com/TheTriumphantFox/WinThunar/releases/latest/download/WinThunar.App-win.msi)**
+&nbsp;|&nbsp; [Portable ZIP](https://github.com/TheTriumphantFox/WinThunar/releases/latest/download/WinThunar.App-win-Portable.zip)
+&nbsp;|&nbsp; [Release notes and all downloads](https://github.com/TheTriumphantFox/WinThunar/releases/latest)
+
+Windows 11, x64. No separate .NET installation required. Installed copies support automatic
+updates; portable copies are updated manually.
+
+[![WinThunar showing tabs and two file panes with sample documents](docs/media/winthunar-split-panes.png)](docs/media/winthunar-demo.mp4)
+
+### Why try WinThunar?
+
+- **Keep folders in view.** Tabs and split panes give each folder its own navigation history.
+- **Organize names before moving files.** Bulk rename shows a preview before you apply changes.
+- **Use a familiar layout.** Classic menus, a location bar, bookmarks, and a PowerShell panel
+  keep common tools close to your files.
+
+**[Watch the 25-second demo (MP4)](docs/media/winthunar-demo.mp4)**
+or [open the animated walkthrough (GIF)](docs/media/winthunar-demo.gif).
+The demo uses sample files and the released 0.5.0 interface.
+
+<details>
+<summary>Play the animated walkthrough here</summary>
+
+![WinThunar walkthrough: tabs, split panes, a bulk-rename preview, and moving the renamed files](docs/media/winthunar-demo.gif)
+
+</details>
+
+### Help improve it
+
+Try a few sample folders and tell us what makes everyday file management easier or harder.
+[Report a bug or request a feature](https://github.com/TheTriumphantFox/WinThunar/issues).
+Useful reports include the WinThunar version, steps to reproduce, and what you expected.
+Please remove personal paths and filenames from screenshots and logs before sharing them.
+
+WinThunar is under active development. Transfer undo does not cover Replace or directory Merge,
+and operations handed to Windows are outside its Undo history. See the installation and Windows
+integration notes below before choosing it as your default file manager.
 
 ## Current milestone
 
@@ -51,7 +92,8 @@ The project is open source under the MIT License. It does not contain code copie
 
 ## Installing
 
-Run `WinThunar-<version>-win-x64.msi`. The target Windows 11 computer does not need a separate
+Download `WinThunar.App-win.msi` from GitHub Releases (local release builds name it
+`WinThunar-<version>-win-x64.msi`). The target Windows 11 computer does not need a separate
 .NET installation. The installer asks:
 
 - **Just me or everyone.** Just me installs to `%LOCALAPPDATA%\WinThunar.App` without asking for

@@ -9,10 +9,10 @@ that a person tried the application or continued using it.
 | Item | Status |
 | --- | --- |
 | Project introduction, screenshots, and 25-second demo | Published in PR #10. |
-| Documentation audit | Included with this launch-preparation change. |
-| GitHub tester-feedback form | Added with this change; available after it is merged. |
-| AlternativeTo listing | Prepared below; not submitted. Requires a verified account and a submission-capable browser connection. |
-| First community introduction | Draft for u/TheTriumphantFox; not posted. Pending browser access and live submission checks. |
+| Documentation audit | Published in PR #11. |
+| GitHub tester-feedback form | Published in PR #11 and linked from the README. |
+| AlternativeTo listing | Prepared below; not submitted. Account email is verified; its saved browser sign-in is pending. |
+| First community introduction | [Published in r/SideProject](https://www.reddit.com/r/SideProject/comments/1x9uvud/winthunar_a_free_thunarinspired_file_manager_for/) by u/TheTriumphantFox on 19 October 2026. |
 | r/Windows11 | Excluded: current promotion rules say new applicants are not being accepted. |
 | Paid promotion | Not part of this launch. |
 
@@ -77,7 +77,7 @@ screen before posting. Post once and participate in replies; do not solicit vote
 
 **Title:** WinThunar: a free Thunar-inspired file manager for Windows 11 — looking for first testers
 
-**Body:**
+**Body (published text):**
 
 I'm sharing WinThunar, a free, open-source file manager for Windows 11. It uses a classic
 menu-and-sidebar layout inspired by Thunar, with tabs, split panes, bulk rename previews,
@@ -128,4 +128,4 @@ if the actual public submission happens later.
 | Date | Channel and public URL | Submission/review status | Downloads since baseline | Voluntary tester reports | Useful follow-up |
 | --- | --- | --- | --- | --- | --- |
 | 19 October 2026 | AlternativeTo | Draft; not submitted | | | |
-| 19 October 2026 | r/SideProject | Draft; not posted | | | |
+| 19 October 2026 | [r/SideProject](https://www.reddit.com/r/SideProject/comments/1x9uvud/winthunar_a_free_thunarinspired_file_manager_for/) | Published; public post verified | | | Respond to substantive feedback. |

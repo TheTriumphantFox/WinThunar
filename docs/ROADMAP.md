@@ -1,5 +1,34 @@
 # WinThunar roadmap
 
+## Release and source status
+
+Checked 19 October 2026. The latest published application is
+[0.5.0](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.0), published 14 October 2026.
+The maintainer's local source checkout still declares version 0.5.0 but also contains
+unreleased application work. That application work is not yet in GitHub's `main` branch. Documentation-only commits do not distribute a new application version.
+
+The checked items in sections 1–5 below are in release 0.5.0. Unreleased additions are
+listed separately; a checked source task does not mean it has reached installed users.
+
+| Capability | Published 0.5.0 | Maintainer's unreleased local source |
+| --- | --- | --- |
+| Directory links/junctions in file transfers | Offer Windows fallback after confirmation; link contents may be followed. | Preserve supported symbolic links/junctions without traversing targets. |
+| Jump-list tasks and local transfer notifications | Not included. | Implemented; Windows notification availability remains environment-dependent. |
+| Git status badges | Not included; Git commands are available. | Three primary layouts plus right-side details; ordinary folder listings only. |
+| F6 regions, Ctrl+Tab tab cycling, keyboard column resizing, metadata/status names | Earlier keyboard and accessibility support only. | Added; full screen-reader and high-contrast review remains open. |
+| Desktop smoke harness | Not included. | Available through `scripts/Test-DesktopSmoke.ps1`. |
+
+## Unreleased additions
+
+- [x] Native symbolic-link and junction preservation, link-state checks, and recovery cleanup.
+- [x] Taskbar jump-list tasks and background-transfer outcome notifications.
+- [x] Git status badges with optional, bounded background queries.
+- [x] Additional keyboard navigation and accessible names.
+- [x] Desktop smoke checks for rendered layouts and selected accessibility behavior.
+
+These items need a new version and a published GitHub Release before installed users receive
+them. See [release publishing](RELEASES.md) and [accessibility status](ACCESSIBILITY.md).
+
 ## 1. Browser foundation
 
 - [x] Classic Thunar window layout
@@ -26,8 +55,8 @@
 - [x] Drag-and-drop rules based on source and destination volumes, including folder-row targets
 - [x] Elevation only when an operation requires it (copies, moves, trash, delete, new folder, and
   rename that are denied access can be finished by the Windows copy engine with a UAC prompt)
-- Safe handling for directory links and junctions (they are currently handed to the Windows copy
-  engine, which follows them as Explorer does; native link-preserving copies remain to do)
+- Directory links/junctions use the Windows fallback in 0.5.0; native preservation is listed
+  above as unreleased source work.
 
 ## 3. Discovery and power features
 
@@ -46,13 +75,15 @@
 
 - [x] “Open in WinThunar” shell command
 - [x] Command-line folder and `/select` launches with single-instance window reuse
-- Taskbar jump list and notifications
+- Taskbar jump list and notifications: implemented in unreleased source; see the status table.
 - [x] Optional, reversible default handler for folders and drives (Win+E and apps that call
   `SHOpenFolderAndSelectItems` still open Explorer)
-- Portable/self-contained x64 GitHub release
-- [x] Per-user installer with background delta updates from GitHub Releases (Velopack)
+- [x] Portable/self-contained x64 GitHub release
+- [x] MSI installer with per-user/all-users scope and GitHub Release updates (Velopack);
+  all-users installation and applying its updates require administrator permission
 - [x] Transfer crash recovery journal and bounded thumbnail loading
-- Accessibility and keyboard-navigation review (files and side-pane locations now have screen-reader names; a full review remains)
+- Accessibility and keyboard-navigation review: partial source/smoke coverage; full manual
+  screen-reader, high-contrast, scaling, and input review remains open.
 
 ## 5. Plugin ecosystem
 
@@ -62,4 +93,14 @@
 - [x] Media-tag editing
 - [x] Version-control commands
 - [x] Shared-folder management commands
-- Version-control overlays
+- Version-control overlays: implemented as badges in unreleased source; see the status table.
+
+## Remaining gaps
+
+- [ ] Publish the unreleased application additions with a new version.
+- [ ] Complete the manual accessibility checks documented in [ACCESSIBILITY.md](ACCESSIBILITY.md).
+- [ ] Retain displaced content to support Undo after Replace and directory Merge.
+- [ ] Add and verify native handling of unsupported reparse-point types before claiming support.
+
+Release ZIP/MSI packages currently target x64. The project lists other build platforms,
+but no x86 or ARM64 download is promised by this roadmap.

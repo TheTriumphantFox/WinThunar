@@ -1,7 +1,12 @@
 # WinThunar launch kit
 
-Prepared 19 October 2026. These are reviewable drafts; no community posts, emails,
-directory submissions, or advertising purchases have been made.
+Prepared and reviewed 19 October 2026. The README and promotional media were published to
+GitHub through [PR #10](https://github.com/TheTriumphantFox/WinThunar/pull/10).
+The community posts, press pitches, and directory descriptions below remain drafts; no such
+submissions or advertising purchases were made as part of preparing this kit.
+
+The public application release is still 0.5.0. Keep announcements about downloaded builds
+limited to released features; see the [release/source status](ROADMAP.md#release-and-source-status).
 
 ## Positioning
 
@@ -119,8 +124,9 @@ and is released under the MIT License.
 **Suggested alternatives:** File Explorer; Thunar, with the distinction that WinThunar runs
 on Windows. Submit only appropriate relationships and let the directory review them.
 
-Submit through [AlternativeTo's application process](https://alternativeto.net/faq/).
-Do not submit fake reviews or endorsements.
+Submit through [AlternativeTo's application process](https://alternativeto.net/faq/), using
+an account with a verified email address. Submissions require review; the ordinary queue
+does not have a promised review date. Do not submit fake reviews or endorsements.
 
 ## Press or creator pitch
 
@@ -148,8 +154,8 @@ No coverage or endorsement is implied.
 
 ## Launch order and measurement
 
-1. Review the README, media, public release downloads, and known limitations. Publish the
-   documentation/media changes to GitHub before sharing links to them.
+1. The README and media are published. Before sharing them, recheck the public release
+   downloads and known limitations, particularly after a new application version is released.
 2. Submit the AlternativeTo listing and make one appropriate community introduction.
    Check current community rules and obtain moderator permission where required.
 3. Respond to useful reports and address installation or file-operation problems.
@@ -158,10 +164,12 @@ No coverage or endorsement is implied.
 5. Consider WinGet as a separate packaging task. Microsoft Store submission also needs
    its own packaging, signing, and policy review; neither is claimed to be available here.
 
-The [r/Windows11 moderator discussion from September 2026](https://www.reddit.com/r/Windows11/comments/1w4fj7x/looking_for_feedback_regarding_handling_of/)
-proposed a minimum 30-day public history and AI disclosure among its conditions. That
-discussion is not permission to post. Verify current rules and the earliest public project
-date before requesting approval; the latest release date alone does not establish age.
+As checked on 19 October 2026, [r/Windows11's current rules](https://www.reddit.com/r/Windows11/about/rules.json)
+require promotion permission and say new applicants are not being accepted. Exclude it
+from this launch unless those rules change or the project already has moderator approval.
+The September discussion about a minimum public history and AI disclosure was a proposal,
+not current permission to post. See the [launch status and first tester workflow](LAUNCH.md)
+for the prepared r/SideProject introduction and submission status.
 
 Use this small manual log. Release download counts are downloads, not unique or active users.
 Record a baseline and distinguish human-facing installer/ZIP assets from update packages.
@@ -191,5 +199,19 @@ preview and then returns acceptance to the actual rename routine on the syntheti
 It leaves the temporary build and report available for inspection.
 
 The capture callback is tailored to the 0.5.0 source structure. Review it before using a
-different version. The media composer requires Pillow and an FFmpeg executable; see
-`scripts/promotion/Compose-PromotionalMedia.py --help`.
+different version. The capture build needs the Windows/.NET build prerequisites described
+in the [README](../README.md#build). The composer needs Python with Pillow, Windows Segoe UI
+fonts, and an FFmpeg executable with H.264/libx264 support. `imageio-ffmpeg` is one optional
+way to obtain FFmpeg; its executable path must still be supplied explicitly.
+
+For example, after capturing into a new folder:
+
+```powershell
+python .\scripts\promotion\Compose-PromotionalMedia.py --help
+python .\scripts\promotion\Compose-PromotionalMedia.py --captures 'C:\path\to\captures' --output 'C:\path\to\media' --icon .\Assets\AppIcon.ico --ffmpeg 'C:\path\to\ffmpeg.exe'
+```
+
+The capture script prints its output directory. The composer writes PNGs, a GIF, and an MP4
+to the chosen media folder; use a fresh folder to keep an earlier campaign's files intact.
+The checked-in 25-second media remains a record of 0.5.0, not an automatically regenerated
+demonstration of whatever version happens to be newest.

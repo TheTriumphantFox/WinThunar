@@ -1,0 +1,140 @@
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Imaging;
+using System.Runtime.InteropServices.WindowsRuntime;
+using System.Text.Json;
+using Windows.Graphics.Imaging;
+using Windows.Storage;
+using WinThunar.Models;
+using WinThunar.Services;
+
+namespace WinThunar;
+
+// Added only to an isolated copy of the v0.5.0 source for promotional captures.
+public sealed partial class MainPage
+{
+    private async Task CapturePromoAsync()
+    {
+        _restoringSession = true;
+        _sessionReady = false;
+        var output = Environment.GetEnvironmentVariable("WINTHUNAR_PROMO_OUTPUT")!;
+        var fixture = Environment.GetEnvironmentVariable("WINTHUNAR_PROMO_FIXTURE")!;
+        var incoming = Path.Combine(fixture, "Incoming");
+        var organized = Path.Combine(fixture, "Organized");
+        var checks = new List<string>();
+        string? failure = null;
+        try
+        {
+            App.Window.AppWindow.Resize(new Windows.Graphics.SizeInt32(1400, 900));
+            await ViewModel.InitializeAsync(incoming);
+            ViewModel.ViewMode = BrowserViewMode.Details;
+            ViewModel.SetColumnWidths(80, 120, 145);
+            ApplyColumnVisibility();
+            // Use only synthetic folders in the navigation pane.
+            foreach (var browser in new[] { ViewModel, SplitViewModel })
+            {
+                browser.Places.Clear();
+                browser.Places.Add(new NavigationLocation("Demo", fixture, "\uE80F"));
+                browser.Places.Add(new NavigationLocation("Incoming", incoming, "\uE896"));
+                browser.Places.Add(new NavigationLocation("Organized", organized, "\uE8B7"));
+                browser.Devices.Clear();
+                browser.NetworkLocations.Clear();
+            }
+            AddBrowserTab(incoming, true);
+            AddBrowserTab(organized, false);
+            await SettlePromoAsync();
+            await CapturePromoImageAsync(output, "01-overview", this);
+            await OpenSplitPaneAsync(organized, false);
+            SplitViewModel.SetColumnWidths(80, 95, 120);
+            // These are normal user-selectable column preferences, useful in narrow panes.
+            foreach (var browser in new[] { ViewModel, SplitViewModel })
+            {
+                browser.ShowTypeColumn = false;
+                browser.ShowModifiedColumn = false;
+            }
+            ApplyColumnVisibility();
+            FileList.Focus(FocusState.Programmatic);
+            await SettlePromoAsync();
+            await CapturePromoImageAsync(output, "02-split-panes", this);
+
+            var selected = ViewModel.Entries.Where(e => e.Name.StartsWith("draft-", StringComparison.Ordinal)).ToArray();
+            if (selected.Length != 3) throw new InvalidOperationException("Expected three synthetic drafts.");
+            foreach (var entry in selected) FileList.SelectedItems.Add(entry);
+            await SettlePromoAsync();
+            await CapturePromoImageAsync(output, "03-selected", this);
+
+            // Open the actual released bulk-rename dialog. Configure its real controls,
+            // capture its preview, then accept it on synthetic files only.
+            await BulkRenameAsync(selected);
+            await SettlePromoAsync();
+            checks.Add("Actual bulk-rename dialog previewed and renamed three synthetic files.");
+            await CapturePromoImageAsync(output, "05-renamed", this);
+
+            var renamed = Directory.GetFiles(incoming, "project-*.txt");
+            await RunTransferAsync(renamed, organized, FileTransferMode.Move);
+            await SettlePromoAsync();
+            if (Directory.GetFiles(organized, "project-*.txt").Length != 3 || Directory.GetFiles(incoming, "project-*.txt").Length != 0)
+                throw new InvalidOperationException("Synthetic move did not complete.");
+            checks.Add("Released transfer command moved all three renamed files into Organized.");
+            await CapturePromoImageAsync(output, "06-organized", this);
+
+            _showTerminalPanel = true;
+            ApplyTerminalPanel();
+            await SettlePromoAsync();
+            await CapturePromoImageAsync(output, "07-powershell-panel", this);
+            checks.Add("Tabs, split panes, and the PowerShell panel rendered from v0.5.0 source.");
+        }
+        catch (Exception ex) { failure = ex.ToString(); }
+        finally
+        {
+            File.WriteAllText(Path.Combine(output, "capture-result.json"), JsonSerializer.Serialize(new { source = "v0.5.0", checks, failure }, new JsonSerializerOptions { WriteIndented = true }));
+            App.Window.Close();
+        }
+    }
+
+    // The isolated source snapshot routes only the bulk-rename dialog through this
+    // capture callback. No Windows input or accessibility automation is used.
+    private async Task<ContentDialogResult> CapturePromoRenameAsync(ContentDialog dialog)
+    {
+        var showing = dialog.ShowAsync();
+        await SettlePromoAsync();
+        var panel = (StackPanel)dialog.Content;
+        var fields = panel.Children.OfType<TextBox>().ToArray();
+        fields[0].Text = "draft-";
+        fields[1].Text = "project-";
+        await SettlePromoAsync();
+        if (!dialog.IsPrimaryButtonEnabled) throw new InvalidOperationException("Rename preview is invalid.");
+        await CapturePromoImageAsync(Environment.GetEnvironmentVariable("WINTHUNAR_PROMO_OUTPUT")!, "04-bulk-rename", dialog);
+        dialog.Hide();
+        await showing;
+        return ContentDialogResult.Primary;
+    }
+
+    private async Task SettlePromoAsync()
+    {
+        UpdateLayout();
+        await Task.Delay(650);
+        UpdateLayout();
+    }
+
+    private async Task CapturePromoImageAsync(string directory, string name, UIElement element)
+    {
+        // Navigation and transfers refresh detected devices; clear machine-specific
+        // drive labels again immediately before every render.
+        ViewModel.Devices.Clear();
+        SplitViewModel.Devices.Clear();
+        UpdateLayout();
+        await Task.Delay(100);
+        var bitmap = new RenderTargetBitmap();
+        await bitmap.RenderAsync(element);
+        var pixels = await bitmap.GetPixelsAsync();
+        var folder = await StorageFolder.GetFolderFromPathAsync(directory);
+        var file = await folder.CreateFileAsync(name + ".png", CreationCollisionOption.ReplaceExisting);
+        using var stream = await file.OpenAsync(FileAccessMode.ReadWrite);
+        var encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, stream);
+        encoder.SetPixelData(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied,
+            (uint)bitmap.PixelWidth, (uint)bitmap.PixelHeight, 96, 96, pixels.ToArray());
+        await encoder.FlushAsync();
+    }
+}

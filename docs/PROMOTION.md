@@ -2,8 +2,10 @@
 
 Prepared and reviewed 19 October 2026. The README and promotional media were published to
 GitHub through [PR #10](https://github.com/TheTriumphantFox/WinThunar/pull/10).
-The community posts, press pitches, and directory descriptions below remain drafts; no such
-submissions or advertising purchases were made as part of preparing this kit.
+The [first community introduction](https://www.reddit.com/r/SideProject/comments/1x9uvud/winthunar_a_free_thunarinspired_file_manager_for/)
+was published to r/SideProject as u/TheTriumphantFox on 19 October 2026. The AlternativeTo
+listing and press pitches remain drafts; no paid promotion has been purchased. See
+[launch status](LAUNCH.md) for confirmed submissions and the initial download baseline.
 
 The public application release is still 0.5.0. Keep announcements about downloaded builds
 limited to released features; see the [release/source status](ROADMAP.md#release-and-source-status).

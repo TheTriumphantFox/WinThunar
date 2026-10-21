@@ -23,6 +23,40 @@ public partial class MainPageViewModel : ObservableObject, IDisposable
     private int _imageVersion;
     private int _historyIndex = -1;
     private bool _disposed;
+    private readonly GitStatusService _gitStatus = new();
+    private Microsoft.UI.Dispatching.DispatcherQueueTimer? _gitTimer;
+    private CancellationTokenSource? _gitCancellation;
+    private bool _gitLoading;
+
+    private async Task RefreshGitStatusAsync()
+    {
+        if (_disposed || _gitLoading || IsVirtualView || IsSearchMode || IsBusy || string.IsNullOrEmpty(CurrentPath)) return;
+        _gitLoading = true;
+        var path = CurrentPath;
+        using var cancellation = new CancellationTokenSource();
+        _gitCancellation = cancellation;
+        try
+        {
+            var snapshot = await _gitStatus.ReadAsync(path, cancellation.Token);
+            cancellation.Token.ThrowIfCancellationRequested();
+            if (_disposed || !PathEquals(path, CurrentPath) || IsVirtualView || IsSearchMode) return;
+            foreach (var entry in Entries) entry.GitStatus = snapshot?.ForPath(entry.FullPath, entry.IsDirectory) ?? GitFileStatus.None;
+        }
+        catch (OperationCanceledException) { }
+        finally { _gitCancellation = null; _gitLoading = false; }
+    }
+
+    private void StartGitStatusRefresh()
+    {
+        if (_gitTimer is null)
+        {
+            _gitTimer = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread().CreateTimer();
+            _gitTimer.Interval = TimeSpan.FromSeconds(10);
+            _gitTimer.Tick += async (_, _) => await RefreshGitStatusAsync();
+            _gitTimer.Start();
+        }
+        _ = RefreshGitStatusAsync();
+    }
 
     public BulkObservableCollection<FileSystemEntry> Entries { get; } = [];
     public ObservableCollection<NavigationLocation> Places { get; } = [];
@@ -287,6 +321,7 @@ public partial class MainPageViewModel : ObservableObject, IDisposable
     public async Task NavigateAsync(string requestedPath, bool addToHistory = true)
     {
         var navigationVersion = _navigationGeneration.Next();
+        _gitCancellation?.Cancel();
         _navigationCancellation?.Cancel();
         _navigationCancellation?.Dispose();
         _navigationCancellation = new CancellationTokenSource();
@@ -322,13 +357,6 @@ public partial class MainPageViewModel : ObservableObject, IDisposable
             return;
         }
 
-        if (!Directory.Exists(path))
-        {
-            StatusText = $"Folder not found: {path}";
-            IsBusy = false;
-            return;
-        }
-
         var isRefresh = !IsSearchMode && PathEquals(path, CurrentPath);
 
         CancelSearchCore();
@@ -342,12 +370,12 @@ public partial class MainPageViewModel : ObservableObject, IDisposable
 
         try
         {
-            var entries = await Task.Run(() => ReadDirectory(
-                path,
-                ShowHiddenFiles,
-                SortColumn,
-                SortDescending,
-                FoldersFirst), cancellationToken);
+            var showHidden = ShowHiddenFiles;
+            var column = SortColumn;
+            var descending = SortDescending;
+            var foldersFirst = FoldersFirst;
+            var entries = await Task.Run(() => ReadDirectory(path, showHidden, column,
+                descending, foldersFirst, cancellationToken), cancellationToken);
 
             cancellationToken.ThrowIfCancellationRequested();
             if (!_navigationGeneration.IsCurrent(navigationVersion))
@@ -414,6 +442,7 @@ public partial class MainPageViewModel : ObservableObject, IDisposable
             if (_navigationGeneration.IsCurrent(navigationVersion))
             {
                 IsBusy = false;
+                StartGitStatusRefresh();
             }
         }
     }
@@ -478,6 +507,15 @@ public partial class MainPageViewModel : ObservableObject, IDisposable
         if (string.IsNullOrWhiteSpace(normalizedQuery))
         {
             await EndSearchAsync();
+            return;
+        }
+
+        try { _ = FileSearchQuery.Parse(normalizedQuery); }
+        catch (FormatException ex)
+        {
+            CancelSearchCore();
+            IsBusy = false;
+            StatusText = ex.Message;
             return;
         }
 
@@ -556,6 +594,10 @@ public partial class MainPageViewModel : ObservableObject, IDisposable
         {
             // A new query or explicit close superseded this search.
         }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or FormatException)
+        {
+            if (version == _searchVersion) StatusText = $"Search could not finish: {ex.Message}";
+        }
         finally
         {
             if (version == _searchVersion)
@@ -584,11 +626,7 @@ public partial class MainPageViewModel : ObservableObject, IDisposable
             return;
         }
 
-        var fileBytes = selected
-            .Where(entry => !entry.IsDirectory)
-            .Select(entry => new FileInfo(entry.FullPath))
-            .Where(file => file.Exists)
-            .Sum(file => file.Length);
+        var fileBytes = selected.Where(entry => !entry.IsDirectory).Sum(entry => entry.ByteSize);
 
         StatusText = $"{selected.Count} item{(selected.Count == 1 ? string.Empty : "s")} selected";
         if (fileBytes > 0)
@@ -839,11 +877,13 @@ public partial class MainPageViewModel : ObservableObject, IDisposable
         bool showHiddenFiles,
         BrowserSortColumn sortColumn,
         bool sortDescending,
-        bool foldersFirst)
+        bool foldersFirst,
+        CancellationToken cancellationToken = default)
     {
         var results = new List<FileSystemEntry>();
         foreach (var childPath in Directory.EnumerateFileSystemEntries(path))
         {
+            cancellationToken.ThrowIfCancellationRequested();
             try
             {
                 var attributes = File.GetAttributes(childPath);
@@ -875,6 +915,7 @@ public partial class MainPageViewModel : ObservableObject, IDisposable
             }
         }
 
+        cancellationToken.ThrowIfCancellationRequested();
         return SortEntries(results, sortColumn, sortDescending, foldersFirst).ToList();
     }
 
@@ -1013,6 +1054,8 @@ public partial class MainPageViewModel : ObservableObject, IDisposable
 
     public void Dispose()
     {
+        _gitTimer?.Stop();
+        _gitCancellation?.Cancel();
         if (_disposed)
         {
             return;
@@ -1023,6 +1066,7 @@ public partial class MainPageViewModel : ObservableObject, IDisposable
         _imageCancellation?.Cancel();
         _imageCancellation?.Dispose();
         _imageCancellation = null;
+        _gitCancellation?.Cancel();
         _navigationCancellation?.Cancel();
         _navigationCancellation?.Dispose();
         _navigationCancellation = null;

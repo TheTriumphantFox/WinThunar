@@ -1,11 +1,73 @@
 # WinThunar
 
-WinThunar is a clean-room, Windows-native recreation of the classic Thunar file manager experience.
-It targets Windows 11 and uses C#, .NET 10, WinUI 3, and the Windows App SDK.
+**A classic file manager experience for Windows 11.**
 
-The project is open source under the MIT License. It does not contain code copied from Thunar.
+WinThunar is a free, open-source Windows file manager inspired by Thunar. Browse with tabs
+and split panes, preview bulk renames, and keep a PowerShell command panel beside your files.
+It is an independent, clean-room implementation built with C#, .NET 10, and WinUI 3,
+released under the MIT License. It is not an official Thunar or Xfce project and contains
+no code copied from Thunar.
 
-## Current milestone
+**[Download for Windows 11 (MSI)](https://github.com/TheTriumphantFox/WinThunar/releases/latest/download/WinThunar.App-win.msi)**
+&nbsp;|&nbsp; [Portable ZIP](https://github.com/TheTriumphantFox/WinThunar/releases/latest/download/WinThunar.App-win-Portable.zip)
+&nbsp;|&nbsp; [Release notes and all downloads](https://github.com/TheTriumphantFox/WinThunar/releases/latest)
+
+Windows 11, x64. No separate .NET installation required. Installed copies support automatic
+updates; portable copies are updated manually.
+
+[![WinThunar showing tabs and two file panes with sample documents](docs/media/winthunar-split-panes.png)](docs/media/winthunar-demo.mp4)
+
+### Why try WinThunar?
+
+- **Keep folders in view.** Tabs and split panes give each folder its own navigation history.
+- **Organize names before moving files.** Bulk rename shows a preview before you apply changes.
+- **Use a familiar layout.** Classic menus, a location bar, bookmarks, and a PowerShell panel
+  keep common tools close to your files.
+
+**[Watch the 25-second demo (MP4)](docs/media/winthunar-demo.mp4)**
+or [open the animated walkthrough (GIF)](docs/media/winthunar-demo.gif).
+The demo uses sample files and the released 0.5.0 interface.
+
+<details>
+<summary>Play the animated walkthrough here</summary>
+
+![WinThunar walkthrough: tabs, split panes, a bulk-rename preview, and moving the renamed files](docs/media/winthunar-demo.gif)
+
+</details>
+
+### Help improve it
+
+Try a few sample folders and tell us what makes everyday file management easier or harder.
+[Share first-tester feedback](https://github.com/TheTriumphantFox/WinThunar/issues/new?template=tester-feedback.yml),
+or [report a bug or request a feature](https://github.com/TheTriumphantFox/WinThunar/issues).
+Useful reports include the WinThunar version, steps to reproduce, and what you expected.
+Please remove personal paths and filenames from screenshots and logs before sharing them.
+
+WinThunar is under active development. Transfer undo does not cover Replace or directory Merge,
+and operations handed to Windows are outside its Undo history. See the installation and Windows
+integration notes below before choosing it as your default file manager.
+
+## Release and source status
+
+The latest published application release is **0.5.0** (14 October 2026), verified against
+GitHub Releases on 21 October 2026. The development checkout is preparing **0.5.1**. Documentation and website updates do not update the
+installed application. The feature list below describes that release; sections marked
+**unreleased source** describe work in the maintainer's local development checkout. These
+application changes are not yet in GitHub's `main` branch or a newer GitHub Release.
+See the [0.5.1 release candidate notes](docs/RELEASE-0.5.1.md) for the prepared milestone and verification limits.
+
+### Daily-default improvements — unreleased 0.5.1 source
+
+- Transfer Undo/Redo includes Replace and directory Merge. Displaced items and exact Redo data
+  are retained until the window's ten-action history expires; history still does not survive restart.
+- Search combines words, quoted names, wildcards, file types, modified dates, and sizes:
+  `name:"annual report" type:pdf modified:last7days size:>1MB`.
+- The interface follows Windows light/dark settings and uses system resources in the command panel,
+  preview text, and drop highlight. Full screen-reader and contrast-theme review remains open.
+- Folder enumeration checks cancellation between entries; filename search streams directory entries;
+  selection totals use the listing's metadata rather than reopening selected paths.
+
+## Features in release 0.5.0
 
 - Classic menu, toolbar, location bar, side pane, detail view, and status bar
 - Places, detected drives, a This PC drive overview (Up from a drive root), and OneDrive when signed in
@@ -49,9 +111,34 @@ The project is open source under the MIT License. It does not contain code copie
 - Selection-aware custom actions with file patterns, file/folder targeting, confirmation prompts, and argument-list execution without a command shell
 - Atomic, junction-safe bundled archive create/extract, media-tag editing, Git status/diff/log, and Windows sharing-management integrations
 
+## Desktop integration and accessibility — unreleased source
+
+These additions are present in the development checkout, not the published 0.5.0 build.
+
+The taskbar jump list offers **New window**, **Home**, and **Downloads**. When a transfer finishes
+while its window is in the background, WinThunar sends a local Windows notification; selecting it
+opens the destination folder. If Windows notifications are unavailable or disabled, the in-app
+status and error dialogs continue to report the outcome.
+
+Git repositories show status badges in all three primary-pane layouts and the right-side
+detailed list. Badges are not populated in search results or virtual locations such as Trash. The badges are
+`✓` clean, `M` modified, `+` added, `−` deleted, `R` renamed, `?` untracked, `·` ignored, and `!`
+conflicted. Folder badges summarize their descendants. Git is optional; queries run in the
+background, refresh on navigation and every ten seconds, do not write the index, and disable
+repository fsmonitor commands. Tooltips and accessible item names include the status text.
+
+Use **F6 / Shift+F6** to move between tabs, location, side pane, file panes, and the visible
+command input; **Ctrl+Tab / Ctrl+Shift+Tab** switches folder tabs. Focus a column divider and
+use **Left / Right** to resize it. Keyboard focus selects the active split pane. The interface
+exposes file metadata and Git status to accessibility tools. Most browser chrome uses system
+color resources, but fixed colors remain in parts of the interface; high-contrast behavior
+and screen-reader use still need manual verification. See the
+[accessibility status](docs/ACCESSIBILITY.md) for implemented support and remaining checks.
+
 ## Installing
 
-Run `WinThunar-<version>-win-x64.msi`. The target Windows 11 computer does not need a separate
+Download `WinThunar.App-win.msi` from GitHub Releases (local release builds name it
+`WinThunar-<version>-win-x64.msi`). The target Windows 11 computer does not need a separate
 .NET installation. The installer asks:
 
 - **Just me or everyone.** Just me installs to `%LOCALAPPDATA%\WinThunar.App` without asking for
@@ -107,13 +194,25 @@ process. Windows still opens Explorer for Win+E and for apps that call
 
 When WinThunar is denied access (for example in `Program Files`), it offers to let the Windows copy
 engine finish the copy, move, trash, delete, new-folder, or rename, which asks for administrator
-permission itself. WinThunar's own engine does not copy directory links or junctions yet; it offers
-the same hand-off, and Windows copies the linked folder's contents as Explorer does. Operations
-finished by Windows are not in WinThunar's Undo history. Transfer
-undo is intentionally withheld after Replace or directory Merge because the displaced data cannot yet
-be restored safely.
+permission itself. In **release 0.5.0**, directory links and junctions are offered to the Windows
+copy engine after confirmation; that fallback can follow the linked folder's contents as Explorer
+does. Do not treat it as a link-preserving copy.
+
+The **unreleased source** preserves supported symbolic links and NTFS junctions as links without
+traversing their targets, including during replacement and recovery. Copying symbolic links still
+requires Windows Developer Mode or the symbolic-link privilege; unsupported link types can be
+offered to Windows after confirmation. Archive creation continues to reject directory links.
+
+Operations finished by Windows are outside WinThunar's Undo history. Transfer undo is withheld
+after Replace or directory Merge because displaced content is not retained for later undo.
+See [file-operation behavior](docs/FILE-OPERATIONS.md) for the full scope and limitations.
 
 ## Build
+
+Use Windows 11 with the .NET 10 SDK and Windows SDK build tools required by
+`WinThunar.csproj` (the target framework is `net10.0-windows10.0.26100.0`). The commands
+below target x64. Project platform entries for x86 and ARM64 do not imply downloadable
+releases for those architectures.
 
 ```powershell
 dotnet restore .\WinThunar.csproj -r win-x64
@@ -127,46 +226,58 @@ Run the isolated file-operation and browser-state tests:
 dotnet test .\tests\WinThunar.FileOps.Tests\WinThunar.FileOps.Tests.csproj --configuration Release
 ```
 
+The maintainer's **unreleased local source** also includes a desktop smoke build. Its harness
+is not present in the published 0.5.0 source or GitHub `main` as of this audit. Run this command
+only from a checkout containing that harness; it does not restore or save your normal session:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-DesktopSmoke.ps1
+```
+
+The script writes a JSON report and rendered PNGs to a new temporary folder. The test-only
+code is excluded from normal builds. The relative-symbolic-link unit test explicitly skips
+when the Windows account lacks permission to create symbolic links.
+
 Developer Mode must be enabled in Windows Settings to register and launch the development package.
 
 ## Windows release
 
-The installer is built with [Velopack](https://velopack.io) (MIT). Install its packaging tool once:
+Install the Velopack packaging tool once:
 
 ```powershell
 dotnet tool install -g vpk --version 1.2.161
 ```
 
-Create a self-contained, unpackaged x64 release folder, portable ZIP, installer, and SHA-256
-checksums:
+Build a release from the main checkout; this example uses the prepared 0.5.1 candidate:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.5.0
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.5.1
 ```
 
-This writes `artifacts\WinThunar-<version>-win-x64.zip` and
-`artifacts\WinThunar-<version>-win-x64.msi`, each with a `.sha256` file. The script adds the
-shortcut checkboxes to Velopack's MSI with `scripts\Set-MsiShortcutChoices.ps1`. The installer needs
-a three-part version; pass `-SkipInstaller` for a ZIP-only build. Keep `artifacts\installer`
-between releases: it holds every version's Velopack packages, which later releases need for
-delta updates. The ZIP can be extracted and run with `WinThunar.exe`; the target Windows 11
-computer does not need a separate .NET installation.
+For a new release, choose an unused version and update all four version locations before
+building. The script refuses existing output paths. It writes a self-contained x64 folder,
+a versioned ZIP and MSI, SHA-256 checksum files, and Velopack distribution packages beneath
+`artifacts/`. **Never delete `artifacts/installer`: later versions need its earlier packages
+to build delta updates.**
 
-Installed copies find new versions through GitHub Releases. Publish one by uploading the Velopack
-packages with a GitHub token that can create releases (keep the token out of the repository and
-your shell history):
+A build reaches installed users only after its Velopack packages are published to GitHub
+Releases. See [building and publishing releases](docs/RELEASES.md) for the version checklist,
+output filenames, upload command, and update-feed testing.
 
-```powershell
-vpk upload github --outputDir .\artifacts\installer --repoUrl https://github.com/TheTriumphantFox/WinThunar --token $env:GITHUB_TOKEN --publish --releaseName "WinThunar 0.5.0" --tag v0.5.0
-```
+Bundled plugin manifests live beside the executable in `Plugins`. Personal manifests and
+custom actions live in `%LOCALAPPDATA%\WinThunar\Plugins`, so reinstalling or replacing the
+app does not overwrite them.
 
-To try an update before publishing it, install the previous version, then start WinThunar with
-`WINTHUNAR_UPDATE_FEED` set to a local `artifacts\installer` folder (or a URL serving one) and use
-`Help > Check for Updates...`.
+## Documentation
 
-The bundled plugin manifests live beside the executable in `Plugins`. Personal manifests and
-custom actions are stored under `%LOCALAPPDATA%\WinThunar\Plugins`, so reinstalling or replacing
-the app does not overwrite them.
+- [Browser views, tabs, split panes, and preferences](docs/BROWSER-WORKSPACE.md)
+- [Search behavior and limits](docs/SEARCH.md)
+- [File operations, Undo, and recovery](docs/FILE-OPERATIONS.md)
+- [Released features, unreleased work, and remaining gaps](docs/ROADMAP.md)
+- [Accessibility status and verification limits](docs/ACCESSIBILITY.md)
+- [Building, packaging, and publishing releases](docs/RELEASES.md)
+- [Launch copy and promotional media](docs/PROMOTION.md)
+- [First tester workflow and launch status](docs/LAUNCH.md)
 
 ## Icon
 

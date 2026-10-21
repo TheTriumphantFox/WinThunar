@@ -12,7 +12,11 @@ namespace WinThunar;
 /// </summary>
 public static class Program
 {
+#if ROADMAP_SMOKE_TEST
+    private const string InstanceKey = "WinThunar.DesktopSmoke";
+#else
     private const string InstanceKey = "WinThunar.Main";
+#endif
 
     [STAThread]
     private static int Main(string[] args)
@@ -31,11 +35,14 @@ public static class Program
             return exitCode;
         }
 
+        NotificationService.Initialize();
         if (TryRedirectToRunningInstance())
         {
+            NotificationService.Shutdown();
             return 0;
         }
 
+#if !ROADMAP_SMOKE_TEST
         if (ShellRegistrationService.IsSupported && Environment.ProcessPath is { } executable)
         {
             try
@@ -48,13 +55,26 @@ public static class Program
             }
         }
 
+#endif
         var request = LaunchRequest.Parse(args);
+        try
+        {
+            var activation = AppInstance.GetCurrent().GetActivatedEventArgs();
+            if (activation.Kind == ExtendedActivationKind.AppNotification &&
+                activation.Data is Microsoft.Windows.AppNotifications.AppNotificationActivatedEventArgs notification)
+                request = NotificationService.RequestFromArguments(notification.Arguments);
+        }
+        catch (COMException)
+        {
+            // Shell activation services must not prevent a normal command-line launch.
+        }
         Microsoft.UI.Xaml.Application.Start(callbackParams =>
         {
             var context = new DispatcherQueueSynchronizationContext(DispatcherQueue.GetForCurrentThread());
             SynchronizationContext.SetSynchronizationContext(context);
             _ = new App(request);
         });
+        NotificationService.Shutdown();
         return 0;
     }
 

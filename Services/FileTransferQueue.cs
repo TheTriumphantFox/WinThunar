@@ -137,7 +137,8 @@ public sealed class FileTransferQueue : IDisposable
                         job.Mode,
                         job.ConflictResolver,
                         progress,
-                        job.Cancellation.Token);
+                        job.Cancellation.Token,
+                        retainReplacedItems: true);
                 }
                 catch (Exception ex)
                 {

@@ -356,7 +356,7 @@ public sealed class CoreBehaviorTests : IDisposable
     }
 
     [Fact]
-    public async Task ReportsJunctionTransfersForWindowsWithoutElevation()
+    public async Task CopiesJunctionWithoutWindowsAssistance()
     {
         var target = Directory.CreateDirectory(Path.Combine(_root, "target")).FullName;
         var junction = Path.Combine(_root, "junction");
@@ -375,9 +375,11 @@ public sealed class CoreBehaviorTests : IDisposable
             var result = await new FileOperationService().TransferAsync(
                 [junction], destination, FileTransferMode.Copy, ReplaceConflict);
 
-            Assert.Equal([Path.GetFullPath(junction)], result.WindowsAssistSources);
-            Assert.False(result.WindowsAssistNeedsElevation);
-            Assert.False(Directory.Exists(Path.Combine(destination, "junction")));
+            Assert.True(result.Succeeded, string.Join("; ", result.Errors));
+            Assert.Empty(result.WindowsAssistSources);
+            var copied = Path.Combine(destination, "junction");
+            Assert.Equal(new DirectoryInfo(junction).LinkTarget, new DirectoryInfo(copied).LinkTarget);
+            Directory.Delete(copied);
         }
         finally
         {

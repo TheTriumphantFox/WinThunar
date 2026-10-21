@@ -80,12 +80,18 @@ public sealed partial class MainPage : Page
     public MainPageViewModel ViewModel { get; } = new();
     public MainPageViewModel SplitViewModel { get; } = new();
     public bool HasPendingTransfers =>
-        _transferQueue.ActiveJob is not null || _transferQueue.QueuedCount > 0;
+        _transferQueue.ActiveJob is not null || _transferQueue.QueuedCount > 0 || HasPendingHistory;
+    public bool HasPendingHistory => _history.IsReplaying;
 
     public void CancelTransfersForClose() => _transferQueue.Dispose();
 
     public MainPage()
     {
+#if ROADMAP_SMOKE_TEST
+        var smokeDirectory = Environment.GetEnvironmentVariable("WINTHUNAR_SMOKE_DIRECTORY")
+            ?? throw new InvalidOperationException("The desktop smoke build needs an isolated directory.");
+        _fileOperations = new FileOperationService(new TransferRecoveryService(Path.Combine(smokeDirectory, "recovery")));
+#endif
         _transferQueue = new FileTransferQueue(_fileOperations);
         _transferQueue.StateChanged += TransferQueue_StateChanged;
         _history.Changed += History_Changed;
@@ -105,7 +111,10 @@ public sealed partial class MainPage : Page
 
     private async void Page_Loaded(object sender, RoutedEventArgs e)
     {
-        var recovery = _fileOperations.RecoverInterruptedTransfers();
+#if ROADMAP_SMOKE_TEST
+        await RunRoadmapSmokeAsync();
+#else
+        var recovery = _fileOperations.RecoverInterruptedTransfers(skipActiveProcesses: true);
         _restoringSession = true;
         _pluginService.Reload();
         RefreshCreateDocumentMenus();
@@ -213,6 +222,7 @@ public sealed partial class MainPage : Page
 
         App.Updates.StateChanged += Updates_StateChanged;
         ApplyUpdateState();
+    #endif
     }
 
     private void SelectLaunchItem(string path)
@@ -253,6 +263,7 @@ public sealed partial class MainPage : Page
         _templatesWatcher = null;
         _transferQueue.StateChanged -= TransferQueue_StateChanged;
         _history.Changed -= History_Changed;
+        _history.Dispose();
         App.Updates.StateChanged -= Updates_StateChanged;
         ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
         SplitViewModel.PropertyChanged -= SplitViewModel_PropertyChanged;
@@ -2126,7 +2137,7 @@ public sealed partial class MainPage : Page
                 : "Windows integration is available in the portable build.",
             TextWrapping = TextWrapping.Wrap,
             MaxWidth = 430,
-            Foreground = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 90, 90, 90))
+            Foreground = (Brush)Application.Current.Resources["SystemControlForegroundBaseMediumBrush"]
         };
         var updates = App.Updates;
         var checkForUpdates = new CheckBox
@@ -2144,7 +2155,7 @@ public sealed partial class MainPage : Page
                 : "Automatic updates are available in the installed version of WinThunar.",
             TextWrapping = TextWrapping.Wrap,
             MaxWidth = 430,
-            Foreground = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 90, 90, 90))
+            Foreground = (Brush)Application.Current.Resources["SystemControlForegroundBaseMediumBrush"]
         };
         var defaultView = new ComboBox
         {
@@ -2257,7 +2268,7 @@ public sealed partial class MainPage : Page
         {
             Text = "WinThunar is not affiliated with or endorsed by the Xfce project.",
             TextWrapping = TextWrapping.Wrap,
-            Foreground = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 90, 90, 90))
+            Foreground = (Brush)Application.Current.Resources["SystemControlForegroundBaseMediumBrush"]
         });
         var dialog = new ContentDialog
         {
@@ -2388,6 +2399,7 @@ public sealed partial class MainPage : Page
                 SelectedItem = _customShortcuts.TryGetValue(action, out var current) ? current : "None",
                 Width = 170
             };
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(editor, $"Shortcut for {action}");
             editors[action] = editor;
             var row = new Grid { ColumnSpacing = 12 };
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -2661,7 +2673,7 @@ public sealed partial class MainPage : Page
             {
                 Text = $"{plugin.Description}\n{plugin.Actions.Count} action{(plugin.Actions.Count == 1 ? string.Empty : "s")}",
                 Margin = new Thickness(28, -5, 0, 4),
-                Foreground = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 85, 85, 85)),
+                Foreground = (Brush)Application.Current.Resources["SystemControlForegroundBaseMediumBrush"],
                 TextWrapping = TextWrapping.Wrap
             });
         }
@@ -2670,7 +2682,7 @@ public sealed partial class MainPage : Page
             content.Children.Add(new TextBlock
             {
                 Text = "Diagnostics:\n" + string.Join(Environment.NewLine, _pluginService.Diagnostics),
-                Foreground = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 170, 45, 45)),
+                Foreground = (Brush)Application.Current.Resources["SystemControlErrorTextForegroundBrush"],
                 TextWrapping = TextWrapping.Wrap
             });
         }
@@ -3093,7 +3105,26 @@ public sealed partial class MainPage : Page
 
     private void Page_KeyDown(object sender, KeyRoutedEventArgs e)
     {
-        if (e.Handled || _customShortcuts.Count == 0)
+        if (e.Handled) return;
+        var pressedKey = GetShortcutText(e.Key);
+        if (pressedKey is "Ctrl+Tab" or "Ctrl+Shift+Tab" && BrowserTabs.TabItems.Count > 1)
+        {
+            var direction = pressedKey == "Ctrl+Tab" ? 1 : -1;
+            BrowserTabs.SelectedIndex = (BrowserTabs.SelectedIndex + direction + BrowserTabs.TabItems.Count) % BrowserTabs.TabItems.Count;
+            e.Handled = true;
+            return;
+        }
+        if (pressedKey is "F6" or "Shift+F6")
+        {
+            CycleKeyboardRegion(pressedKey == "Shift+F6");
+            e.Handled = true;
+            return;
+        }
+        // Custom file shortcuts must not steal typing, selection, or editing from text inputs.
+        for (var focused = FocusManager.GetFocusedElement(XamlRoot) as DependencyObject;
+             focused is not null; focused = VisualTreeHelper.GetParent(focused))
+            if (focused is TextBox or PasswordBox or RichEditBox) return;
+        if (_customShortcuts.Count == 0)
         {
             return;
         }
@@ -3129,6 +3160,72 @@ public sealed partial class MainPage : Page
                 PathBarEdit_Click(this, args);
                 break;
         }
+    }
+
+    [DllImport("user32.dll")]
+    private static extern nint GetForegroundWindow();
+
+    private void FileContainer_Changing(ListViewBase sender, ContainerContentChangingEventArgs args)
+    {
+        if (args.InRecycleQueue)
+        {
+            args.ItemContainer.ClearValue(Microsoft.UI.Xaml.Automation.AutomationProperties.NameProperty);
+            return;
+        }
+        if (args.Item is FileSystemEntry entry)
+            args.ItemContainer.SetBinding(Microsoft.UI.Xaml.Automation.AutomationProperties.NameProperty,
+                new Microsoft.UI.Xaml.Data.Binding
+                {
+                    Source = entry,
+                    Path = new PropertyPath(nameof(FileSystemEntry.AutomationName)),
+                    Mode = Microsoft.UI.Xaml.Data.BindingMode.OneWay
+                });
+    }
+
+    private void FilePane_GotFocus(object sender, RoutedEventArgs e) => SetActivePaneForList(sender);
+
+    private static bool ContainsFocus(DependencyObject region, DependencyObject? focused)
+    {
+        while (focused is not null)
+        {
+            if (ReferenceEquals(focused, region)) return true;
+            focused = VisualTreeHelper.GetParent(focused);
+        }
+        return false;
+    }
+
+    private void CycleKeyboardRegion(bool reverse)
+    {
+        var primary = ViewModel.ViewMode switch
+        {
+            BrowserViewMode.Icons => (Control)IconFileList,
+            BrowserViewMode.Compact => CompactFileList,
+            _ => FileList
+        };
+        var regions = new List<Control> { BrowserTabs, _usePathBar ? PathBarEditButton : LocationBox,
+            DirectoryTree.Visibility == Visibility.Visible ? DirectoryTree : PlacesList, primary };
+        if (_splitPaneOpen) regions.Add(SecondaryFileList);
+        if (_showTerminalPanel) regions.Add(TerminalCommand);
+        var focused = FocusManager.GetFocusedElement(XamlRoot) as DependencyObject;
+        var index = regions.FindIndex(region => ContainsFocus(region, focused));
+        var next = (index + (reverse ? -1 : 1) + regions.Count) % regions.Count;
+        regions[next].Focus(FocusState.Keyboard);
+    }
+
+    private void ColumnGrip_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement grip || e.Key is not (Windows.System.VirtualKey.Left or Windows.System.VirtualKey.Right)) return;
+        _dragSizeStart = SizeColumn.ActualWidth;
+        _dragTypeStart = TypeColumn.ActualWidth;
+        _dragModifiedStart = ModifiedColumn.ActualWidth;
+        _dragSplitSizeStart = SplitSizeColumn.ActualWidth;
+        _dragSplitTypeStart = SplitTypeColumn.ActualWidth;
+        ApplyColumnGripDelta(grip, e.Key == Windows.System.VirtualKey.Left ? -10 : 10);
+        UpdateLayout();
+        ViewModel.SetColumnWidths(SizeColumn.ActualWidth, TypeColumn.ActualWidth, ModifiedColumn.ActualWidth);
+        SplitViewModel.SetColumnWidths(SplitSizeColumn.ActualWidth, SplitTypeColumn.ActualWidth, ViewModel.ModifiedColumnWidth);
+        SaveSession();
+        e.Handled = true;
     }
 
     private static string GetShortcutText(Windows.System.VirtualKey key)
@@ -4069,7 +4166,7 @@ public sealed partial class MainPage : Page
         _dropHighlightControl = control;
         _dropHighlightBorderBrush = control.BorderBrush;
         _dropHighlightBorderThickness = control.BorderThickness;
-        control.BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.DodgerBlue);
+        control.BorderBrush = (Brush)Application.Current.Resources["SystemControlHighlightAccentBrush"];
         control.BorderThickness = new Thickness(2);
     }
 
@@ -4306,6 +4403,11 @@ public sealed partial class MainPage : Page
         Func<FileConflict, Task<ConflictResolution>>? conflictResolver = null,
         string? historyDescription = null)
     {
+        if (_history.IsReplaying)
+        {
+            ViewModel.StatusText = "Wait for Undo/Redo before starting a transfer.";
+            return null;
+        }
         if (paths.Count == 0)
         {
             return null;
@@ -4325,7 +4427,7 @@ public sealed partial class MainPage : Page
                 _ => "Copy"
             };
             await FinishTransferAsync(result, operationName, destination, mode);
-            PushTransferHistory(result.Transfers, operationName);
+            await PushTransferHistoryAsync(result.Transfers, operationName);
             return result;
         }
         catch (Exception ex)
@@ -4379,7 +4481,7 @@ public sealed partial class MainPage : Page
                    $"{count} could not be {verb} because this location needs administrator permission. Windows can finish {them} and will ask you to confirm.",
                    "Continue")
                 : ("Folder Links",
-                   $"{count} could not be {verb} because {(single ? "it is or contains a folder link" : "they are or contain folder links")}, which WinThunar does not copy itself yet. Windows can finish {them} the way Explorer does.",
+                   $"{count} could not be {verb} because {(single ? "it is or contains a folder link" : "they are or contain folder links")}, whose link type WinThunar cannot preserve. Windows can finish {them} the way Explorer does.",
                    "Let Windows Finish");
             if (await ConfirmWindowsAssistAsync(title, message, continueText))
             {
@@ -4396,6 +4498,13 @@ public sealed partial class MainPage : Page
             }
         }
 
+        if (GetForegroundWindow() != HostWindowHandle)
+        {
+            var outcome = result.Cancelled ? "cancelled" : errors.Count > 0 ? "incomplete" : "complete";
+            var summary = assistSources.Count > 0 && errors.Count == 0 ? ViewModel.StatusText
+                : $"{result.CompletedItems} completed, {result.SkippedItems} skipped, {errors.Count} errors.";
+            NotificationService.TransferFinished($"{operationName} {outcome}", summary, destination);
+        }
         await RefreshVisiblePanesAsync();
         if (errors.Count > 0)
         {
@@ -4486,7 +4595,7 @@ public sealed partial class MainPage : Page
             () => _fileOperations.RenameAsync(sourcePath, destinationName)));
     }
 
-    private void PushTransferHistory(
+    private async Task PushTransferHistoryAsync(
         IReadOnlyList<FileTransferRecord> transfers,
         string description)
     {
@@ -4495,69 +4604,13 @@ public sealed partial class MainPage : Page
             return;
         }
 
-        if (transfers.Any(transfer => transfer.ReplacedExistingItem))
-        {
-            ViewModel.StatusText += " Undo is unavailable because an existing item was replaced or merged.";
-            return;
-        }
-
-        var snapshot = transfers.ToArray();
+        var session = await TransferHistorySession.CreateAsync(_fileOperations, transfers);
+        if (_disposed) { session.Dispose(); return; }
         _history.Push(new FileHistoryEntry(
             description,
-            () => ReplayTransfersAsync(snapshot, true),
-            () => ReplayTransfersAsync(snapshot, false)));
-    }
-
-    private async Task ReplayTransfersAsync(
-        IReadOnlyList<FileTransferRecord> transfers,
-        bool undo)
-    {
-        foreach (var transfer in transfers)
-        {
-            var guardedPath = undo ? transfer.DestinationPath : transfer.SourcePath;
-            if (!await FileOperationService.PathMatchesStateAsync(guardedPath, transfer.DestinationState))
-            {
-                throw new IOException(
-                    $"WinThunar will not {(undo ? "undo" : "redo")} '{Path.GetFileName(guardedPath)}' because it was changed, replaced, or now contains different items.");
-            }
-        }
-
-        if (undo && transfers.All(transfer =>
-                transfer.Mode is FileTransferMode.Copy or FileTransferMode.Link))
-        {
-            await _fileOperations.MoveToTrashAsync(
-                transfers.Reverse().Select(transfer => transfer.DestinationPath));
-            return;
-        }
-
-        var ordered = undo ? transfers.Reverse() : transfers;
-        foreach (var transfer in ordered)
-        {
-            if (undo && transfer.Mode is FileTransferMode.Copy or FileTransferMode.Link)
-            {
-                await _fileOperations.MoveToTrashAsync([transfer.DestinationPath]);
-                continue;
-            }
-
-            var source = undo ? transfer.DestinationPath : transfer.SourcePath;
-            var destination = undo ? transfer.SourcePath : transfer.DestinationPath;
-            var destinationParent = Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(destination));
-            if (!string.IsNullOrWhiteSpace(destinationParent))
-            {
-                Directory.CreateDirectory(destinationParent);
-            }
-            var result = await _fileOperations.TransferExactAsync(
-                source,
-                destination,
-                transfer.Mode,
-                _ => Task.FromResult(new ConflictResolution(ConflictAction.Cancel)));
-            if (!result.Succeeded || result.CompletedItems != 1)
-            {
-                var reason = result.Errors.FirstOrDefault()
-                    ?? (result.Cancelled ? "a destination conflict was found" : "the item could not be restored");
-                throw new IOException($"Could not {(undo ? "undo" : "redo")} '{Path.GetFileName(source)}': {reason}.");
-            }
-        }
+            session.UndoAsync,
+            session.RedoAsync,
+            session.Dispose));
     }
 
     private async Task RunHistoryOperationAsync(string operationName, Func<Task> operation)
@@ -4656,10 +4709,11 @@ public sealed partial class MainPage : Page
         };
         var validationMessage = new TextBlock
         {
-            Foreground = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 180, 32, 32)),
+            Foreground = (Brush)Application.Current.Resources["SystemControlErrorTextForegroundBrush"],
             TextWrapping = TextWrapping.Wrap,
             Visibility = Visibility.Collapsed
         };
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(textBox, prompt);
         textBox.Loaded += (_, _) =>
         {
             textBox.Focus(FocusState.Programmatic);
@@ -5023,6 +5077,9 @@ public sealed partial class MainPage : Page
 
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(MainPageViewModel.StatusText) && _transferQueue.ActiveJob is null)
+            Microsoft.UI.Xaml.Automation.Peers.FrameworkElementAutomationPeer.FromElement(StatusAnnouncement)
+                ?.RaiseAutomationEvent(Microsoft.UI.Xaml.Automation.Peers.AutomationEvents.LiveRegionChanged);
         if (e.PropertyName == nameof(MainPageViewModel.CurrentPath) &&
             ActiveTab is { } tab &&
             PathEquals(tab.Path, ViewModel.CurrentPath) &&

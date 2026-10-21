@@ -81,9 +81,12 @@ public partial class App : Application
     {
         DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
         Updates = new UpdateService();
+        TaskbarService.Initialize();
         Window = OpenWindow(_launchRequest);
         OpenPendingRedirects();
+#if !ROADMAP_SMOKE_TEST
         Updates.StartAutomaticChecks();
+#endif
     }
 
     /// <summary>
@@ -95,7 +98,10 @@ public partial class App : Application
         var request = args.Kind == ExtendedActivationKind.Launch &&
             args.Data is Windows.ApplicationModel.Activation.ILaunchActivatedEventArgs launch
                 ? LaunchRequest.ParseCommandLine(launch.Arguments)
-                : LaunchRequest.Empty;
+                : args.Kind == ExtendedActivationKind.AppNotification &&
+                  args.Data is Microsoft.Windows.AppNotifications.AppNotificationActivatedEventArgs notification
+                    ? NotificationService.RequestFromArguments(notification.Arguments)
+                    : LaunchRequest.Empty;
         PendingRedirects.Enqueue(request);
         DispatcherQueue?.TryEnqueue(OpenPendingRedirects);
     }

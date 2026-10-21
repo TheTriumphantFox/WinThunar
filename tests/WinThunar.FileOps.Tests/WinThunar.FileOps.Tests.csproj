@@ -9,13 +9,17 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="..\..\Services\GitStatusService.cs" Link="Services\GitStatusService.cs" />
+    <Compile Include="..\..\Services\LinkFileSystem.cs" Link="Services\LinkFileSystem.cs" />
     <Compile Include="..\..\Services\FileOperationService.cs" Link="Services\FileOperationService.cs" />
     <Compile Include="..\..\Services\DragDropPolicy.cs" Link="Services\DragDropPolicy.cs" />
     <Compile Include="..\..\Services\FileOperationHistory.cs" Link="Services\FileOperationHistory.cs" />
+    <Compile Include="..\..\Services\TransferHistorySession.cs" Link="Services\TransferHistorySession.cs" />
     <Compile Include="..\..\Services\FileTransferQueue.cs" Link="Services\FileTransferQueue.cs" />
     <Compile Include="..\..\Services\TransferRecoveryService.cs" Link="Services\TransferRecoveryService.cs" />
     <Compile Include="..\..\Services\AppSessionService.cs" Link="Services\AppSessionService.cs" />
     <Compile Include="..\..\Services\FileSearchService.cs" Link="Services\FileSearchService.cs" />
+    <Compile Include="..\..\Services\FileSearchQuery.cs" Link="Services\FileSearchQuery.cs" />
     <Compile Include="..\..\Services\BulkRenameService.cs" Link="Services\BulkRenameService.cs" />
     <Compile Include="..\..\Services\PluginService.cs" Link="Services\PluginService.cs" />
     <Compile Include="..\..\Services\ArchiveService.cs" Link="Services\ArchiveService.cs" />

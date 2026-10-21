@@ -14,20 +14,25 @@ internal static class Program
         try
         {
             if (args is ["--worker", var config]) return await CrashWorker.RunAsync(config);
-            if (args.Length < 2 || args[0] != "--run") throw new ArgumentException("Use --run NEW_OUTPUT_DIRECTORY [--second-volume DIRECTORY] [--keep-fixtures].");
+            if (args.Length < 2 || args[0] != "--run") throw new ArgumentException("Use --run NEW_OUTPUT_DIRECTORY [--second-volume DIRECTORY [--basic-second-volume] | --disposable-volume-manifest FILE] [--keep-fixtures].");
             var root = Path.GetFullPath(args[1]);
             string? secondVolume = null;
             var keepFixtures = false;
             var basicVolume = false;
+            string? disposableManifest = null;
             for (var index = 2; index < args.Length; index++)
             {
                 if (args[index] == "--keep-fixtures") keepFixtures = true;
                 else if (args[index] == "--basic-second-volume") basicVolume = true;
                 else if (args[index] == "--second-volume" && index + 1 < args.Length) secondVolume = Path.GetFullPath(args[++index]);
+                else if (args[index] == "--disposable-volume-manifest" && index + 1 < args.Length) disposableManifest = Path.GetFullPath(args[++index]);
                 else throw new ArgumentException("Unknown stress-harness argument: " + args[index]);
             }
             Fixture.Check(OperatingSystem.IsWindows(), "This harness requires Windows native copy APIs and NTFS alternate streams.");
             Fixture.Check(!basicVolume || secondVolume is not null, "Basic volume coverage requires --second-volume.");
+            var disposableVolume = disposableManifest is null ? null : DisposableVolume.Open(disposableManifest);
+            Fixture.Check(disposableVolume is null || (secondVolume is null && !basicVolume), "Disposable-volume mode supplies its own NTFS second volume.");
+            if (disposableVolume is not null) secondVolume = disposableVolume.MountPath;
             Fixture.Check(!Directory.Exists(root) && !File.Exists(root), "Choose a new output directory.");
             Directory.CreateDirectory(root);
             File.WriteAllText(Path.Combine(root, "run-id.txt"), Guid.NewGuid().ToString("N"));
@@ -40,7 +45,8 @@ internal static class Program
                 passed = results.Count(result => result.Status == "Passed"), failed = results.Count(result => result.Status == "Failed"),
                 skipped = results.Count(result => result.Status == "Skipped"), scenarios = results,
                 secondVolumeRoot = secondVolume, basicSecondVolume = basicVolume,
-                limits = new[] { "Native disk-full/disconnect cases inject errors into real native copies; no actual disk is filled or disconnected.",
+                disposableVolumeManifest = disposableManifest,
+                limits = new[] { "NativeErrorInjection cases simulate storage errors. Real disk-full cases run only on an explicitly provisioned, bounded disposable volume.",
                     "Copy/delete fallback on one volume is separate from optional real distinct-volume coverage.",
                     "Owned worker termination tests process crashes, not power loss. Multi-item history is not crash-atomic." }
             }, Fixture.JsonOptions));
@@ -59,7 +65,9 @@ internal static class Program
                 }
                 catch (Exception ex)
                 {
-                    results.Add(new(name, kind, "Failed", timer.Elapsed.TotalSeconds, ex.ToString(), fixture?.Root));
+                    // Fixture construction can fail after creating data on either volume. Keep
+                    // the local path discoverable even when no complete Fixture was returned.
+                    results.Add(new(name, kind, "Failed", timer.Elapsed.TotalSeconds, ex.ToString(), fixture?.Root ?? Path.Combine(root, "fixtures", name)));
                     Console.WriteLine($"FAIL {name}: {ex.Message}");
                 }
                 SaveReport();
@@ -114,7 +122,13 @@ internal static class Program
                 await Run("real-cross-volume-file-history", "RealStorage", true, fixture => Scenarios.HistoryRoundTrip(fixture, false, true), external: true);
                 await Run("real-cross-volume-merge-history", "RealStorage", true, fixture => Scenarios.HistoryRoundTrip(fixture, false, true), merge: true, external: true);
             }
-            Skip("physical-disk-full", "No actual volume is filled by this harness; use an isolated disposable virtual disk for manual validation.");
+            if (disposableVolume is null)
+                Skip("physical-disk-full", "Use Test-FileOperationsRealStorage.ps1 to provision a bounded disposable VHD for real disk-full checks.");
+            else
+                foreach (var mode in new[] { FileTransferMode.Copy, FileTransferMode.Move })
+                    foreach (var replace in new[] { false, true })
+                        await Run($"real-disk-full-{mode.ToString().ToLowerInvariant()}-{(replace ? "replace" : "new")}", "RealVirtualDiskFull", replace,
+                            fixture => Scenarios.RealDiskFull(fixture, disposableVolume, mode), external: true);
             Skip("physical-share-disconnection", "No user shares are disconnected; real SMB interruption remains a manual check.");
             Skip("physical-device-removal", "No devices are detached; physical removal remains a manual check.");
             Console.WriteLine($"Report: {Path.Combine(root, "report.json")}");

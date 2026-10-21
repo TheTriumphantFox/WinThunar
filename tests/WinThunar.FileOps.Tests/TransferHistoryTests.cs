@@ -16,6 +16,47 @@ public sealed class TransferHistoryTests : IDisposable
     [Theory]
     [InlineData(FileTransferMode.Copy)]
     [InlineData(FileTransferMode.Move)]
+    public async Task LongPathsPreserveStreamsAndReplacementHistory(FileTransferMode mode)
+    {
+        var parent = _root;
+        while (parent.Length < 280) parent = Path.Combine(parent, "long-path-fixture-component");
+        var sourceRoot = Directory.CreateDirectory(Path.Combine(parent, "source")).FullName;
+        var destinationRoot = Directory.CreateDirectory(Path.Combine(parent, "destination")).FullName;
+        var source = Path.Combine(sourceRoot, "item.txt");
+        var destination = Path.Combine(destinationRoot, "item.txt");
+        await File.WriteAllTextAsync(source, "incoming");
+        await File.WriteAllTextAsync(source + ":notes", "incoming stream");
+        await File.WriteAllTextAsync(destination, "old");
+        await File.WriteAllTextAsync(destination + ":notes", "old stream");
+        var beforeSource = FileOperationService.CapturePathState(source);
+        var beforeDestination = FileOperationService.CapturePathState(destination);
+        Assert.True(FileOperationService.ArePathsOnSameVolume([source], _root));
+        Assert.True(FileOperationService.CanWriteToDirectory(destinationRoot, true));
+        var result = await _operations.TransferAsync([source], destinationRoot, mode, Replace, retainReplacedItems: true);
+        Assert.True(result.Succeeded, string.Join("; ", result.Errors));
+        using (var history = await TransferHistorySession.CreateAsync(_operations, result.Transfers))
+        {
+            for (var cycle = 0; cycle < 2; cycle++)
+            {
+                await history.UndoAsync();
+                Assert.True(FileOperationService.PathMatchesState(source, beforeSource));
+                Assert.True(FileOperationService.PathMatchesState(destination, beforeDestination));
+                await history.RedoAsync();
+                Assert.True(FileOperationService.PathMatchesState(destination, beforeSource));
+                Assert.Equal(mode == FileTransferMode.Copy, File.Exists(source));
+            }
+            // Stream edits at long paths must still block replay before mutation.
+            await File.WriteAllTextAsync(destination + ":notes", "edited stream");
+            await Assert.ThrowsAsync<IOException>(history.UndoAsync);
+            Assert.Equal("edited stream", await File.ReadAllTextAsync(destination + ":notes"));
+        }
+        Assert.Empty(Directory.EnumerateFiles(Path.Combine(_root, "journal")));
+        Assert.Empty(Directory.EnumerateFileSystemEntries(parent, ".winthunar-*", SearchOption.AllDirectories));
+    }
+
+    [Theory]
+    [InlineData(FileTransferMode.Copy)]
+    [InlineData(FileTransferMode.Move)]
     public async Task ReplacementRestoresOriginalContentAndRetainsExactRedoData(FileTransferMode mode)
     {
         var sourceDirectory = Directory.CreateDirectory(Path.Combine(_root, "source")).FullName;

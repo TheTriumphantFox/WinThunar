@@ -8,6 +8,47 @@ internal static class Scenarios
 {
     internal static Task<ConflictResolution> Replace(FileConflict _) => Task.FromResult(new ConflictResolution(ConflictAction.Replace));
 
+    internal static async Task<string> RealDiskFull(Fixture fixture, DisposableVolume volume, FileTransferMode mode)
+    {
+        var allocated = volume.Fill(fixture);
+        var progress = 0L;
+        int? observedError = null;
+        // Observe the real native error before the service turns it into a UI error string.
+        // No forced fallback, injected error, or callback mutation is enabled here.
+        using (var observation = new FileOperationFaultHooks.Scope(new(Checkpoint: point =>
+        {
+            if (point.Phase == "NativeCopyProgress") progress = Math.Max(progress, point.Bytes);
+            if (point.Phase == "NativeCopyFailed") observedError = (int)point.Bytes;
+        })))
+        {
+            var result = await fixture.Operations().TransferAsync([fixture.State.Source], Path.GetDirectoryName(fixture.State.Destination)!,
+                mode, Replace, retainReplacedItems: true);
+            Fixture.Check(observedError is 112 or 39, $"Expected a real native disk-full error (112/39), observed {observedError}: {string.Join("; ", result.Errors)}");
+            Fixture.Check(!result.Succeeded && !result.Cancelled && result.Errors.Count > 0 && result.Transfers.Count == 0,
+                "Real disk-full was not reported as a failed transfer.");
+        }
+        fixture.AssertOriginals();
+        // Release only this fixture's filler so recovery and a real retry have working space.
+        File.Delete(Path.Combine(fixture.State.ExternalRoot!, "capacity-filler.bin"));
+        var recovery = fixture.Operations().RecoverInterruptedTransfers();
+        Fixture.Check(recovery.Errors.Count == 0, string.Join("; ", recovery.Errors));
+        fixture.AssertOriginals();
+        fixture.AssertJournalEmpty();
+        fixture.AssertNoTemporaryItems();
+        var retry = await fixture.Operations().TransferAsync([fixture.State.Source], Path.GetDirectoryName(fixture.State.Destination)!,
+            mode, Replace, retainReplacedItems: true);
+        Fixture.Check(retry.Succeeded && retry.Transfers.Count == 1, "Retry after freeing capacity failed: " + string.Join("; ", retry.Errors));
+        fixture.AssertIncoming(fixture.State.PayloadDestination);
+        using (var history = await TransferHistorySession.CreateAsync(fixture.Operations(), retry.Transfers))
+        {
+            await history.UndoAsync();
+            fixture.AssertOriginals();
+        }
+        fixture.AssertJournalEmpty();
+        fixture.AssertNoTemporaryItems();
+        return $"Bounded disposable NTFS VHD returned native error {observedError}; {allocated} filler bytes, {progress} copy bytes observed. Originals/streams preserved; recovery, retry and Undo passed.";
+    }
+
     internal static async Task<string> NativeFailure(Fixture fixture, int error, FileTransferMode mode)
     {
         var injected = 0;

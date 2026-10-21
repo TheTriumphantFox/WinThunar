@@ -1,0 +1,7 @@
+<Project>
+  <PropertyGroup>
+    <!-- Set before WinUI's .props enumerate XAML. Retained stress data can include
+         long paths and detached volume mount points, and is never project input. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);$(MSBuildThisFileDirectory)artifacts/**</DefaultItemExcludes>
+  </PropertyGroup>
+</Project>

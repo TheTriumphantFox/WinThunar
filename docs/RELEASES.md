@@ -3,8 +3,8 @@
 Checked 21 October 2026 against the release script, project/manifest versions, and GitHub
 Releases. The latest published application is **0.5.0**, released 14 October 2026.
 See the [release/source status](ROADMAP.md#release-and-source-status) for unreleased work.
-The prepared local candidate is **0.5.2**; it has not been published. Its version locations
-are aligned and its [candidate notes](RELEASE-0.5.2.md) describe verification limits.
+The prepared local candidate is **0.5.3**; it has not been published. Its version locations
+are aligned and its [candidate notes](RELEASE-0.5.3.md) describe verification limits.
 
 ## Prerequisites and version checklist
 
@@ -31,7 +31,7 @@ Run from the main checkout. This example uses the prepared candidate; existing o
 are deliberately not overwritten:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.5.2
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.5.3
 ```
 
 For version `X.Y.Z`, the script writes:
@@ -82,7 +82,7 @@ releases and upload assets for this repository. Keep it out of source, command h
 and logs. With the token already supplied, run:
 
 ```powershell
-$releaseVersion = '0.5.2' # Replace with the version just built.
+$releaseVersion = '0.5.3' # Replace with the version just built.
 try {
     vpk upload github --outputDir .\artifacts\installer --repoUrl https://github.com/TheTriumphantFox/WinThunar --token $env:GITHUB_TOKEN --publish --releaseName "WinThunar $releaseVersion" --tag "v$releaseVersion"
     if ($LASTEXITCODE -ne 0) { throw 'GitHub release upload failed.' }

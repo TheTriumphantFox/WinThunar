@@ -4,9 +4,9 @@
 
 Checked 21 October 2026. The latest published application is
 [0.5.0](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.0), published 14 October 2026.
-The maintainer's local source checkout declares **0.5.2**, a prepared release candidate with
+The maintainer's local source checkout declares **0.5.3**, a prepared release candidate with
 unreleased application work. That application work is not yet in GitHub's `main` branch.
-Documentation-only commits do not distribute a new application version. See [candidate notes](RELEASE-0.5.2.md).
+Documentation-only commits do not distribute a new application version. See [candidate notes](RELEASE-0.5.3.md).
 
 The checked items in sections 1–5 below are in release 0.5.0. Unreleased additions are
 listed separately; a checked source task does not mean it has reached installed users.
@@ -34,6 +34,7 @@ listed separately; a checked source task does not mean it has reached installed 
 - [x] Name/type/date/size search filters, streaming traversal, and cancellable folder enumeration.
 - [x] System light/dark theme and expanded desktop checks for filtered search and window Undo/Redo.
 - [x] Storage-error/process-termination stress harness and recovery fixes for overlapping history records and concurrent restart recovery.
+- [x] Disposable NTFS VHD verification of cross-volume history and actual disk-full allocation failures; native long-path copy/stream/history fixes.
 
 These items need a new version and a published GitHub Release before installed users receive
 them. See [release publishing](RELEASES.md) and [accessibility status](ACCESSIBILITY.md).
@@ -108,7 +109,7 @@ them. See [release publishing](RELEASES.md) and [accessibility status](ACCESSIBI
 
 - [ ] Publish the unreleased application additions with a new version.
 - [ ] Complete the manual accessibility checks documented in [ACCESSIBILITY.md](ACCESSIBILITY.md).
-- [ ] Verify actual disk-full, SMB-disconnection, device-removal, and distinct-volume history scenarios. Injected error and worker-termination checks pass; see the [stress-harness results](FILE-OPERATIONS-STRESS.md).
+- [ ] Verify SMB disconnection, physical device removal, disk-full after partial writes, and history across separate physical devices. Real disk-full allocation failures and distinct-NTFS-volume history pass on a disposable VHD backed by the system SSD; see the [stress-harness results](FILE-OPERATIONS-STRESS.md).
 - [ ] Verify notifications on installed and portable builds; registration remains unavailable on this machine.
 - [ ] Broader Shell/device browsing, cloud status, document previews, and indexed/content search.
 - [ ] Add and verify native handling of unsupported reparse-point types before claiming support.

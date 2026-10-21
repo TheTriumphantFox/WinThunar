@@ -87,11 +87,20 @@ public static class LinkFileSystem
 
     private static SafeFileHandle Open(string path, uint access)
     {
-        var handle = CreateFile(path, access, 7, IntPtr.Zero, 3, 0x02200000, IntPtr.Zero);
+        var handle = CreateFile(ToNativePath(path), access, 7, IntPtr.Zero, 3, 0x02200000, IntPtr.Zero);
         if (!handle.IsInvalid) return handle;
         var error = Marshal.GetLastWin32Error();
         handle.Dispose();
         throw new Win32Exception(error);
+    }
+
+    // .NET file APIs accept long paths independently of the process manifest/Windows policy.
+    // Keep native copy, identity and stream APIs consistent, including private Undo siblings.
+    internal static string ToNativePath(string path)
+    {
+        var fullPath = Path.GetFullPath(path);
+        if (fullPath.StartsWith(@"\\?\", StringComparison.Ordinal) || fullPath.StartsWith(@"\\.\", StringComparison.Ordinal)) return fullPath;
+        return fullPath.StartsWith(@"\\", StringComparison.Ordinal) ? @"\\?\UNC\" + fullPath[2..] : @"\\?\" + fullPath;
     }
 
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]

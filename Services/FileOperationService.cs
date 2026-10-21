@@ -1173,7 +1173,7 @@ public sealed class FileOperationService
     private static string ComputeFileHash(string path, CancellationToken cancellationToken)
     {
         var streams = new List<string> { "::$DATA:" + ComputeDataHash(path, cancellationToken) };
-        var handle = FindFirstStream(path, 0, out var data, 0);
+        var handle = FindFirstStream(LinkFileSystem.ToNativePath(path), 0, out var data, 0);
         if (handle == new IntPtr(-1))
         {
             var error = Marshal.GetLastWin32Error();
@@ -1425,10 +1425,11 @@ public sealed class FileOperationService
                     return injectedError is not null ? 2u : hookError is not null ? 1u : 0u;
                 };
 #endif
-                if (!CopyFileEx(sourcePath, destinationPath, callback, IntPtr.Zero, cancelPointer, CopyFileFlags.FailIfExists))
+                if (!CopyFileEx(LinkFileSystem.ToNativePath(sourcePath), LinkFileSystem.ToNativePath(destinationPath), callback, IntPtr.Zero, cancelPointer, CopyFileFlags.FailIfExists))
                 {
                     var error = Marshal.GetLastWin32Error();
 #if FILEOPS_FAULT_TESTS
+                    FileOperationFaultHooks.Hit("NativeCopyFailed", sourcePath, destinationPath, error);
                     if (hookError is not null) throw new IOException("The stress harness callback failed.", hookError);
                     if (injectedError is { } simulated)
                         throw new Win32Exception(simulated, $"Injected Windows copy error {simulated}: {new Win32Exception(simulated).Message}");
@@ -1581,7 +1582,7 @@ public sealed class FileOperationService
         var desiredAccess = FileAddFile |
             (requiresSubdirectoryCreation ? FileAddSubdirectory : 0u);
         using var handle = CreateFile(
-            Path.TrimEndingDirectorySeparator(Path.GetFullPath(path)),
+            LinkFileSystem.ToNativePath(Path.TrimEndingDirectorySeparator(Path.GetFullPath(path))),
             desiredAccess,
             FileShareRead | FileShareWrite | FileShareDelete,
             IntPtr.Zero,
@@ -1647,7 +1648,7 @@ public sealed class FileOperationService
 
     private static SafeFileHandle OpenPathHandle(string path) =>
         CreateFile(
-            Path.TrimEndingDirectorySeparator(Path.GetFullPath(path)),
+            LinkFileSystem.ToNativePath(Path.TrimEndingDirectorySeparator(Path.GetFullPath(path))),
             0,
             FileShareRead | FileShareWrite | FileShareDelete,
             IntPtr.Zero,

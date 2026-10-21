@@ -50,16 +50,18 @@ integration notes below before choosing it as your default file manager.
 ## Release and source status
 
 The latest published application release is **0.5.0** (14 October 2026), verified against
-GitHub Releases on 21 October 2026. The development checkout is preparing **0.5.2**. Documentation and website updates do not update the
+GitHub Releases on 21 October 2026. The development checkout is preparing **0.5.3**. Documentation and website updates do not update the
 installed application. The feature list below describes that release; sections marked
 **unreleased source** describe work in the maintainer's local development checkout. These
 application changes are not yet in GitHub's `main` branch or a newer GitHub Release.
-See the [0.5.2 release candidate notes](docs/RELEASE-0.5.2.md) for the prepared milestone and verification limits.
+See the [0.5.3 release candidate notes](docs/RELEASE-0.5.3.md) for the prepared milestone and verification limits.
 
-### Daily-default improvements — unreleased 0.5.2 source
+### Daily-default improvements — unreleased 0.5.3 source
 
 - Transfer Undo/Redo includes Replace and directory Merge. Displaced items and exact Redo data
   are retained until the window's ten-action history expires; history still does not survive restart.
+- Native copy, stream checks, and Undo handle long Windows paths. Disposable NTFS VHD tests verify
+  cross-volume history and real disk-full allocation failures; physical removal and SMB interruption remain open.
 - Search combines words, quoted names, wildcards, file types, modified dates, and sizes:
   `name:"annual report" type:pdf modified:last7days size:>1MB`.
 - The interface follows Windows light/dark settings and uses system resources in the command panel,
@@ -258,10 +260,10 @@ Install the Velopack packaging tool once:
 dotnet tool install -g vpk --version 1.2.161
 ```
 
-Build a release from the main checkout; this example uses the prepared 0.5.2 candidate:
+Build a release from the main checkout; this example uses the prepared 0.5.3 candidate:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.5.2
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.5.3
 ```
 
 For a new release, choose an unused version and update all four version locations before

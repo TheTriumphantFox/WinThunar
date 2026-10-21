@@ -8,6 +8,10 @@ The application changes are merged into `main` through PR #13, and the GitHub up
 offers 0.5.3. Documentation-only commits do not distribute an application version.
 See [release notes](RELEASE-0.5.3.md) for package verification and remaining limits.
 
+The current source candidate is **0.5.4**, with updater startup/installer-launch failure handling
+and nine updater regression tests. It is **not published**; installed copies still receive 0.5.3.
+See the [0.5.4 candidate notes](RELEASE-0.5.4.md).
+
 The checked foundation items in sections 1–5 were already in 0.5.0. The additions listed
 below are now in published 0.5.3; test harnesses are source tools excluded from app packages.
 
@@ -107,7 +111,8 @@ and [accessibility status](ACCESSIBILITY.md) for package behavior and remaining 
 ## Remaining gaps
 
 - [x] Publish the application additions as 0.5.3 with the verified GitHub update feed.
-- [ ] Verify an end-to-end installed upgrade from 0.5.0. Delta reconstruction passed; installation was not exercised.
+- [x] Confirm the existing all-users 0.5.0 to 0.5.3 full-package upgrade from updater logs and all 524 deployed file hashes; see [updater verification](UPDATER-VERIFICATION.md).
+- [ ] Repeat the installed upgrade under controlled UI conditions; verify per-user apply-on-close, installed delta updates, and Windows Installer repair/uninstall metadata. The logged all-users full-package upgrade succeeded; the original MSI product entry still reports 0.5.0.0.
 - [ ] Complete the manual accessibility checks documented in [ACCESSIBILITY.md](ACCESSIBILITY.md).
 - [ ] Verify SMB disconnection, physical device removal, disk-full after partial writes, and history across separate physical devices. Real disk-full allocation failures and distinct-NTFS-volume history pass on a disposable VHD backed by the system SSD; see the [stress-harness results](FILE-OPERATIONS-STRESS.md).
 - [ ] Verify notifications on installed and portable builds; registration remains unavailable on this machine.

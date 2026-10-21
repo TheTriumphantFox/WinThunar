@@ -2322,11 +2322,11 @@ public sealed partial class MainPage : Page
         }
     }
 
-    private async Task ShowUpdateMessageAsync(string message)
+    private async Task ShowUpdateMessageAsync(string message, string title = "Check for Updates")
     {
         var dialog = new ContentDialog
         {
-            Title = "Check for Updates",
+            Title = title,
             Content = new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap, MaxWidth = 430, IsTextSelectionEnabled = true },
             CloseButtonText = "Close",
             XamlRoot = XamlRoot
@@ -2361,7 +2361,7 @@ public sealed partial class MainPage : Page
 
     private void UpdateInfoBar_CloseButtonClick(InfoBar sender, object args) => _updateBarDismissed = true;
 
-    private void RestartToUpdate_Click(object sender, RoutedEventArgs e)
+    private async void RestartToUpdate_Click(object sender, RoutedEventArgs e)
     {
         if (App.HasPendingTransfers)
         {
@@ -2369,7 +2369,13 @@ public sealed partial class MainPage : Page
             return;
         }
 
-        App.Updates.ApplyAndRestart();
+        if (!App.Updates.ApplyAndRestart())
+        {
+            ViewModel.StatusText = "Could not start the update installer.";
+            await ShowUpdateMessageAsync(
+                $"WinThunar could not start the update installer. You can try again.\n\n{App.Updates.ErrorMessage}",
+                "Install Update");
+        }
     }
 
     private async void KeyboardShortcuts_Click(object sender, RoutedEventArgs e)

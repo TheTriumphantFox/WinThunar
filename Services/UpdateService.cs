@@ -31,36 +31,48 @@ public sealed class UpdateService
     // A file manager can stay open for days, so the daily check is re-evaluated while it runs.
     private static readonly TimeSpan DueCheckInterval = TimeSpan.FromHours(1);
 
-    private readonly UpdateManager? _manager;
-    private readonly UpdateSettingsStore _settingsStore = new();
+    private readonly Func<IUpdateBackend> _createManager;
+    private IUpdateBackend? _manager;
+    private readonly UpdateSettingsStore _settingsStore;
     private readonly SynchronizationContext? _uiContext = SynchronizationContext.Current;
     private VelopackAsset? _ready;
     private Task? _check;
     private bool _automaticChecksStarted;
 
-    public UpdateService()
+    public UpdateService() : this(
+        () => new VelopackUpdateBackend(new UpdateManager(CreateSource())),
+        new UpdateSettingsStore(),
+        !IsInstallFolderWritable())
     {
-        Settings = _settingsStore.Load();
-        var manager = new UpdateManager(CreateSource());
-        if (manager.IsInstalled)
-        {
-            _manager = manager;
-            _ready = manager.UpdatePendingRestart;
-        }
+    }
 
-        State = _manager is null ? UpdateState.NotInstalled : _ready is null ? UpdateState.Idle : UpdateState.Ready;
-        AvailableVersion = _ready?.Version.ToString();
+    internal UpdateService(Func<IUpdateBackend> createManager, UpdateSettingsStore settingsStore, bool requiresAdministrator)
+    {
+        _createManager = createManager;
+        _settingsStore = settingsStore;
+        RequiresAdministrator = requiresAdministrator;
+        Settings = _settingsStore.Load();
+        try
+        {
+            InitializeManager();
+        }
+        catch (Exception exception)
+        {
+            // A malformed feed or inaccessible updater data must not prevent opening folders.
+            SetFailure(exception);
+        }
     }
 
     public event EventHandler? StateChanged;
 
     public UpdateSettings Settings { get; }
     public UpdateState State { get; private set; }
-    public bool IsSupported => _manager is not null;
+    // Failed initialization is retryable; it does not establish that this is a portable copy.
+    public bool IsSupported => State != UpdateState.NotInstalled;
 
     /// <summary>An all-users install in Program Files; installing an update raises a UAC prompt.</summary>
-    public bool RequiresAdministrator { get; } = !IsInstallFolderWritable();
-    public string CurrentVersion => _manager?.CurrentVersion?.ToString() ?? typeof(UpdateService).Assembly.GetName().Version?.ToString(3) ?? "unknown";
+    public bool RequiresAdministrator { get; }
+    public string CurrentVersion => _manager?.CurrentVersion ?? typeof(UpdateService).Assembly.GetName().Version?.ToString(3) ?? "unknown";
     public string? AvailableVersion { get; private set; }
     public int DownloadProgress { get; private set; }
     public string? ErrorMessage { get; private set; }
@@ -73,7 +85,7 @@ public sealed class UpdateService
 
     public async void StartAutomaticChecks()
     {
-        if (_manager is null || _automaticChecksStarted)
+        if (!IsSupported || _automaticChecksStarted)
         {
             return;
         }
@@ -89,18 +101,18 @@ public sealed class UpdateService
                 await CheckAsync();
             }
         }
-        while (State != UpdateState.Ready && await timer.WaitForNextTickAsync());
+        while (IsSupported && State != UpdateState.Ready && await timer.WaitForNextTickAsync());
     }
 
     /// <summary>Checks the feed and downloads any newer release. Concurrent callers share one check.</summary>
     public Task CheckAsync()
     {
-        if (_manager is null || State == UpdateState.Ready)
+        if (!IsSupported || State == UpdateState.Ready)
         {
             return Task.CompletedTask;
         }
 
-        return _check is { IsCompleted: false } ? _check : _check = CheckAndDownloadAsync(_manager);
+        return _check is { IsCompleted: false } ? _check : _check = CheckAndDownloadAsync();
     }
 
     /// <summary>
@@ -142,29 +154,73 @@ public sealed class UpdateService
 
         try
         {
-            _manager.WaitExitThenApplyUpdates(_ready, silent: true, restart: false);
+            _manager.ApplyOnExit(_ready);
         }
-        catch (Exception exception) when (exception is IOException or InvalidOperationException or System.ComponentModel.Win32Exception)
+        catch (Exception)
         {
             // The package stays downloaded; Velopack applies it when WinThunar next starts.
         }
     }
 
     /// <summary>Exits immediately, installs the update, and starts the new version.</summary>
-    public void ApplyAndRestart()
+    public bool ApplyAndRestart()
     {
-        if (_manager is not null && _ready is not null)
+        if (_manager is null || _ready is null)
         {
-            _manager.ApplyUpdatesAndRestart(_ready);
+            return false;
+        }
+
+        ErrorMessage = null;
+        try
+        {
+            _manager.ApplyAndRestart(_ready);
+            return true;
+        }
+        catch (Exception exception)
+        {
+            // Keep the downloaded package ready for another attempt. Launch failures must not
+            // escape a XAML click handler and terminate the file manager.
+            ErrorMessage = exception.Message;
+            StateChanged?.Invoke(this, EventArgs.Empty);
+            return false;
         }
     }
 
-    private async Task CheckAndDownloadAsync(UpdateManager manager)
+    private void InitializeManager()
+    {
+        var manager = _createManager();
+        if (!manager.IsInstalled)
+        {
+            SetState(UpdateState.NotInstalled);
+            return;
+        }
+
+        // Read pending data before retaining the manager, so a failed initialization can retry.
+        var ready = manager.UpdatePendingRestart;
+        _manager = manager;
+        _ready = ready;
+        AvailableVersion = ready?.Version.ToString();
+        SetState(ready is null ? UpdateState.Idle : UpdateState.Ready);
+    }
+
+    private async Task CheckAndDownloadAsync()
     {
         ErrorMessage = null;
         SetState(UpdateState.Checking);
         try
         {
+            if (_manager is null)
+            {
+                InitializeManager();
+                if (_manager is null || _ready is not null)
+                {
+                    return;
+                }
+
+                SetState(UpdateState.Checking);
+            }
+
+            var manager = _manager;
             var update = await manager.CheckForUpdatesAsync();
             Settings.LastCheck = DateTimeOffset.UtcNow;
             SaveSettings();
@@ -189,9 +245,14 @@ public sealed class UpdateService
         {
             // Network, feed, and package failures surface as many exception types; none of them may
             // take down the file manager, and the next check simply tries again.
-            ErrorMessage = exception.Message;
-            SetState(UpdateState.Failed);
+            SetFailure(exception);
         }
+    }
+
+    private void SetFailure(Exception exception)
+    {
+        ErrorMessage = exception.Message;
+        SetState(UpdateState.Failed);
     }
 
     private static IUpdateSource CreateSource()
@@ -234,4 +295,27 @@ public sealed class UpdateService
             _uiContext.Post(_ => action(), null);
         }
     }
+
+    private sealed class VelopackUpdateBackend(UpdateManager manager) : IUpdateBackend
+    {
+        public bool IsInstalled => manager.IsInstalled;
+        public string? CurrentVersion => manager.CurrentVersion?.ToString();
+        public VelopackAsset? UpdatePendingRestart => manager.UpdatePendingRestart;
+        public Task<UpdateInfo?> CheckForUpdatesAsync() => manager.CheckForUpdatesAsync();
+        public Task DownloadUpdatesAsync(UpdateInfo update, Action<int> progress) => manager.DownloadUpdatesAsync(update, progress);
+        public void ApplyOnExit(VelopackAsset update) => manager.WaitExitThenApplyUpdates(update, silent: true, restart: false);
+        public void ApplyAndRestart(VelopackAsset update) => manager.ApplyUpdatesAndRestart(update);
+    }
+}
+
+// Keep the real updater behind this boundary so failure tests cannot install packages or exit.
+internal interface IUpdateBackend
+{
+    bool IsInstalled { get; }
+    string? CurrentVersion { get; }
+    VelopackAsset? UpdatePendingRestart { get; }
+    Task<UpdateInfo?> CheckForUpdatesAsync();
+    Task DownloadUpdatesAsync(UpdateInfo update, Action<int> progress);
+    void ApplyOnExit(VelopackAsset update);
+    void ApplyAndRestart(VelopackAsset update);
 }

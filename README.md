@@ -261,10 +261,10 @@ Install the Velopack packaging tool once:
 dotnet tool install -g vpk --version 1.2.161
 ```
 
-Build a release from the main checkout; this example uses 0.5.3 (select a new version for the next release):
+Build a release from the main checkout; this example uses the unpublished 0.5.4 candidate:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.5.3
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.5.4
 ```
 
 For a new release, choose an unused version and update all four version locations before

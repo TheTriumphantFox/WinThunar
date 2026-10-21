@@ -99,7 +99,7 @@ public sealed partial class MainPage
                 }
                 finally { retry.IsEnabled = true; }
             };
-            _recoveryDialog = new ContentDialog { Title = "Interrupted Transfers", Content = panel,
+            _recoveryDialog = new ThemedContentDialog { Title = "Interrupted Transfers", Content = panel,
                 CloseButtonText = "Close", XamlRoot = XamlRoot };
             await _recoveryDialog.ShowAsync();
         }

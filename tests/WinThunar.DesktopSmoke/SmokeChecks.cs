@@ -15,18 +15,39 @@ namespace WinThunar;
 // Compiled only with -p:RoadmapSmokeTest=true; never included in a release build.
 public sealed partial class MainPage
 {
+    private static bool _smokeStarted;
+
     private async Task RunRoadmapSmokeAsync()
     {
+        // Additional windows are used to verify application-wide preferences without starting
+        // another smoke run, reading the normal session, or navigating the user's folders.
+        if (_smokeStarted) return;
+        _smokeStarted = true;
         _restoringSession = true;
         _sessionReady = false;
         var checks = new List<string>();
         var directory = Environment.GetEnvironmentVariable("WINTHUNAR_SMOKE_DIRECTORY")
             ?? throw new InvalidOperationException("The desktop smoke test needs an isolated directory.");
+        var themeRestart = Environment.GetEnvironmentVariable("WINTHUNAR_SMOKE_RESTART_THEME") == "Dark";
         string? failure = null;
         try
         {
             // Page_Loaded never reads the normal session or recovers the user's transfer journal.
             Directory.CreateDirectory(directory);
+            if (themeRestart)
+            {
+                await Task.Delay(200);
+                Require(App.ThemePreference == AppThemePreference.Dark && ActualTheme == ElementTheme.Dark &&
+                    App.Window.AppWindow.TitleBar.PreferredTheme == Microsoft.UI.Windowing.TitleBarTheme.Dark,
+                    "Restart restores the saved dark theme to the browser and title bar", checks);
+                var preferences = ShowPreferencesAsync();
+                await Task.Delay(150);
+                Require(FindThemeSelector().SelectedIndex == (int)AppThemePreference.Dark,
+                    "Restart restores the saved theme in Preferences", checks);
+                await CaptureSmokeImageAsync(directory, "ThemeRestart", _preferencesDialog);
+                await FinishSmokePreferencesAsync(preferences, apply: false);
+                return;
+            }
             var fixture = Directory.CreateDirectory(Path.Combine(directory, "files")).FullName;
             File.WriteAllText(Path.Combine(fixture, "example.txt"), "Desktop smoke fixture");
             await ViewModel.NavigateAsync(fixture);
@@ -62,18 +83,10 @@ public sealed partial class MainPage
                 await CaptureSmokeImageAsync(directory, mode.ToString());
             }
             ViewModel.ViewMode = BrowserViewMode.Details;
-            Require(RequestedTheme == ElementTheme.Default, "Browser follows the Windows theme", checks);
+            Require(App.ThemePreference == AppThemePreference.System && RequestedTheme == ElementTheme.Default, "Browser follows the Windows theme", checks);
             _showTerminalPanel = true;
             ApplyTerminalPanel();
-            foreach (var theme in new[] { ElementTheme.Light, ElementTheme.Dark })
-            {
-                RequestedTheme = theme;
-                UpdateLayout();
-                await Task.Delay(150);
-                Require(ActualTheme == theme, $"{theme} theme is applied", checks);
-                await CaptureSmokeImageAsync(directory, theme.ToString());
-            }
-            RequestedTheme = ElementTheme.Default;
+            await CheckThemePreferencesAsync(directory, checks);
             _showTerminalPanel = false;
             ApplyTerminalPanel();
             await ViewModel.SearchAsync("type:txt size:>0 modified:today");
@@ -232,10 +245,105 @@ public sealed partial class MainPage
         catch (Exception ex) { failure = ex.ToString(); }
         finally
         {
+            if (failure is null && !themeRestart) App.SetThemePreference(AppThemePreference.Dark);
             try { await CaptureSmokeImageAsync(directory, "Final"); } catch (Exception ex) { checks.Add("Screenshot unavailable: " + ex.Message); }
-            File.WriteAllText(Path.Combine(directory, "result.json"), JsonSerializer.Serialize(new { checks, failure }, new JsonSerializerOptions { WriteIndented = true }));
+            File.WriteAllText(Path.Combine(directory, themeRestart ? "theme-restart-result.json" : "result.json"), JsonSerializer.Serialize(new { checks, failure }, new JsonSerializerOptions { WriteIndented = true }));
             App.Window.Close();
         }
+    }
+
+    private ComboBox FindThemeSelector() => FindSmokeElement<ComboBox>(_preferencesDialog,
+        combo => AutomationProperties.GetName(combo) == "Color theme") ?? throw new InvalidOperationException("Theme selector is missing.");
+
+    private async Task FinishSmokePreferencesAsync(Task preferences, bool apply)
+    {
+        var button = FindSmokeElement<Button>(_preferencesDialog, candidate => candidate.Content is string text && text == (apply ? "Apply" : "Cancel"))
+            ?? throw new InvalidOperationException("Preferences action button is missing.");
+        var peer = new Microsoft.UI.Xaml.Automation.Peers.ButtonAutomationPeer(button);
+        var provider = (Microsoft.UI.Xaml.Automation.Provider.IInvokeProvider)peer.GetPattern(Microsoft.UI.Xaml.Automation.Peers.PatternInterface.Invoke);
+        provider.Invoke();
+        await preferences;
+    }
+
+    private async Task CheckThemePreferencesAsync(string directory, List<string> checks)
+    {
+        var cancelled = ShowPreferencesAsync();
+        await Task.Delay(150);
+        var selector = FindThemeSelector();
+        Require(selector.Items.Count == 3 && selector.SelectedIndex == 0, "Preferences exposes accessible System, Light and Dark theme choices", checks);
+        selector.SelectedIndex = 2;
+        await FinishSmokePreferencesAsync(cancelled, apply: false);
+        Require(App.ThemePreference == AppThemePreference.System, "Cancel leaves the color theme unchanged", checks);
+        MainWindow? otherWindow = null;
+        try
+        {
+            foreach (var theme in new[] { AppThemePreference.Light, AppThemePreference.Dark, AppThemePreference.System })
+            {
+                var preferences = ShowPreferencesAsync();
+                await Task.Delay(150);
+                Require(_preferencesDialog!.ActualTheme == ActualTheme, $"Preferences dialog follows the active theme before choosing {theme}", checks);
+                FindThemeSelector().SelectedIndex = (int)theme;
+                if (theme != AppThemePreference.System) await CaptureSmokeImageAsync(directory, "Preferences" + theme, _preferencesDialog);
+                await FinishSmokePreferencesAsync(preferences, apply: true);
+                UpdateLayout();
+                await Task.Delay(150);
+                var expected = theme switch
+                {
+                    AppThemePreference.Light => ElementTheme.Light,
+                    AppThemePreference.Dark => ElementTheme.Dark,
+                    _ => Application.Current.RequestedTheme == ApplicationTheme.Dark ? ElementTheme.Dark : ElementTheme.Light
+                };
+                var titleTheme = theme switch
+                {
+                    AppThemePreference.Light => Microsoft.UI.Windowing.TitleBarTheme.Light,
+                    AppThemePreference.Dark => Microsoft.UI.Windowing.TitleBarTheme.Dark,
+                    _ => Microsoft.UI.Windowing.TitleBarTheme.UseDefaultAppMode
+                };
+                Require(App.ThemePreference == theme && ActualTheme == expected && App.Window.AppWindow.TitleBar.PreferredTheme == titleTheme,
+                    $"Applying {theme} changes the browser and title bar", checks);
+                Require(new AppearanceSettingsStore(Path.Combine(directory, "appearance.json")).Load().Theme == theme,
+                    $"Applying {theme} persists the choice outside window sessions", checks);
+                if (otherWindow is null)
+                {
+                    otherWindow = (MainWindow)App.OpenWindow(LaunchRequest.Empty);
+                    await Task.Delay(150);
+                }
+                Require(otherWindow.Page?.ActualTheme == expected && otherWindow.AppWindow.TitleBar.PreferredTheme == titleTheme,
+                    $"{theme} applies to both new and existing additional windows", checks);
+                if (theme != AppThemePreference.System) await CaptureSmokeImageAsync(directory, theme.ToString());
+            }
+            // A second window changes the theme while an older Preferences dialog remains open.
+            var stalePreferences = ShowPreferencesAsync();
+            await Task.Delay(150);
+            App.SetThemePreference(AppThemePreference.Dark);
+            await Task.Delay(100);
+            Require(_preferencesDialog!.ActualTheme == ElementTheme.Dark, "An open dialog follows a theme change from another window", checks);
+            await FinishSmokePreferencesAsync(stalePreferences, apply: true);
+            Require(App.ThemePreference == AppThemePreference.Dark, "Applying an unchanged stale selector preserves another window's theme choice", checks);
+            var blockedPreferences = ShowPreferencesAsync();
+            await Task.Delay(150);
+            FindThemeSelector().SelectedIndex = (int)AppThemePreference.Light;
+            using (var locked = new FileStream(Path.Combine(directory, "appearance.json"), FileMode.Open, FileAccess.Read, FileShare.Read))
+            {
+                await FinishSmokePreferencesAsync(blockedPreferences, apply: true);
+                Require(App.ThemePreference == AppThemePreference.Dark && ActualTheme == ElementTheme.Dark && ViewModel.StatusText.Contains("Could not save the color theme"),
+                    "A failed theme save reports the error and preserves the active and stored choice", checks);
+            }
+            App.SetThemePreference(AppThemePreference.System);
+        }
+        finally { otherWindow?.Close(); }
+    }
+
+    private static T? FindSmokeElement<T>(DependencyObject? root, Func<T, bool> predicate) where T : DependencyObject
+    {
+        if (root is T element && predicate(element)) return element;
+        if (root is null) return null;
+        for (var index = 0; index < Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChildrenCount(root); index++)
+        {
+            var found = FindSmokeElement(Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChild(root, index), predicate);
+            if (found is not null) return found;
+        }
+        return null;
     }
 
     private static void Require(bool condition, string description, List<string> checks)

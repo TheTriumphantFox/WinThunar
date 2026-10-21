@@ -2,8 +2,8 @@
 
 Reviewed against the source checkout on 21 October 2026. This is a source and smoke-check
 status document, not a claim of full screen-reader compatibility or accessibility conformance.
-The latest published application is 0.5.3; the support below is merged into GitHub `main`
-and included in that release, subject to the verification limits here.
+The latest published application is 0.5.5; the support below is included in the release unless
+marked unreleased, subject to the verification limits here.
 See the [release/source status](ROADMAP.md#release-and-source-status).
 
 ## Support in 0.5.3
@@ -21,6 +21,14 @@ See the [release/source status](ROADMAP.md#release-and-source-status).
 Release 0.5.3 follows Windows light/dark settings and uses WinUI system resources for the
 browser chrome, command panel, preview path, and drop highlight. Light/dark desktop renders
 were inspected. Full high-contrast support must be verified rather than inferred from resources.
+
+**Unreleased source:** Preferences adds an accessible **Color theme** selector with System,
+Light, and Dark choices. Apply updates window roots, native title bars, and application dialogs;
+Cancel preserves the current choice. Theme changes also update dialogs already open in another
+window. Secondary/error text uses theme resources instead of capturing the Windows theme's brush.
+Desktop checks exercise real Apply/Cancel buttons, new/existing windows, stale dialogs, failed
+saves, persistence and an isolated-process restart. The light/dark browser and Preferences renders
+were inspected. This does not replace manual contrast-theme or screen-reader verification.
 
 ## Automated desktop smoke coverage
 

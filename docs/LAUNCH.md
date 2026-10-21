@@ -6,6 +6,9 @@ that a person tried the application or continued using it.
 
 ## Current status
 
+The initial campaign below targeted 0.5.0. [WinThunar 0.5.3](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.3)
+was published on 21 October 2026; no additional community submission is implied by that release.
+
 | Item | Status |
 | --- | --- |
 | Project introduction, screenshots, and 25-second demo | Published in PR #10. |

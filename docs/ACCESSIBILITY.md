@@ -2,7 +2,7 @@
 
 Reviewed against the source checkout on 21 October 2026. This is a source and smoke-check
 status document, not a claim of full screen-reader compatibility or accessibility conformance.
-The latest published application is 0.5.5; the support below is included in the release unless
+The latest published application is 0.5.6; the support below is included in the release unless
 marked unreleased, subject to the verification limits here.
 See the [release/source status](ROADMAP.md#release-and-source-status).
 
@@ -22,7 +22,7 @@ Release 0.5.3 follows Windows light/dark settings and uses WinUI system resource
 browser chrome, command panel, preview path, and drop highlight. Light/dark desktop renders
 were inspected. Full high-contrast support must be verified rather than inferred from resources.
 
-**Unreleased source:** Preferences adds an accessible **Color theme** selector with System,
+**Since 0.5.6:** Preferences adds an accessible **Color theme** selector with System,
 Light, and Dark choices. Apply updates window roots, native title bars, and application dialogs;
 Cancel preserves the current choice. Theme changes also update dialogs already open in another
 window. Secondary/error text uses theme resources instead of capturing the Windows theme's brush.

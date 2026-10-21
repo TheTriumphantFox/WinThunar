@@ -50,12 +50,16 @@ integration notes below before choosing it as your default file manager.
 
 ## Release and source status
 
-The latest published application release is **[0.5.5](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.5)**
+The latest published application release is **[0.5.6](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.6)**
 (21 October 2026). Its application changes are merged into `main`, and the GitHub updater feed
-offers 0.5.5 to installed copies. Use **Help > Check for Updates...** to check immediately;
+offers 0.5.6 to installed copies. Use **Help > Check for Updates...** to check immediately;
 portable copies are updated manually. Documentation and website updates alone do not update the app.
-See the [0.5.5 release notes](docs/RELEASE-0.5.5.md) for verification and remaining limits.
+See the [0.5.6 release notes](docs/RELEASE-0.5.6.md) for verification and remaining limits.
 The version string alone does not establish that a local build matches published binaries.
+
+Release **0.5.6** adds **System / Light / Dark** under **Edit > Preferences > Display > Theme**.
+Apply updates all windows, native title bars, and WinThunar dialogs. The choice survives restart;
+Cancel preserves it, and separate appearance settings prevent another window from overwriting it.
 
 Release **0.5.5** adds updater error handling, an Interrupted Transfers
 review/retry view, conservative recovery for unavailable storage, text-content search, This PC
@@ -268,7 +272,7 @@ Install the Velopack packaging tool once:
 dotnet tool install -g vpk --version 1.2.161
 ```
 
-Build a release from the main checkout; this example uses the 0.5.6 candidate:
+Build a release from the main checkout; this example uses 0.5.6:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.5.6

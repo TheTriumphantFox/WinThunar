@@ -43,21 +43,21 @@ or [report a bug or request a feature](https://github.com/TheTriumphantFox/WinTh
 Useful reports include the WinThunar version, steps to reproduce, and what you expected.
 Please remove personal paths and filenames from screenshots and logs before sharing them.
 
-WinThunar is under active development. Transfer undo does not cover Replace or directory Merge,
-and operations handed to Windows are outside its Undo history. See the installation and Windows
+WinThunar is under active development. Transfer Undo includes Replace and directory Merge in 0.5.3,
+while operations handed to Windows are outside its Undo history. History is window-local and is
+not crash-atomic across multiple items. See the installation and Windows
 integration notes below before choosing it as your default file manager.
 
 ## Release and source status
 
-The latest published application release is **0.5.0** (14 October 2026), verified against
-GitHub Releases on 21 October 2026. The development checkout is preparing **0.5.3**. Documentation and website updates do not update the
-installed application. The feature list below describes that release; sections marked
-**unreleased source** describe work in the maintainer's local development checkout. These
-application changes are not yet in GitHub's `main` branch or a newer GitHub Release.
-See the [0.5.3 release candidate notes](docs/RELEASE-0.5.3.md) for the prepared milestone and verification limits.
+The latest published application release is **[0.5.3](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.3)**
+(21 October 2026). Its application changes are merged into `main`, and the GitHub updater feed
+offers 0.5.3 to installed copies. Use **Help > Check for Updates...** to check immediately;
+portable copies are updated manually. Documentation and website updates alone do not update the app.
+See the [0.5.3 release notes](docs/RELEASE-0.5.3.md) for verification and remaining limits.
 The version string alone does not establish that a local build matches published binaries.
 
-### Daily-default improvements — unreleased 0.5.3 source
+### Daily-default improvements in 0.5.3
 
 - Transfer Undo/Redo includes Replace and directory Merge. Displaced items and exact Redo data
   are retained until the window's ten-action history expires; history still does not survive restart.
@@ -70,7 +70,7 @@ The version string alone does not establish that a local build matches published
 - Folder enumeration checks cancellation between entries; filename search streams directory entries;
   selection totals use the listing's metadata rather than reopening selected paths.
 
-## Features in release 0.5.0
+## Foundation features retained from 0.5.0
 
 - Classic menu, toolbar, location bar, side pane, detail view, and status bar
 - Places, detected drives, a This PC drive overview (Up from a drive root), and OneDrive when signed in
@@ -114,9 +114,10 @@ The version string alone does not establish that a local build matches published
 - Selection-aware custom actions with file patterns, file/folder targeting, confirmation prompts, and argument-list execution without a command shell
 - Atomic, junction-safe bundled archive create/extract, media-tag editing, Git status/diff/log, and Windows sharing-management integrations
 
-## Desktop integration and accessibility — unreleased source
+## Desktop integration and accessibility in 0.5.3
 
-These additions are present in the development checkout, not the published 0.5.0 build.
+These additions are included in 0.5.3. Notification availability and manual accessibility
+verification remain subject to the limits below.
 
 The taskbar jump list offers **New window**, **Home**, and **Downloads**. When a transfer finishes
 while its window is in the background, WinThunar sends a local Windows notification; selecting it
@@ -201,13 +202,13 @@ permission itself. In **release 0.5.0**, directory links and junctions are offer
 copy engine after confirmation; that fallback can follow the linked folder's contents as Explorer
 does. Do not treat it as a link-preserving copy.
 
-The **unreleased source** preserves supported symbolic links and NTFS junctions as links without
+Release **0.5.3** preserves supported symbolic links and NTFS junctions as links without
 traversing their targets, including during replacement and recovery. Copying symbolic links still
 requires Windows Developer Mode or the symbolic-link privilege; unsupported link types can be
 offered to Windows after confirmation. Archive creation continues to reject directory links.
 
-Operations finished by Windows are outside WinThunar's Undo history. Transfer undo is withheld
-after Replace or directory Merge because displaced content is not retained for later undo.
+Operations finished by Windows are outside WinThunar's Undo history. Native replacement and merge
+transfers retain displaced content for Undo in 0.5.3; the ten-action history remains window-local.
 See [file-operation behavior](docs/FILE-OPERATIONS.md) for the full scope and limitations.
 
 ## Build
@@ -229,7 +230,7 @@ Run the isolated file-operation and browser-state tests:
 dotnet test .\tests\WinThunar.FileOps.Tests\WinThunar.FileOps.Tests.csproj --configuration Release
 ```
 
-The unreleased source also includes an isolated storage-failure and process-termination harness:
+The source includes an isolated storage-failure and process-termination harness:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-FileOperationsStress.ps1
@@ -239,9 +240,8 @@ It injects native copy errors and terminates its own test workers. The JSON repo
 checks from optional real cross-volume tests and skipped physical-storage tests. See the
 [stress-harness scope and results](docs/FILE-OPERATIONS-STRESS.md).
 
-The maintainer's **unreleased local source** also includes a desktop smoke build. Its harness
-is not present in the published 0.5.0 source or GitHub `main` as of this audit. Run this command
-only from a checkout containing that harness; it does not restore or save your normal session:
+The source also includes an isolated desktop smoke build. Its harness is excluded from normal
+application packages; it does not restore or save your normal session:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-DesktopSmoke.ps1
@@ -261,7 +261,7 @@ Install the Velopack packaging tool once:
 dotnet tool install -g vpk --version 1.2.161
 ```
 
-Build a release from the main checkout; this example uses the prepared 0.5.3 candidate:
+Build a release from the main checkout; this example uses 0.5.3 (select a new version for the next release):
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.5.3

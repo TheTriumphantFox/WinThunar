@@ -3,15 +3,15 @@
 ## Release and source status
 
 Checked 21 October 2026. The latest published application is
-[0.5.0](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.0), published 14 October 2026.
-The maintainer's local source checkout declares **0.5.3**, a prepared release candidate with
-unreleased application work. That application work is not yet in GitHub's `main` branch.
-Documentation-only commits do not distribute a new application version. See [candidate notes](RELEASE-0.5.3.md).
+[0.5.3](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.3), published 21 October 2026.
+The application changes are merged into `main` through PR #13, and the GitHub updater feed
+offers 0.5.3. Documentation-only commits do not distribute an application version.
+See [release notes](RELEASE-0.5.3.md) for package verification and remaining limits.
 
-The checked items in sections 1–5 below are in release 0.5.0. Unreleased additions are
-listed separately; a checked source task does not mean it has reached installed users.
+The checked foundation items in sections 1–5 were already in 0.5.0. The additions listed
+below are now in published 0.5.3; test harnesses are source tools excluded from app packages.
 
-| Capability | Published 0.5.0 | Maintainer's unreleased local source |
+| Capability | Published 0.5.0 | Published 0.5.3 / source tools |
 | --- | --- | --- |
 | Directory links/junctions in file transfers | Offer Windows fallback after confirmation; link contents may be followed. | Preserve supported symbolic links/junctions without traversing targets. |
 | Jump-list tasks and local transfer notifications | Not included. | Implemented; Windows notification availability remains environment-dependent. |
@@ -22,7 +22,7 @@ listed separately; a checked source task does not mean it has reached installed 
 | Search filters | Literal filename substring. | Names/phrases/wildcards plus type, modified-date, and size filters; streamed traversal. |
 | System light/dark theme | Forced light page and fixed command colors. | Follows Windows theme; system resources for command/preview/drop colors. |
 
-## Unreleased additions
+## Additions published with 0.5.3
 
 - [x] Native symbolic-link and junction preservation, link-state checks, and recovery cleanup.
 - [x] Taskbar jump-list tasks and background-transfer outcome notifications.
@@ -36,8 +36,8 @@ listed separately; a checked source task does not mean it has reached installed 
 - [x] Storage-error/process-termination stress harness and recovery fixes for overlapping history records and concurrent restart recovery.
 - [x] Disposable NTFS VHD verification of cross-volume history and actual disk-full allocation failures; native long-path copy/stream/history fixes.
 
-These items need a new version and a published GitHub Release before installed users receive
-them. See [release publishing](RELEASES.md) and [accessibility status](ACCESSIBILITY.md).
+Installed copies can discover 0.5.3 through GitHub Releases. See [release publishing](RELEASES.md)
+and [accessibility status](ACCESSIBILITY.md) for package behavior and remaining checks.
 
 ## 1. Browser foundation
 
@@ -65,8 +65,7 @@ them. See [release publishing](RELEASES.md) and [accessibility status](ACCESSIBI
 - [x] Drag-and-drop rules based on source and destination volumes, including folder-row targets
 - [x] Elevation only when an operation requires it (copies, moves, trash, delete, new folder, and
   rename that are denied access can be finished by the Windows copy engine with a UAC prompt)
-- Directory links/junctions use the Windows fallback in 0.5.0; native preservation is listed
-  above as unreleased source work.
+- Directory links/junctions use the Windows fallback in 0.5.0; native preservation is included in 0.5.3.
 
 ## 3. Discovery and power features
 
@@ -85,7 +84,7 @@ them. See [release publishing](RELEASES.md) and [accessibility status](ACCESSIBI
 
 - [x] “Open in WinThunar” shell command
 - [x] Command-line folder and `/select` launches with single-instance window reuse
-- Taskbar jump list and notifications: implemented in unreleased source; see the status table.
+- Taskbar jump list and notifications: included in 0.5.3; see the status table and environment limits.
 - [x] Optional, reversible default handler for folders and drives (Win+E and apps that call
   `SHOpenFolderAndSelectItems` still open Explorer)
 - [x] Portable/self-contained x64 GitHub release
@@ -103,11 +102,12 @@ them. See [release publishing](RELEASES.md) and [accessibility status](ACCESSIBI
 - [x] Media-tag editing
 - [x] Version-control commands
 - [x] Shared-folder management commands
-- Version-control overlays: implemented as badges in unreleased source; see the status table.
+- Version-control overlays: included as badges in 0.5.3; see the status table.
 
 ## Remaining gaps
 
-- [ ] Publish the unreleased application additions with a new version.
+- [x] Publish the application additions as 0.5.3 with the verified GitHub update feed.
+- [ ] Verify an end-to-end installed upgrade from 0.5.0. Delta reconstruction passed; installation was not exercised.
 - [ ] Complete the manual accessibility checks documented in [ACCESSIBILITY.md](ACCESSIBILITY.md).
 - [ ] Verify SMB disconnection, physical device removal, disk-full after partial writes, and history across separate physical devices. Real disk-full allocation failures and distinct-NTFS-volume history pass on a disposable VHD backed by the system SSD; see the [stress-harness results](FILE-OPERATIONS-STRESS.md).
 - [ ] Verify notifications on installed and portable builds; registration remains unavailable on this machine.

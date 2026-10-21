@@ -1,8 +1,8 @@
-# WinThunar 0.5.3 release candidate
+# WinThunar 0.5.3 release
 
-Prepared 21 October 2026. This is a source release candidate, not a published GitHub Release.
-Installed copies continue to receive 0.5.0 until a new version is packaged and published.
-This candidate includes the earlier [0.5.2](RELEASE-0.5.2.md) and [0.5.1](RELEASE-0.5.1.md)
+Published [21 October 2026](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.3)
+from source commit `43b0311` (PR #13). The GitHub updater feed now offers 0.5.3.
+This release includes the earlier [0.5.2](RELEASE-0.5.2.md) and [0.5.1](RELEASE-0.5.1.md)
 source changes; neither preceding candidate was published.
 
 ## Changes since 0.5.2
@@ -50,10 +50,10 @@ Stress reports also retain the local fixture path when fixture construction itse
   notifications on installed/portable builds, general document previews, cloud/device browsing,
   and indexed/content search remain open. See the [roadmap](ROADMAP.md).
 
-## Release preparation
+## Packaging and publication
 
 Project version, assembly/file version, package manifest, release-script default, and README
-build example are aligned at **0.5.3**. Packaging and publication are separate steps:
+build example are aligned at **0.5.3**. The packages were built from the merged main checkout:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.5.3
@@ -61,6 +61,14 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Releas
 
 Preserve all earlier packages in `artifacts/installer` for delta updates. The historical unpublished
 0.6.0 preview artifacts are not 0.5.3 packages and must not be uploaded as part of a 0.5.3 release.
-No 0.5.3 ZIP/MSI/Velopack package or installed-upgrade result is established by this source commit.
-Before publishing, build the requested packages, inspect the upload feed, and verify the installed
-upgrade. See [release publishing](RELEASES.md).
+The versioned ZIP/MSI, public portable ZIP/MSI, setup executable, and full/delta packages were built
+and verified. The MSI declares 0.5.3.0 and retains its shortcut checkboxes/conditions. All five public
+binary asset sizes and SHA-256 digests match the upload files. The public feed contains only 0.5.3
+full/delta entries. The 782,521-byte delta reconstructs all 528 full-package entries with matching
+content hashes. The 0.5.0 full package is preserved with its original hash.
+
+Historical 0.6.0 packages and generic assets were archived intact outside the upload directory in
+`artifacts/unpublished-preview-0.6.0-before-0.5.3/`. Local verification evidence is in
+`artifacts/verification-0.5.3/`. The release is stable and marked latest. An end-to-end installed
+upgrade remains unverified; delta reconstruction and public feed checks do not establish that UI workflow.
+See [release publishing](RELEASES.md).

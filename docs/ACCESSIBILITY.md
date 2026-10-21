@@ -2,11 +2,11 @@
 
 Reviewed against the source checkout on 21 October 2026. This is a source and smoke-check
 status document, not a claim of full screen-reader compatibility or accessibility conformance.
-The latest published application remains 0.5.0; the additional support below is **unreleased
-local work**, not part of GitHub `main` as of this audit.
+The latest published application is 0.5.3; the support below is merged into GitHub `main`
+and included in that release, subject to the verification limits here.
 See the [release/source status](ROADMAP.md#release-and-source-status).
 
-## Support in the unreleased source
+## Support in 0.5.3
 
 - `F6` / `Shift+F6` cycles between folder tabs, the location control, the visible side pane,
   the primary file view, the right pane if open, and the command input if visible.
@@ -18,15 +18,14 @@ See the [release/source status](ROADMAP.md#release-and-source-status).
   and optional Git status text. Recycled containers have their old name cleared.
 - Git status is text as well as a visual badge; status tooltips do not depend on color alone.
 
-The 0.5.2 source follows Windows light/dark settings and uses WinUI system resources for the
+Release 0.5.3 follows Windows light/dark settings and uses WinUI system resources for the
 browser chrome, command panel, preview path, and drop highlight. Light/dark desktop renders
 were inspected. Full high-contrast support must be verified rather than inferred from resources.
 
 ## Automated desktop smoke coverage
 
-The maintainer's local development checkout includes the following command. The harness
-has not been committed to GitHub `main`; run it only in a checkout containing the unreleased
-application changes and `scripts/Test-DesktopSmoke.ps1`:
+The source checkout includes the following command. The harness is committed to GitHub
+`main` and excluded from normal application packages:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-DesktopSmoke.ps1
@@ -58,8 +57,8 @@ Its file-operation journal is redirected into its generated fixture directory.
 
 On 21 October, the expanded desktop harness passed its assertions and the light/dark renders
 were inspected. Notification registration still returned the module-loading diagnostic below.
-The final 0.5.2 service suite completed with **123 passed, one skipped, zero failed**.
-See [candidate notes](RELEASE-0.5.2.md) for current test scope and remaining storage checks.
+The final 0.5.3 service suite completed with **125 passed, one skipped, zero failed**.
+See [release notes](RELEASE-0.5.3.md) for current test scope and remaining storage checks.
 
 The previous baseline on 19 October is retained for comparison:
 

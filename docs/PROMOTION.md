@@ -7,8 +7,10 @@ was published to r/SideProject as u/TheTriumphantFox on 19 October 2026. A [Wind
 listing has been [submitted and is awaiting review](https://alternativeto.net/software/winthunar/), confirmed by the maintainer on 19 October 2026. Press pitches remain drafts; no paid promotion has been purchased. See
 [launch status](LAUNCH.md) for confirmed submissions and the initial download baseline.
 
-The public application release is still 0.5.0. Keep announcements about downloaded builds
-limited to released features; see the [release/source status](ROADMAP.md#release-and-source-status).
+This launch kit and its media were prepared for 0.5.0. The current public release is
+[0.5.3](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.3), published 21 October 2026.
+Existing post copy below remains historical; see the [release/source status](ROADMAP.md#release-and-source-status)
+before preparing a new announcement.
 
 ## Positioning
 

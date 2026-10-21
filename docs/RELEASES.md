@@ -1,10 +1,10 @@
 # Building and publishing releases
 
 Checked 21 October 2026 against the release script, project/manifest versions, and GitHub
-Releases. The latest published application is **0.5.0**, released 14 October 2026.
-See the [release/source status](ROADMAP.md#release-and-source-status) for unreleased work.
-The prepared local candidate is **0.5.3**; it has not been published. Its version locations
-are aligned and its [candidate notes](RELEASE-0.5.3.md) describe verification limits.
+Releases. The latest published application is **[0.5.3](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.3)**,
+released 21 October 2026 from source commit `43b0311` (PR #13). Its public MSI, portable ZIP,
+setup executable, full/delta packages, and update feed were verified. See the
+[release notes](RELEASE-0.5.3.md) for verification limits, including the unverified installed upgrade.
 
 ## Prerequisites and version checklist
 
@@ -27,8 +27,8 @@ Documentation-only changes do not require a new application version.
 
 ## Build and local outputs
 
-Run from the main checkout. This example uses the prepared candidate; existing output paths
-are deliberately not overwritten:
+Run from the main checkout. This example uses 0.5.3; choose an unused version for the next
+release, since existing output paths are deliberately not overwritten:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.5.3

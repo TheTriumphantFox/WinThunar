@@ -1,7 +1,7 @@
 # File-operation behavior
 
 WinThunar follows Thunar's core interaction model while mapping Trash to the Windows Recycle Bin.
-Unless marked **unreleased source**, this page describes release 0.5.0.
+This page describes release 0.5.3 and identifies older 0.5.0 behavior where it differs.
 
 ## Commands
 
@@ -28,14 +28,14 @@ Unless marked **unreleased source**, this page describes release 0.5.0.
 - Selecting both a folder and its child processes only the folder.
 - Copying a folder into itself is rejected.
 
-## Filesystem links: released and unreleased behavior
+## Filesystem links: 0.5.0 and 0.5.3 behavior
 
 **Release 0.5.0** does not natively copy directory links or junctions. It can offer to let
 the Windows copy engine finish a transfer after confirmation. That fallback can follow
 the link's contents as Explorer does; it is not a link-preserving copy. Do not infer native
-link preservation in the released binary from the source changes below.
+link preservation in the older 0.5.0 binary from the changes below.
 
-The **unreleased source** adds these behaviors:
+Release **0.5.3** adds these behaviors:
 
 - Supported symbolic links and NTFS junctions are copied as links, including dangling and
   relative symbolic links; the transfer does not traverse their targets. Same-volume moves
@@ -64,12 +64,12 @@ creation; link-preserving file transfers do not add link support to ZIP archives
   the recursive content-snapshot guard.
 - Undo removes a created folder, blank document, template document, or archive only when its recursive metadata-and-content snapshot is unchanged; Redo recreates file content exactly.
 - In release 0.5.0, a transfer batch containing Replace or directory Merge is not entered into Undo history.
-  The **unreleased 0.5.2 source** retains displaced items and completed merge children for Undo,
+  Release **0.5.3** retains displaced items and completed merge children for Undo,
   including completed work in a cancelled transfer. Undo restores replaced content and keeps
   unrelated merge contents. Redo uses the exact retained incoming data, so later edits to a copy's
   original source do not change Redo. Destination, move-source, retained-backup, and Redo snapshots
   are checked before any replay; content guards include NTFS alternate streams.
-- In 0.5.2 source, Undo of Copy/Link parks the incoming item in a private `.winthunar-undo-*.tmp`
+- In 0.5.3, Undo of Copy/Link parks the incoming item in a private `.winthunar-undo-*.tmp`
   directory alongside the top-level destination, outside the transferred folder. Replacement backups
   use the same kind of directory. These consume disk space until that history entry expires,
   a new operation discards Redo, or its window closes. They are not persistent history or Recycle Bin
@@ -97,7 +97,7 @@ personal files into the real Recycle Bin. Pointer-driven drag/drop and real Wind
 need manual checks. The relative-symbolic-link test reports a skip when Windows denies link
 creation. See the [accessibility status](ACCESSIBILITY.md) for the separate desktop smoke checks.
 
-The unreleased source adds a separate [stress harness](FILE-OPERATIONS-STRESS.md) for injected native
+The 0.5.3 source includes a separate [stress harness](FILE-OPERATIONS-STRESS.md) for injected native
 storage errors, real sharing locks, copy/delete fallback, and forced termination at transfer/recovery/
 history checkpoints. It reports real-volume and physical-storage coverage separately. Recovery now
 leases its journal to one process and protects staged incoming history data when overlapping records

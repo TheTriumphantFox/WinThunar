@@ -48,7 +48,29 @@ public sealed record FileTransferRecord(
     string DestinationPath,
     FileTransferMode Mode,
     bool ReplacedExistingItem,
-    PathStateSnapshot DestinationState);
+    PathStateSnapshot DestinationState)
+{
+    public string? BackupPath { get; init; }
+    public PathStateSnapshot? BackupState { get; init; }
+    public string? RecoveryId { get; init; }
+    public IReadOnlyList<FileTransferRecord>? Children { get; init; }
+    public bool CreatedDirectory { get; init; }
+    public bool RemovedSourceDirectory { get; init; }
+    public DirectoryState? OriginalDestinationDirectory { get; init; }
+    public DirectoryState? OriginalSourceDirectory { get; init; }
+    public PathStateSnapshot? RemainingSourceState { get; init; }
+}
+
+public sealed record DirectoryState(FileAttributes Attributes, DateTime CreationTimeUtc, DateTime LastWriteTimeUtc)
+{
+    public static DirectoryState Read(string path) => new(File.GetAttributes(path), Directory.GetCreationTimeUtc(path), Directory.GetLastWriteTimeUtc(path));
+    public void Apply(string path)
+    {
+        Directory.SetCreationTimeUtc(path, CreationTimeUtc);
+        Directory.SetLastWriteTimeUtc(path, LastWriteTimeUtc);
+        File.SetAttributes(path, Attributes);
+    }
+}
 
 public sealed record FileOperationResult(
     int CompletedItems,
@@ -69,7 +91,7 @@ public sealed record FileOperationResult(
     public bool WindowsAssistNeedsElevation { get; init; }
 }
 
-/// <summary>A directory link or junction, which WinThunar does not copy or move itself yet.</summary>
+/// <summary>A filesystem link type that cannot be preserved by the native transfer engine.</summary>
 public sealed class LinkTransferException(string message) : IOException(message);
 
 public sealed class FileOperationService
@@ -81,7 +103,59 @@ public sealed class FileOperationService
         _recovery = recovery ?? new TransferRecoveryService();
     }
 
-    public TransferRecoveryResult RecoverInterruptedTransfers() => _recovery.RecoverPending();
+    public TransferRecoveryResult RecoverInterruptedTransfers(bool skipActiveProcesses = false) => _recovery.RecoverPending(skipActiveProcesses);
+
+    internal void ForgetRecovery(string? id) { if (id is not null) _recovery.ReleaseRetained(id); }
+    internal void SetHistoryRetention(string? id, bool retained) { if (id is not null) _recovery.CommitRetained(id, retained); }
+
+    internal string RetainHistoryPath(string path, string destination)
+    {
+        var id = _recovery.Register(destination, destination, GetTemporarySiblingPath(destination, "history"),
+            path, backupRoot: Path.GetDirectoryName(path));
+        _recovery.CommitRetained(id);
+        return id;
+    }
+
+    internal async Task MoveHistoryPathAsync(string source, string destination)
+    {
+        EnsurePathDoesNotExist(destination);
+        if (ArePathsOnSameVolume([source], Path.GetDirectoryName(destination)!)
+#if FILEOPS_FAULT_TESTS
+            && !FileOperationFaultHooks.ForceCopyDelete
+#endif
+            )
+        {
+            MovePath(source, destination);
+            return;
+        }
+        var staged = GetTemporarySiblingPath(destination, "history");
+        var sourceRecovery = GetTemporarySiblingPath(source, "history-source");
+        var id = _recovery.Register(source, destination, staged, sourceRecoveryPath: sourceRecovery,
+            finishStagedMoveOnSourceConflict: true);
+        try
+        {
+            if (LinkFileSystem.CopyLink(source, staged)) { }
+            else if (LinkFileSystem.IsDirectory(source))
+                await CopyDirectoryPreservingMetadataAsync(source, staged, CancellationToken.None);
+            else await CopyFilePreservingMetadataAsync(source, staged, CancellationToken.None);
+            MovePath(source, sourceRecovery);
+#if FILEOPS_FAULT_TESTS
+            FileOperationFaultHooks.Hit("HistoryAfterSourceStaged", source, destination);
+#endif
+            try { MovePath(staged, destination); }
+            catch { MovePath(sourceRecovery, source); throw; }
+#if FILEOPS_FAULT_TESTS
+            FileOperationFaultHooks.Hit("HistoryAfterPromotion", source, destination);
+#endif
+            // Once promoted, cleanup failures are recoverable; do not roll back a partial deletion.
+            TryDeletePath(sourceRecovery);
+        }
+        finally
+        {
+            TryDeletePath(staged);
+            if (!PathExists(staged) && !PathExists(sourceRecovery)) _recovery.Complete(id);
+        }
+    }
 
     private static readonly HashSet<string> ReservedDeviceNames = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -268,7 +342,8 @@ public sealed class FileOperationService
         FileTransferMode mode,
         Func<FileConflict, Task<ConflictResolution>> conflictResolver,
         IProgress<FileOperationProgress>? progress = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        bool retainReplacedItems = false)
     {
         ArgumentNullException.ThrowIfNull(sourcePaths);
         ArgumentNullException.ThrowIfNull(conflictResolver);
@@ -282,6 +357,7 @@ public sealed class FileOperationService
         var skipped = 0;
         var cancelled = false;
         var transfers = new List<FileTransferRecord>();
+        var backupRoot = retainReplacedItems ? GetTemporarySiblingPath(Path.Combine(destinationDirectory, "history"), "undo") : null;
 
         foreach (var sourcePath in sources)
         {
@@ -291,7 +367,7 @@ public sealed class FileOperationService
                 cancellationToken.ThrowIfCancellationRequested();
                 EnsurePathExists(sourcePath);
 
-                if (Directory.Exists(sourcePath) && IsSameOrDescendantPath(destinationDirectory, sourcePath))
+                if (Directory.Exists(sourcePath) && LinkFileSystem.ReadLink(sourcePath) is null && IsSameOrDescendantPath(destinationDirectory, sourcePath))
                 {
                     throw new IOException("A folder cannot be copied or moved into itself.");
                 }
@@ -317,6 +393,7 @@ public sealed class FileOperationService
                     conflictResolver,
                     cancellationToken,
                     itemJournal,
+                    backupRoot,
                     (itemPath, bytesTransferred, totalBytes) =>
                         progress?.Report(new FileOperationProgress(
                             Path.GetFileName(Path.TrimEndingDirectorySeparator(itemPath)),
@@ -340,14 +417,13 @@ public sealed class FileOperationService
                 else
                 {
                     completed++;
-                    var capturedState = FindCapturedState(itemJournal, outcome.DestinationPath)
-                        ?? await CapturePathStateAsync(outcome.DestinationPath, cancellationToken);
-                    transfers.Add(new FileTransferRecord(
+                    var capturedRecord = itemJournal.LastOrDefault(record => PathsEqual(record.DestinationPath, outcome.DestinationPath));
+                    transfers.Add(capturedRecord ?? new FileTransferRecord(
                         sourcePath,
                         outcome.DestinationPath,
                         mode,
                         outcome.ReplacedExistingItem,
-                        capturedState));
+                        await CapturePathStateAsync(outcome.DestinationPath, CancellationToken.None)));
                 }
 
                 progress?.Report(new FileOperationProgress(
@@ -386,7 +462,8 @@ public sealed class FileOperationService
         string destinationPath,
         FileTransferMode mode,
         Func<FileConflict, Task<ConflictResolution>> conflictResolver,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        bool retainReplacedItems = false)
     {
         ArgumentNullException.ThrowIfNull(conflictResolver);
         EnsurePathExists(sourcePath);
@@ -395,7 +472,7 @@ public sealed class FileOperationService
             ?? throw new InvalidOperationException("A filesystem root cannot be a transfer destination.");
         EnsureDirectoryExists(destinationDirectory);
 
-        if (Directory.Exists(sourcePath) && IsSameOrDescendantPath(destinationDirectory, sourcePath))
+        if (Directory.Exists(sourcePath) && LinkFileSystem.ReadLink(sourcePath) is null && IsSameOrDescendantPath(destinationDirectory, sourcePath))
         {
             throw new IOException("A folder cannot be copied or moved into itself.");
         }
@@ -410,22 +487,22 @@ public sealed class FileOperationService
                 conflictResolver,
                 cancellationToken,
                 journal,
+                retainReplacedItems ? GetTemporarySiblingPath(Path.Combine(destinationDirectory, "history"), "undo") : null,
                 null);
             if (outcome.Outcome == TransferOutcome.Completed)
             {
-                var capturedState = FindCapturedState(journal, outcome.DestinationPath)
-                    ?? await CapturePathStateAsync(outcome.DestinationPath, cancellationToken);
+                var capturedRecord = journal.LastOrDefault(record => PathsEqual(record.DestinationPath, outcome.DestinationPath));
                 return new FileOperationResult(
                     1,
                     0,
                     [],
                     false,
-                    [new FileTransferRecord(
+                    [capturedRecord ?? new FileTransferRecord(
                         sourcePath,
                         outcome.DestinationPath,
                         mode,
                         outcome.ReplacedExistingItem,
-                        capturedState)]);
+                        await CapturePathStateAsync(outcome.DestinationPath, CancellationToken.None))]);
             }
 
             return outcome.Outcome == TransferOutcome.Skipped
@@ -574,15 +651,7 @@ public sealed class FileOperationService
                 cancellationToken.ThrowIfCancellationRequested();
                 EnsurePathExists(path);
 
-                if (Directory.Exists(path))
-                {
-                    Directory.Delete(path, true);
-                }
-                else
-                {
-                    File.SetAttributes(path, File.GetAttributes(path) & ~FileAttributes.ReadOnly);
-                    File.Delete(path);
-                }
+                LinkFileSystem.Delete(path);
             }
         }, cancellationToken);
     }
@@ -638,15 +707,13 @@ public sealed class FileOperationService
         Func<FileConflict, Task<ConflictResolution>> conflictResolver,
         CancellationToken cancellationToken,
         ICollection<FileTransferRecord> journal,
+        string? backupRoot,
         Action<string, long, long>? byteProgress)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var sourceIsDirectory = Directory.Exists(sourcePath);
+        var sourceIsDirectory = LinkFileSystem.IsDirectory(sourcePath);
 
-        if (sourceIsDirectory && File.GetAttributes(sourcePath).HasFlag(FileAttributes.ReparsePoint))
-        {
-            throw new LinkTransferException("Directory links and junctions are not supported yet.");
-        }
+        var sourceLink = LinkFileSystem.ReadLink(sourcePath);
 
         var resolution = await ResolveDestinationAsync(
             sourcePath,
@@ -666,15 +733,17 @@ public sealed class FileOperationService
         var destinationPath = resolution.DestinationPath;
         if (mode == FileTransferMode.Link)
         {
+            FileTransferRecord? replacement = null;
             if (resolution.ReplacedExistingItem)
             {
-                await ReplacePathAsync(
+                replacement = await ReplacePathAsync(
                     sourcePath,
                     destinationPath,
                     sourceIsDirectory,
                     mode,
                     cancellationToken,
-                    byteProgress);
+                    byteProgress,
+                    backupRoot);
             }
             else
             {
@@ -683,8 +752,8 @@ public sealed class FileOperationService
                     cancellationToken);
             }
 
-            var linkState = await CapturePathStateAsync(destinationPath, cancellationToken);
-            journal.Add(new FileTransferRecord(
+            var linkState = await CapturePathStateAsync(destinationPath, CancellationToken.None);
+            journal.Add(replacement ?? new FileTransferRecord(
                 sourcePath,
                 destinationPath,
                 mode,
@@ -696,23 +765,48 @@ public sealed class FileOperationService
                 resolution.ReplacedExistingItem);
         }
 
-        if (resolution.ReplacedExistingItem &&
-            !(sourceIsDirectory && Directory.Exists(destinationPath)))
+        if (sourceLink is not null && !resolution.ReplacedExistingItem)
         {
-            await ReplacePathAsync(
+            var staged = GetTemporarySiblingPath(destinationPath, "link");
+            var recoveryId = _recovery.Register(sourcePath, destinationPath, staged);
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (mode == FileTransferMode.Move && ArePathsOnSameVolume([sourcePath], Path.GetDirectoryName(destinationPath)!))
+                {
+                    MovePath(sourcePath, destinationPath);
+                }
+                else
+                {
+                    LinkFileSystem.CopyLink(sourcePath, staged);
+                    cancellationToken.ThrowIfCancellationRequested();
+                    MovePath(staged, destinationPath);
+                    if (mode == FileTransferMode.Move) LinkFileSystem.Delete(sourcePath);
+                }
+            }
+            finally
+            {
+                LinkFileSystem.Delete(staged);
+                _recovery.Complete(recoveryId);
+            }
+            var state = await CapturePathStateAsync(destinationPath, CancellationToken.None);
+            journal.Add(new FileTransferRecord(sourcePath, destinationPath, mode, false, state));
+            return new TransferPathResult(TransferOutcome.Completed, destinationPath, false);
+        }
+
+        if (resolution.ReplacedExistingItem &&
+            !(sourceIsDirectory && Directory.Exists(destinationPath) && sourceLink is null &&
+              !LinkFileSystem.IsReparsePoint(destinationPath)))
+        {
+            var replacement = await ReplacePathAsync(
                 sourcePath,
                 destinationPath,
                 sourceIsDirectory,
                 mode,
                 cancellationToken,
-                byteProgress);
-            var destinationState = await CapturePathStateAsync(destinationPath, cancellationToken);
-            journal.Add(new FileTransferRecord(
-                sourcePath,
-                destinationPath,
-                mode,
-                true,
-                destinationState));
+                byteProgress,
+                backupRoot);
+            journal.Add(replacement);
             return new TransferPathResult(TransferOutcome.Completed, destinationPath, true);
         }
 
@@ -725,6 +819,7 @@ public sealed class FileOperationService
                 conflictResolver,
                 cancellationToken,
                 journal,
+                backupRoot,
                 byteProgress);
             return new TransferPathResult(
                 directoryOutcome,
@@ -733,7 +828,7 @@ public sealed class FileOperationService
         }
 
         await TransferFileAsync(sourcePath, destinationPath, mode, cancellationToken, byteProgress);
-        var fileState = await CapturePathStateAsync(destinationPath, cancellationToken);
+        var fileState = await CapturePathStateAsync(destinationPath, CancellationToken.None);
         journal.Add(new FileTransferRecord(
             sourcePath,
             destinationPath,
@@ -753,19 +848,25 @@ public sealed class FileOperationService
         Func<FileConflict, Task<ConflictResolution>> conflictResolver,
         CancellationToken cancellationToken,
         ICollection<FileTransferRecord> journal,
+        string? backupRoot,
         Action<string, long, long>? byteProgress)
     {
         var sourceAttributes = File.GetAttributes(sourcePath);
         var sourceCreationTime = Directory.GetCreationTimeUtc(sourcePath);
         var sourceLastAccessTime = Directory.GetLastAccessTimeUtc(sourcePath);
         var sourceLastWriteTime = Directory.GetLastWriteTimeUtc(sourcePath);
+        var originalSource = DirectoryState.Read(sourcePath);
 
-        if (mode == FileTransferMode.Move && !Directory.Exists(destinationPath))
+        if (mode == FileTransferMode.Move && !Directory.Exists(destinationPath)
+#if FILEOPS_FAULT_TESTS
+            && !FileOperationFaultHooks.ForceCopyDelete
+#endif
+            )
         {
             try
             {
                 Directory.Move(sourcePath, destinationPath);
-                var movedState = await CapturePathStateAsync(destinationPath, cancellationToken);
+                var movedState = await CapturePathStateAsync(destinationPath, CancellationToken.None);
                 journal.Add(new FileTransferRecord(
                     sourcePath,
                     destinationPath,
@@ -781,62 +882,87 @@ public sealed class FileOperationService
         }
 
         var destinationWasCreated = !Directory.Exists(destinationPath);
+        var originalDestination = destinationWasCreated ? null : DirectoryState.Read(destinationPath);
         Directory.CreateDirectory(destinationPath);
         var fullyMoved = true;
-        var childCount = 0;
+        var children = new List<FileTransferRecord>();
+        var removedSource = false;
 
-        foreach (var childPath in Directory.EnumerateFileSystemEntries(sourcePath).ToArray())
+        try
         {
-            childCount++;
-            cancellationToken.ThrowIfCancellationRequested();
-            var childDestination = Path.Combine(
-                destinationPath,
-                Path.GetFileName(Path.TrimEndingDirectorySeparator(childPath)));
-            var childOutcome = await TransferPathAsync(
-                childPath,
-                childDestination,
-                mode,
-                conflictResolver,
-                cancellationToken,
-                journal,
-                byteProgress);
-
-            if (childOutcome.Outcome == TransferOutcome.Cancelled)
+            foreach (var childPath in Directory.EnumerateFileSystemEntries(sourcePath).ToArray())
             {
-                return TransferOutcome.Cancelled;
+                cancellationToken.ThrowIfCancellationRequested();
+                var childDestination = Path.Combine(
+                    destinationPath,
+                    Path.GetFileName(Path.TrimEndingDirectorySeparator(childPath)));
+                var childOutcome = await TransferPathAsync(
+                    childPath,
+                    childDestination,
+                    mode,
+                    conflictResolver,
+                    cancellationToken,
+                    children,
+                    backupRoot,
+                    byteProgress);
+
+                if (childOutcome.Outcome == TransferOutcome.Cancelled)
+                {
+                    return TransferOutcome.Cancelled;
+                }
+
+                if (childOutcome.Outcome != TransferOutcome.Completed)
+                {
+                    fullyMoved = false;
+                }
             }
 
-            if (childOutcome.Outcome != TransferOutcome.Completed)
+            if (destinationWasCreated)
             {
-                fullyMoved = false;
+                Directory.SetCreationTimeUtc(destinationPath, sourceCreationTime);
+                Directory.SetLastAccessTimeUtc(destinationPath, sourceLastAccessTime);
+                Directory.SetLastWriteTimeUtc(destinationPath, sourceLastWriteTime);
+                File.SetAttributes(destinationPath, sourceAttributes);
+            }
+
+            if (mode == FileTransferMode.Move && fullyMoved && !Directory.EnumerateFileSystemEntries(sourcePath).Any())
+            {
+                Directory.Delete(sourcePath);
+                removedSource = true;
+            }
+
+            return fullyMoved ? TransferOutcome.Completed : TransferOutcome.Skipped;
+        }
+        finally
+        {
+            // Keep the directory structure and completed children even after cancellation/failure.
+            // Snapshotting an already-promoted item must not be cancelled with the transfer.
+            try
+            {
+                var directoryState = await CapturePathStateAsync(destinationPath, CancellationToken.None);
+                journal.Add(new FileTransferRecord(
+                    sourcePath,
+                    destinationPath,
+                    mode,
+                    !destinationWasCreated,
+                    directoryState)
+                {
+                    Children = children,
+                    CreatedDirectory = destinationWasCreated,
+                    RemovedSourceDirectory = removedSource,
+                    OriginalSourceDirectory = originalSource,
+                    OriginalDestinationDirectory = originalDestination,
+                    RemainingSourceState = mode == FileTransferMode.Move && PathExists(sourcePath)
+                        ? await CapturePathStateAsync(sourcePath, CancellationToken.None) : null
+                });
+            }
+            catch
+            {
+                // An unrelated locked item in a merge must not erase completed child records.
+                foreach (var child in children) journal.Add(child);
+                throw;
             }
         }
-
-        if (destinationWasCreated)
-        {
-            Directory.SetCreationTimeUtc(destinationPath, sourceCreationTime);
-            Directory.SetLastAccessTimeUtc(destinationPath, sourceLastAccessTime);
-            Directory.SetLastWriteTimeUtc(destinationPath, sourceLastWriteTime);
-            File.SetAttributes(destinationPath, sourceAttributes);
-        }
-
-        if (mode == FileTransferMode.Move && fullyMoved && !Directory.EnumerateFileSystemEntries(sourcePath).Any())
-        {
-            Directory.Delete(sourcePath);
-        }
-
-        if (childCount == 0 && destinationWasCreated)
-        {
-            var emptyDirectoryState = await CapturePathStateAsync(destinationPath, cancellationToken);
-            journal.Add(new FileTransferRecord(
-                sourcePath,
-                destinationPath,
-                mode,
-                false,
-                emptyDirectoryState));
-        }
-
-        return fullyMoved ? TransferOutcome.Completed : TransferOutcome.Skipped;
     }
 
     private async Task TransferFileAsync(
@@ -846,7 +972,11 @@ public sealed class FileOperationService
         CancellationToken cancellationToken,
         Action<string, long, long>? byteProgress)
     {
-        if (mode == FileTransferMode.Move)
+        if (mode == FileTransferMode.Move
+#if FILEOPS_FAULT_TESTS
+            && !FileOperationFaultHooks.ForceCopyDelete
+#endif
+            )
         {
             try
             {
@@ -865,6 +995,9 @@ public sealed class FileOperationService
         {
             await CopyFilePreservingMetadataAsync(sourcePath, temporaryPath, cancellationToken, byteProgress);
             File.Move(temporaryPath, destinationPath);
+#if FILEOPS_FAULT_TESTS
+            FileOperationFaultHooks.Hit("FileAfterPromotion", sourcePath, destinationPath);
+#endif
 
             if (mode == FileTransferMode.Move)
             {
@@ -874,6 +1007,9 @@ public sealed class FileOperationService
         }
         finally
         {
+#if FILEOPS_FAULT_TESTS
+            FileOperationFaultHooks.Hit("FileBeforeStagingCleanup", sourcePath, temporaryPath);
+#endif
             if (File.Exists(temporaryPath))
             {
                 File.Delete(temporaryPath);
@@ -975,6 +1111,10 @@ public sealed class FileOperationService
         {
             return false;
         }
+        catch (Win32Exception)
+        {
+            return false;
+        }
     }
 
     public static Task<bool> PathMatchesStateAsync(
@@ -990,7 +1130,7 @@ public sealed class FileOperationService
         CancellationToken cancellationToken = default)
     {
         EnsurePathExists(path);
-        if (Directory.Exists(path) != expectedDirectory ||
+        if (LinkFileSystem.IsDirectory(path) != expectedDirectory ||
             !await PathMatchesStateAsync(path, expectedState, cancellationToken))
         {
             throw new IOException(
@@ -1010,15 +1150,16 @@ public sealed class FileOperationService
         var attributes = File.GetAttributes(path);
         var isDirectory = attributes.HasFlag(FileAttributes.Directory);
         var relativePath = PathsExactlyEqual(root, path) ? string.Empty : Path.GetRelativePath(root, path);
+        var linkData = LinkFileSystem.ReadLink(path);
         entries.Add(new PathStateEntry(
             relativePath,
             isDirectory,
-            isDirectory ? 0 : new FileInfo(path).Length,
-            isDirectory ? Directory.GetLastWriteTimeUtc(path).Ticks : File.GetLastWriteTimeUtc(path).Ticks,
+            isDirectory || linkData is not null ? 0 : new FileInfo(path).Length,
+            linkData is not null ? 0 : isDirectory ? Directory.GetLastWriteTimeUtc(path).Ticks : File.GetLastWriteTimeUtc(path).Ticks,
             attributes,
-            isDirectory ? null : ComputeFileHash(path, cancellationToken)));
+            linkData is not null ? Convert.ToHexString(linkData) : isDirectory ? null : ComputeFileHash(path, cancellationToken)));
 
-        if (!isDirectory || attributes.HasFlag(FileAttributes.ReparsePoint))
+        if (!isDirectory || linkData is not null)
         {
             return;
         }
@@ -1030,6 +1171,35 @@ public sealed class FileOperationService
     }
 
     private static string ComputeFileHash(string path, CancellationToken cancellationToken)
+    {
+        var streams = new List<string> { "::$DATA:" + ComputeDataHash(path, cancellationToken) };
+        var handle = FindFirstStream(LinkFileSystem.ToNativePath(path), 0, out var data, 0);
+        if (handle == new IntPtr(-1))
+        {
+            var error = Marshal.GetLastWin32Error();
+            if (error is not (1 or 38 or 50)) throw new Win32Exception(error);
+        }
+        else
+        {
+            try
+            {
+                while (true)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (data.Name != "::$DATA")
+                        streams.Add(data.Name + ":" + ComputeDataHash(path + data.Name, cancellationToken));
+                    if (FindNextStream(handle, out data)) continue;
+                    var error = Marshal.GetLastWin32Error();
+                    if (error != 38) throw new Win32Exception(error);
+                    break;
+                }
+            }
+            finally { FindClose(handle); }
+        }
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(string.Join("\n", streams.Order(StringComparer.Ordinal)))));
+    }
+
+    private static string ComputeDataHash(string path, CancellationToken cancellationToken)
     {
         using var stream = new FileStream(
             path,
@@ -1051,26 +1221,32 @@ public sealed class FileOperationService
         return Convert.ToHexString(hash.GetHashAndReset());
     }
 
-    private async Task ReplacePathAsync(
+    private async Task<FileTransferRecord> ReplacePathAsync(
         string sourcePath,
         string destinationPath,
         bool sourceIsDirectory,
         FileTransferMode mode,
         CancellationToken cancellationToken,
-        Action<string, long, long>? byteProgress)
+        Action<string, long, long>? byteProgress,
+        string? backupRoot)
     {
         var stagedPath = GetTemporarySiblingPath(destinationPath, "incoming");
-        var backupPath = GetTemporarySiblingPath(destinationPath, "replaced");
+        if (backupRoot is not null) Directory.CreateDirectory(backupRoot);
+        var backupPath = backupRoot is null ? GetTemporarySiblingPath(destinationPath, "replaced")
+            : Path.Combine(backupRoot, Guid.NewGuid().ToString("N"));
+        var backupState = backupRoot is null ? null : await CapturePathStateAsync(destinationPath, cancellationToken);
         var sourceRecoveryPath = GetTemporarySiblingPath(sourcePath, "move-source");
         var recoveryId = _recovery.Register(
             sourcePath,
             destinationPath,
             stagedPath,
             backupPath,
-            sourceRecoveryPath);
+            sourceRecoveryPath,
+            backupRoot);
         var destinationBackedUp = false;
         var promoted = false;
         var sourceMovedAside = false;
+        var retained = false;
 
         try
         {
@@ -1079,6 +1255,10 @@ public sealed class FileOperationService
                 await Task.Run(
                     () => CreateSymbolicLink(sourcePath, stagedPath, sourceIsDirectory),
                     cancellationToken);
+            }
+            else if (LinkFileSystem.CopyLink(sourcePath, stagedPath))
+            {
+                // The staged object contains only the link, never its target.
             }
             else if (sourceIsDirectory)
             {
@@ -1092,22 +1272,48 @@ public sealed class FileOperationService
             cancellationToken.ThrowIfCancellationRequested();
             MovePath(destinationPath, backupPath);
             destinationBackedUp = true;
+#if FILEOPS_FAULT_TESTS
+            FileOperationFaultHooks.Hit("ReplacementAfterBackup", sourcePath, destinationPath);
+#endif
             MovePath(stagedPath, destinationPath);
             promoted = true;
+#if FILEOPS_FAULT_TESTS
+            FileOperationFaultHooks.Hit("ReplacementAfterPromotion", sourcePath, destinationPath);
+#endif
 
             if (mode == FileTransferMode.Move)
             {
                 MovePath(sourcePath, sourceRecoveryPath);
                 sourceMovedAside = true;
+#if FILEOPS_FAULT_TESTS
+                FileOperationFaultHooks.Hit("ReplacementAfterSourceStaged", sourcePath, destinationPath);
+#endif
             }
 
-            DeleteExistingPath(backupPath);
-            destinationBackedUp = false;
+            var destinationState = await CapturePathStateAsync(destinationPath, CancellationToken.None);
+            if (backupRoot is null)
+            {
+                // Promotion and state capture are the commit point. Cleanup can be retried after
+                // a crash; a partially deleted source must never be moved back over intact data.
+                TryDeletePath(backupPath);
+                destinationBackedUp = PathExists(backupPath);
+            }
+            else
+            {
+                _recovery.CommitRetained(recoveryId);
+                retained = true;
+            }
             if (sourceMovedAside)
             {
-                DeleteExistingPath(sourceRecoveryPath);
-                sourceMovedAside = false;
+                TryDeletePath(sourceRecoveryPath);
+                sourceMovedAside = PathExists(sourceRecoveryPath);
             }
+            return new FileTransferRecord(sourcePath, destinationPath, mode, true, destinationState)
+            {
+                BackupPath = retained ? backupPath : null,
+                BackupState = backupState,
+                RecoveryId = retained ? recoveryId : null
+            };
         }
         catch
         {
@@ -1131,7 +1337,7 @@ public sealed class FileOperationService
         finally
         {
             TryDeletePath(stagedPath);
-            if (!destinationBackedUp)
+            if (!destinationBackedUp && !retained)
             {
                 TryDeletePath(backupPath);
             }
@@ -1145,6 +1351,8 @@ public sealed class FileOperationService
             {
                 _recovery.Complete(recoveryId);
             }
+            if (backupRoot is not null && Directory.Exists(backupRoot) && !Directory.EnumerateFileSystemEntries(backupRoot).Any())
+                Directory.Delete(backupRoot);
         }
     }
 
@@ -1156,10 +1364,7 @@ public sealed class FileOperationService
     {
         cancellationToken.ThrowIfCancellationRequested();
         var attributes = File.GetAttributes(sourcePath);
-        if (attributes.HasFlag(FileAttributes.ReparsePoint))
-        {
-            throw new LinkTransferException($"Directory links and junctions cannot be copied: {sourcePath}");
-        }
+        if (LinkFileSystem.CopyLink(sourcePath, destinationPath)) return;
 
         Directory.CreateDirectory(destinationPath);
         foreach (var child in Directory.EnumerateFileSystemEntries(sourcePath))
@@ -1187,6 +1392,7 @@ public sealed class FileOperationService
         Action<string, long, long>? byteProgress = null)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        if (LinkFileSystem.CopyLink(sourcePath, destinationPath)) return;
         await Task.Run(() =>
         {
             var cancelPointer = Marshal.AllocHGlobal(sizeof(int));
@@ -1202,9 +1408,32 @@ public sealed class FileOperationService
                         byteProgress(sourcePath, totalBytesTransferred, totalFileSize);
                         return 0;
                     };
-                if (!CopyFileEx(sourcePath, destinationPath, callback, IntPtr.Zero, cancelPointer, CopyFileFlags.FailIfExists))
+#if FILEOPS_FAULT_TESTS
+                int? injectedError = null;
+                Exception? hookError = null;
+                callback = (total, copied, _, _, _, _, _, _, _) =>
+                {
+                    // Never let a managed exception cross the native callback boundary.
+                    try
+                    {
+                        FileOperationFaultHooks.Hit("NativeCopyProgress", sourcePath, destinationPath, copied, total);
+                        injectedError = FileOperationFaultHooks.CopyError(sourcePath, destinationPath, copied, total);
+                        byteProgress?.Invoke(sourcePath, copied, total);
+                    }
+                    catch (Exception ex) { hookError = ex; }
+                    // Request a resumable stop; some providers still remove their partial file.
+                    return injectedError is not null ? 2u : hookError is not null ? 1u : 0u;
+                };
+#endif
+                if (!CopyFileEx(LinkFileSystem.ToNativePath(sourcePath), LinkFileSystem.ToNativePath(destinationPath), callback, IntPtr.Zero, cancelPointer, CopyFileFlags.FailIfExists))
                 {
                     var error = Marshal.GetLastWin32Error();
+#if FILEOPS_FAULT_TESTS
+                    FileOperationFaultHooks.Hit("NativeCopyFailed", sourcePath, destinationPath, error);
+                    if (hookError is not null) throw new IOException("The stress harness callback failed.", hookError);
+                    if (injectedError is { } simulated)
+                        throw new Win32Exception(simulated, $"Injected Windows copy error {simulated}: {new Win32Exception(simulated).Message}");
+#endif
                     if (cancellationToken.IsCancellationRequested || error == ErrorRequestAborted)
                     {
                         throw new OperationCanceledException(cancellationToken);
@@ -1232,7 +1461,7 @@ public sealed class FileOperationService
 
     private static void MovePath(string sourcePath, string destinationPath)
     {
-        if (Directory.Exists(sourcePath))
+        if (LinkFileSystem.IsDirectory(sourcePath))
         {
             Directory.Move(sourcePath, destinationPath);
         }
@@ -1281,16 +1510,10 @@ public sealed class FileOperationService
         return normalized
             .Where(candidate => !normalized.Any(parent =>
                 !PathsEqual(parent, candidate) &&
-                Directory.Exists(parent) &&
+                Directory.Exists(parent) && LinkFileSystem.ReadLink(parent) is null &&
                 IsDescendantPath(candidate, parent)))
             .ToList();
     }
-
-    private static PathStateSnapshot? FindCapturedState(
-        IEnumerable<FileTransferRecord> journal,
-        string destinationPath) =>
-        journal.LastOrDefault(record => PathsEqual(record.DestinationPath, destinationPath))
-            ?.DestinationState;
 
     private static bool IsSameOrDescendantPath(string candidatePath, string parentPath)
     {
@@ -1305,6 +1528,9 @@ public sealed class FileOperationService
 
     private static bool AreSameFileSystemObject(string left, string right)
     {
+        if ((PathExists(left) && LinkFileSystem.ReadLink(left) is not null) ||
+            (PathExists(right) && LinkFileSystem.ReadLink(right) is not null))
+            return PathsEqual(left, right);
         if (!TryGetFileIdentity(left, out var leftIdentity) ||
             !TryGetFileIdentity(right, out var rightIdentity))
         {
@@ -1356,7 +1582,7 @@ public sealed class FileOperationService
         var desiredAccess = FileAddFile |
             (requiresSubdirectoryCreation ? FileAddSubdirectory : 0u);
         using var handle = CreateFile(
-            Path.TrimEndingDirectorySeparator(Path.GetFullPath(path)),
+            LinkFileSystem.ToNativePath(Path.TrimEndingDirectorySeparator(Path.GetFullPath(path))),
             desiredAccess,
             FileShareRead | FileShareWrite | FileShareDelete,
             IntPtr.Zero,
@@ -1422,7 +1648,7 @@ public sealed class FileOperationService
 
     private static SafeFileHandle OpenPathHandle(string path) =>
         CreateFile(
-            Path.TrimEndingDirectorySeparator(Path.GetFullPath(path)),
+            LinkFileSystem.ToNativePath(Path.TrimEndingDirectorySeparator(Path.GetFullPath(path))),
             0,
             FileShareRead | FileShareWrite | FileShareDelete,
             IntPtr.Zero,
@@ -1451,7 +1677,7 @@ public sealed class FileOperationService
             Path.TrimEndingDirectorySeparator(Path.GetFullPath(right)),
             StringComparison.Ordinal);
 
-    private static bool PathExists(string path) => File.Exists(path) || Directory.Exists(path);
+    private static bool PathExists(string path) => LinkFileSystem.Exists(path);
 
     /// <summary>True for failures the Windows copy engine can get past with an elevation prompt.</summary>
     public static bool IsAccessDenied(Exception exception) =>
@@ -1510,18 +1736,7 @@ public sealed class FileOperationService
         }
     }
 
-    private static void DeleteExistingPath(string path)
-    {
-        if (Directory.Exists(path))
-        {
-            Directory.Delete(path, true);
-        }
-        else if (File.Exists(path))
-        {
-            File.SetAttributes(path, File.GetAttributes(path) & ~FileAttributes.ReadOnly);
-            File.Delete(path);
-        }
-    }
+    private static void DeleteExistingPath(string path) => LinkFileSystem.Delete(path);
 
     private static void CreateSymbolicLink(
         string sourcePath,
@@ -1556,6 +1771,23 @@ public sealed class FileOperationService
         bool ReplacedExistingItem);
 
     private readonly record struct FileIdentity(uint VolumeSerialNumber, ulong FileIndex);
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct StreamData
+    {
+        public long Size;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 296)]
+        public string Name;
+    }
+
+    [DllImport("kernel32.dll", EntryPoint = "FindFirstStreamW", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern IntPtr FindFirstStream(string path, int level, out StreamData data, uint flags);
+    [DllImport("kernel32.dll", EntryPoint = "FindNextStreamW", CharSet = CharSet.Unicode, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool FindNextStream(IntPtr handle, out StreamData data);
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool FindClose(IntPtr handle);
 
     [StructLayout(LayoutKind.Sequential)]
     private struct ByHandleFileInformation

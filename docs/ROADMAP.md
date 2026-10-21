@@ -2,10 +2,11 @@
 
 ## Release and source status
 
-Checked 19 October 2026. The latest published application is
+Checked 21 October 2026. The latest published application is
 [0.5.0](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.0), published 14 October 2026.
-The maintainer's local source checkout still declares version 0.5.0 but also contains
-unreleased application work. That application work is not yet in GitHub's `main` branch. Documentation-only commits do not distribute a new application version.
+The maintainer's local source checkout declares **0.5.3**, a prepared release candidate with
+unreleased application work. That application work is not yet in GitHub's `main` branch.
+Documentation-only commits do not distribute a new application version. See [candidate notes](RELEASE-0.5.3.md).
 
 The checked items in sections 1–5 below are in release 0.5.0. Unreleased additions are
 listed separately; a checked source task does not mean it has reached installed users.
@@ -17,6 +18,9 @@ listed separately; a checked source task does not mean it has reached installed 
 | Git status badges | Not included; Git commands are available. | Three primary layouts plus right-side details; ordinary folder listings only. |
 | F6 regions, Ctrl+Tab tab cycling, keyboard column resizing, metadata/status names | Earlier keyboard and accessibility support only. | Added; full screen-reader and high-contrast review remains open. |
 | Desktop smoke harness | Not included. | Available through `scripts/Test-DesktopSmoke.ps1`. |
+| Replacement and merge Undo/Redo | Withheld for the whole batch. | Retains displaced items and merge children; guarded replay and exact retained Redo data. |
+| Search filters | Literal filename substring. | Names/phrases/wildcards plus type, modified-date, and size filters; streamed traversal. |
+| System light/dark theme | Forced light page and fixed command colors. | Follows Windows theme; system resources for command/preview/drop colors. |
 
 ## Unreleased additions
 
@@ -25,6 +29,12 @@ listed separately; a checked source task does not mean it has reached installed 
 - [x] Git status badges with optional, bounded background queries.
 - [x] Additional keyboard navigation and accessible names.
 - [x] Desktop smoke checks for rendered layouts and selected accessibility behavior.
+- [x] Retain displaced content for Undo after Replace and directory Merge, including partial transfers.
+- [x] Verify content/alternate-stream state before Undo/Redo and expire retained history data.
+- [x] Name/type/date/size search filters, streaming traversal, and cancellable folder enumeration.
+- [x] System light/dark theme and expanded desktop checks for filtered search and window Undo/Redo.
+- [x] Storage-error/process-termination stress harness and recovery fixes for overlapping history records and concurrent restart recovery.
+- [x] Disposable NTFS VHD verification of cross-volume history and actual disk-full allocation failures; native long-path copy/stream/history fixes.
 
 These items need a new version and a published GitHub Release before installed users receive
 them. See [release publishing](RELEASES.md) and [accessibility status](ACCESSIBILITY.md).
@@ -99,7 +109,9 @@ them. See [release publishing](RELEASES.md) and [accessibility status](ACCESSIBI
 
 - [ ] Publish the unreleased application additions with a new version.
 - [ ] Complete the manual accessibility checks documented in [ACCESSIBILITY.md](ACCESSIBILITY.md).
-- [ ] Retain displaced content to support Undo after Replace and directory Merge.
+- [ ] Verify SMB disconnection, physical device removal, disk-full after partial writes, and history across separate physical devices. Real disk-full allocation failures and distinct-NTFS-volume history pass on a disposable VHD backed by the system SSD; see the [stress-harness results](FILE-OPERATIONS-STRESS.md).
+- [ ] Verify notifications on installed and portable builds; registration remains unavailable on this machine.
+- [ ] Broader Shell/device browsing, cloud status, document previews, and indexed/content search.
 - [ ] Add and verify native handling of unsupported reparse-point types before claiming support.
 
 Release ZIP/MSI packages currently target x64. The project lists other build platforms,

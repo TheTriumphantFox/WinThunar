@@ -11,13 +11,16 @@ that a person tried the application or continued using it.
 | Project introduction, screenshots, and 25-second demo | Published in PR #10. |
 | Documentation audit | Published in PR #11. |
 | GitHub tester-feedback form | Published in PR #11 and linked from the README. |
-| AlternativeTo listing | Prepared below; not submitted. Account email is verified; its saved browser sign-in is pending. |
+| AlternativeTo listing | [Submitted; awaiting review](https://alternativeto.net/software/winthunar/), confirmed by the maintainer on 19 October 2026. Not yet approved. |
 | First community introduction | [Published in r/SideProject](https://www.reddit.com/r/SideProject/comments/1x9uvud/winthunar_a_free_thunarinspired_file_manager_for/) by u/TheTriumphantFox on 19 October 2026. |
+| Windows app introduction | [Published in r/windowsapps](https://www.reddit.com/r/windowsapps/comments/1x9w8ux/winthunar_a_free_windows_11_file_manager_with/) by u/TheTriumphantFox with Developer flair on 19 October 2026; public post verified. |
 | r/Windows11 | Excluded: current promotion rules say new applicants are not being accepted. |
 | Paid promotion | Not part of this launch. |
 
 Update these statuses only after observing a successful submission or a public post URL.
 AlternativeTo submissions can remain pending review and are not public listings until approved.
+The earlier PR #12 record described the AlternativeTo copy as a draft with browser sign-in pending;
+the maintainer-confirmed submission status above supersedes that preparation state.
 
 ## A short workflow for testers
 
@@ -127,5 +130,6 @@ if the actual public submission happens later.
 
 | Date | Channel and public URL | Submission/review status | Downloads since baseline | Voluntary tester reports | Useful follow-up |
 | --- | --- | --- | --- | --- | --- |
-| 19 October 2026 | AlternativeTo | Draft; not submitted | | | |
+| 19 October 2026 | [AlternativeTo](https://alternativeto.net/software/winthunar/) | Awaiting review; confirmed by maintainer | | | Confirm approval and public visibility before announcing the listing. |
 | 19 October 2026 | [r/SideProject](https://www.reddit.com/r/SideProject/comments/1x9uvud/winthunar_a_free_thunarinspired_file_manager_for/) | Published; public post verified | | | Respond to substantive feedback. |
+| 19 October 2026 | [r/windowsapps](https://www.reddit.com/r/windowsapps/comments/1x9w8ux/winthunar_a_free_windows_11_file_manager_with/) | Published with Developer flair; author, text, and public visibility verified | | | Respond to substantive feedback; respect the one promotional post per week limit. |

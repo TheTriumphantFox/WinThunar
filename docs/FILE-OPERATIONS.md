@@ -59,12 +59,25 @@ creation; link-preserving file transfers do not add link support to ZIP archives
 - Undo/Redo keeps up to ten operations in memory for the current window and preserves exact
   destination names. Closing that window loses its history; it is not stored in session JSON.
 - Transfer Undo/Redo verifies recorded destination/source snapshots before replay, and create
-  Undo checks the created item before removal. Copy/link Undo uses the Recycle Bin. Single
+  Undo checks the created item before removal. In release 0.5.0, Copy/link Undo uses the Recycle Bin. Single
   and bulk rename history use the rename validation/plan checks; not every Undo command has
   the recursive content-snapshot guard.
 - Undo removes a created folder, blank document, template document, or archive only when its recursive metadata-and-content snapshot is unchanged; Redo recreates file content exactly.
-- A transfer batch containing Replace or directory Merge is not entered into Undo history.
-  Recovery backups are short-lived crash-recovery data, not retained Undo backups.
+- In release 0.5.0, a transfer batch containing Replace or directory Merge is not entered into Undo history.
+  The **unreleased 0.5.2 source** retains displaced items and completed merge children for Undo,
+  including completed work in a cancelled transfer. Undo restores replaced content and keeps
+  unrelated merge contents. Redo uses the exact retained incoming data, so later edits to a copy's
+  original source do not change Redo. Destination, move-source, retained-backup, and Redo snapshots
+  are checked before any replay; content guards include NTFS alternate streams.
+- In 0.5.2 source, Undo of Copy/Link parks the incoming item in a private `.winthunar-undo-*.tmp`
+  directory alongside the top-level destination, outside the transferred folder. Replacement backups
+  use the same kind of directory. These consume disk space until that history entry expires,
+  a new operation discards Redo, or its window closes. They are not persistent history or Recycle Bin
+  items. Startup recovery expires abandoned retained data. Do not edit these private directories.
+- Replay failures attempt inverse actions in reverse order. Recovery records protect displaced
+  originals across interrupted replacement renames. A multi-item replay is not a filesystem-wide
+  atomic transaction; abrupt process termination can leave part of a merge undone. Restart recovery
+  protects individual staged items but does not resume the window's Undo history.
 - Trash and permanent delete are not entered into Undo history. Trash items have a dedicated Restore command that removes the Recycle Bin metadata record after a successful restore.
 - In-progress staged copies and replacements have persistent recovery records. On the next launch, WinThunar removes incomplete incoming data and restores any destination backup or source recovery item left by an interrupted transfer.
 - Dropping on a visible folder row targets that folder; blank list space targets an ordinary
@@ -83,3 +96,10 @@ service tests use synthetic Recycle Bin records for restoration; they do not req
 personal files into the real Recycle Bin. Pointer-driven drag/drop and real Windows elevation/Recycle Bin interactions still
 need manual checks. The relative-symbolic-link test reports a skip when Windows denies link
 creation. See the [accessibility status](ACCESSIBILITY.md) for the separate desktop smoke checks.
+
+The unreleased source adds a separate [stress harness](FILE-OPERATIONS-STRESS.md) for injected native
+storage errors, real sharing locks, copy/delete fallback, and forced termination at transfer/recovery/
+history checkpoints. It reports real-volume and physical-storage coverage separately. Recovery now
+leases its journal to one process and protects staged incoming history data when overlapping records
+restore their paths in either order. A mismatched stage or an ambiguous older record is retained for
+attention instead of being discarded.

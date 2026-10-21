@@ -1,4 +1,7 @@
 using System.Text.Json;
+using System.Diagnostics;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace WinThunar.Services;
 
@@ -6,6 +9,7 @@ public sealed record TransferRecoveryResult(int RecoveredOperations, IReadOnlyLi
 
 public sealed class TransferRecoveryService
 {
+    private static readonly long ProcessStartTicks = ReadCurrentProcessStart();
     private readonly string _journalDirectory;
     private readonly object _sync = new();
 
@@ -22,7 +26,9 @@ public sealed class TransferRecoveryService
         string destinationPath,
         string stagedPath,
         string? backupPath = null,
-        string? sourceRecoveryPath = null)
+        string? sourceRecoveryPath = null,
+        string? backupRoot = null,
+        bool finishStagedMoveOnSourceConflict = false)
     {
         var record = new RecoveryRecord(
             Guid.NewGuid().ToString("N"),
@@ -30,7 +36,11 @@ public sealed class TransferRecoveryService
             destinationPath,
             stagedPath,
             backupPath,
-            sourceRecoveryPath);
+            sourceRecoveryPath,
+            backupRoot,
+            OwnerProcessId: Environment.ProcessId,
+            OwnerStartTicks: ProcessStartTicks,
+            FinishStagedMoveOnSourceConflict: finishStagedMoveOnSourceConflict);
         lock (_sync)
         {
             Directory.CreateDirectory(_journalDirectory);
@@ -41,6 +51,19 @@ public sealed class TransferRecoveryService
         }
 
         return record.Id;
+    }
+
+    public void CommitRetained(string id, bool retained = true)
+    {
+        lock (_sync)
+        {
+            var path = RecordPath(id);
+            var record = JsonSerializer.Deserialize<RecoveryRecord>(File.ReadAllText(path))
+                ?? throw new InvalidDataException("The recovery record is empty.");
+            var temporary = path + ".new";
+            File.WriteAllText(temporary, JsonSerializer.Serialize(record with { Retained = retained }));
+            File.Move(temporary, path, true);
+        }
     }
 
     public void Complete(string id)
@@ -55,7 +78,21 @@ public sealed class TransferRecoveryService
         }
     }
 
-    public TransferRecoveryResult RecoverPending()
+    public void ReleaseRetained(string id)
+    {
+        lock (_sync)
+        {
+            var path = RecordPath(id);
+            if (!File.Exists(path)) return;
+            var record = JsonSerializer.Deserialize<RecoveryRecord>(File.ReadAllText(path))
+                ?? throw new InvalidDataException("The recovery record is empty.");
+            if (!record.Retained) throw new IOException("The history operation still needs recovery.");
+            Recover(record);
+            File.Delete(path);
+        }
+    }
+
+    public TransferRecoveryResult RecoverPending(bool skipActiveProcesses = false)
     {
         if (!Directory.Exists(_journalDirectory))
         {
@@ -64,26 +101,71 @@ public sealed class TransferRecoveryService
 
         var recovered = 0;
         var errors = new List<string>();
-        lock (_sync)
+        // A recovering process also needs exclusive ownership. The originating transfer may
+        // already be dead, so its PID alone cannot prevent concurrent restart recovery.
+        var journalIdentity = Path.GetFullPath(_journalDirectory).TrimEnd(Path.DirectorySeparatorChar).ToUpperInvariant();
+        var mutexName = @"Local\WinThunar.Recovery." + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(journalIdentity)));
+        Mutex? lease = null;
+        bool acquired;
+        try { lease = new Mutex(false, mutexName); acquired = lease.WaitOne(0); }
+        catch (AbandonedMutexException) { acquired = true; }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or WaitHandleCannotBeOpenedException)
         {
-            foreach (var path in Directory.EnumerateFiles(_journalDirectory, "*.json").ToArray())
+            lease?.Dispose();
+            return new TransferRecoveryResult(0, [$"Could not acquire the recovery lease: {ex.Message}"]);
+        }
+        using var ownedLease = lease!;
+        if (!acquired) return new TransferRecoveryResult(0, []);
+        try
+        {
+            lock (_sync)
             {
-                try
+                foreach (var path in Directory.EnumerateFiles(_journalDirectory, "*.json").ToArray())
                 {
-                    var record = JsonSerializer.Deserialize<RecoveryRecord>(File.ReadAllText(path))
-                        ?? throw new InvalidDataException("The recovery record is empty.");
-                    Recover(record);
-                    File.Delete(path);
-                    recovered++;
-                }
-                catch (Exception ex)
-                {
-                    errors.Add($"{Path.GetFileName(path)}: {ex.Message}");
+                    try
+                    {
+                        var record = JsonSerializer.Deserialize<RecoveryRecord>(File.ReadAllText(path))
+                            ?? throw new InvalidDataException("The recovery record is empty.");
+                        if (skipActiveProcesses && IsOwnerAlive(record)) continue;
+                        // Persist the recovery owner before mutating filesystem items. Atomic
+                        // replacement leaves the previous complete record if writing is interrupted.
+                        record = record with { OwnerProcessId = Environment.ProcessId, OwnerStartTicks = ProcessStartTicks };
+                        var claim = path + ".new";
+                        File.WriteAllText(claim, JsonSerializer.Serialize(record));
+                        File.Move(claim, path, true);
+                        Recover(record);
+                        File.Delete(path);
+                        recovered++;
+                    }
+                    catch (Exception ex)
+                    {
+                        errors.Add($"{Path.GetFileName(path)}: {ex.Message}");
+                    }
                 }
             }
         }
+        finally { ownedLease.ReleaseMutex(); }
 
         return new TransferRecoveryResult(recovered, errors);
+    }
+
+    private static long ReadCurrentProcessStart()
+    {
+        using var process = Process.GetCurrentProcess();
+        return process.StartTime.ToUniversalTime().Ticks;
+    }
+
+    private static bool IsOwnerAlive(RecoveryRecord record)
+    {
+        if (record.OwnerProcessId <= 0) return false; // Earlier journal format, from a previous release.
+        try
+        {
+            using var process = Process.GetProcessById(record.OwnerProcessId);
+            return process.StartTime.ToUniversalTime().Ticks == record.OwnerStartTicks;
+        }
+        catch (ArgumentException) { return false; }
+        catch (InvalidOperationException) { return false; }
+        catch (System.ComponentModel.Win32Exception) { return true; } // Cannot prove the owner exited.
     }
 
     private static void Recover(RecoveryRecord record)
@@ -91,21 +173,50 @@ public sealed class TransferRecoveryService
         ValidateTemporarySibling(record.StagedPath, record.DestinationPath);
         if (!string.IsNullOrWhiteSpace(record.BackupPath))
         {
-            ValidateTemporarySibling(record.BackupPath, record.DestinationPath);
+            if (record.BackupRoot is null) ValidateTemporarySibling(record.BackupPath, record.DestinationPath);
+            else ValidateBackupRoot(record.BackupRoot, record.BackupPath, record.DestinationPath);
         }
         if (!string.IsNullOrWhiteSpace(record.SourceRecoveryPath))
         {
             ValidateTemporarySibling(record.SourceRecoveryPath, record.SourcePath);
         }
 
-        if (Exists(record.SourceRecoveryPath) && !Exists(record.SourcePath) && !Exists(record.DestinationPath))
+        // A completed transfer's undo data expires with the process/window history.
+        if (record.Retained)
         {
-            Move(record.SourceRecoveryPath!, record.SourcePath);
+            if (Exists(record.SourceRecoveryPath))
+            {
+                if (Exists(record.DestinationPath)) Delete(record.SourceRecoveryPath);
+                else if (!Exists(record.SourcePath)) Move(record.SourceRecoveryPath!, record.SourcePath);
+                else throw new IOException("The retained source needs manual recovery because its destination is missing and its source name is occupied.");
+            }
+            Delete(record.BackupPath);
+            DeleteEmptyBackupRoot(record.BackupRoot);
+            return;
+        }
+
+        if (Exists(record.SourceRecoveryPath) && !Exists(record.DestinationPath))
+        {
+            if (!Exists(record.SourcePath)) Move(record.SourceRecoveryPath!, record.SourcePath);
+            else if (record.FinishStagedMoveOnSourceConflict && Exists(record.StagedPath))
+            {
+                // Another record can restore the old replacement into this move's source name.
+                // A history move stages a complete copy before parking its source. Complete that
+                // move into its still-free destination rather than discarding the incoming data.
+                var sourceState = FileOperationService.CapturePathState(record.SourceRecoveryPath!);
+                if (!FileOperationService.PathMatchesState(record.StagedPath, sourceState))
+                    throw new IOException("The staged history move differs from its preserved source. Both copies and the recovery record were retained.");
+                Move(record.StagedPath, record.DestinationPath);
+            }
+            else throw new IOException("The source name is occupied and its recovery item still needs attention. All staged data and the recovery record were retained.");
         }
 
         if (Exists(record.BackupPath) && !Exists(record.DestinationPath))
         {
             Move(record.BackupPath!, record.DestinationPath);
+#if FILEOPS_FAULT_TESTS
+            FileOperationFaultHooks.Hit("RecoveryAfterBackupRestore", record.SourcePath, record.DestinationPath);
+#endif
         }
 
         Delete(record.StagedPath);
@@ -133,16 +244,36 @@ public sealed class TransferRecoveryService
                 Delete(record.BackupPath!);
             }
         }
+        DeleteEmptyBackupRoot(record.BackupRoot);
+    }
+
+    private static void DeleteEmptyBackupRoot(string? path)
+    {
+        if (path is not null && Directory.Exists(path) && !Directory.EnumerateFileSystemEntries(path).Any()) Directory.Delete(path);
+    }
+
+    private static void ValidateBackupRoot(string rootPath, string backupPath, string destinationPath)
+    {
+        var root = Path.GetFullPath(rootPath);
+        var backup = Path.GetFullPath(backupPath);
+        var destination = Path.GetFullPath(destinationPath);
+        var parent = Path.GetDirectoryName(root)!;
+        if (!Path.GetFileName(root).StartsWith(".winthunar-undo-", StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(Path.GetDirectoryName(backup), root, StringComparison.OrdinalIgnoreCase) ||
+            !destination.StartsWith(parent + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) ||
+            destination.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) ||
+            (Directory.Exists(root) && LinkFileSystem.IsReparsePoint(root)))
+            throw new InvalidDataException("A recovery record contains an invalid undo backup path.");
     }
 
     private string RecordPath(string id) => Path.Combine(_journalDirectory, id + ".json");
 
     private static bool Exists(string? path) =>
-        !string.IsNullOrWhiteSpace(path) && (File.Exists(path) || Directory.Exists(path));
+        !string.IsNullOrWhiteSpace(path) && LinkFileSystem.Exists(path);
 
     private static void Move(string sourcePath, string destinationPath)
     {
-        if (Directory.Exists(sourcePath))
+        if (LinkFileSystem.IsDirectory(sourcePath))
         {
             Directory.Move(sourcePath, destinationPath);
         }
@@ -159,15 +290,10 @@ public sealed class TransferRecoveryService
             return;
         }
 
-        if (Directory.Exists(path))
-        {
-            Directory.Delete(path, true);
-        }
-        else if (File.Exists(path))
-        {
-            File.SetAttributes(path, File.GetAttributes(path) & ~FileAttributes.ReadOnly);
-            File.Delete(path);
-        }
+#if FILEOPS_FAULT_TESTS
+        FileOperationFaultHooks.Hit("RecoveryBeforeDelete", path, path);
+#endif
+        LinkFileSystem.Delete(path);
     }
 
     private static void ValidateTemporarySibling(string temporaryPath, string relatedPath)
@@ -190,5 +316,10 @@ public sealed class TransferRecoveryService
         string DestinationPath,
         string StagedPath,
         string? BackupPath,
-        string? SourceRecoveryPath);
+        string? SourceRecoveryPath,
+        string? BackupRoot = null,
+        bool Retained = false,
+        int OwnerProcessId = 0,
+        long OwnerStartTicks = 0,
+        bool FinishStagedMoveOnSourceConflict = false);
 }

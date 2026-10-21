@@ -40,7 +40,7 @@ public sealed class FileSearchService
             throw new ArgumentOutOfRangeException(nameof(maximumResults));
         }
 
-        var normalizedQuery = query.Trim();
+        var parsedQuery = FileSearchQuery.Parse(query);
         var pendingDirectories = new Stack<string>();
         var batch = new List<FileSearchMatch>(BatchSize);
         var resultCount = 0;
@@ -51,12 +51,10 @@ public sealed class FileSearchService
         while (pendingDirectories.TryPop(out var directory))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            string[] children;
+            IEnumerator<string> children;
             try
             {
-                children = Directory.EnumerateFileSystemEntries(directory)
-                    .OrderBy(path => Path.GetFileName(path), StringComparer.CurrentCultureIgnoreCase)
-                    .ToArray();
+                children = Directory.EnumerateFileSystemEntries(directory).GetEnumerator();
             }
             catch (Exception ex) when (ex is UnauthorizedAccessException or IOException)
             {
@@ -64,10 +62,21 @@ public sealed class FileSearchService
                 continue;
             }
 
-            for (var index = children.Length - 1; index >= 0; index--)
+            using (children)
+            while (true)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var childPath = children[index];
+                string childPath;
+                try
+                {
+                    if (!children.MoveNext()) break;
+                    childPath = children.Current;
+                }
+                catch (Exception ex) when (ex is UnauthorizedAccessException or IOException)
+                {
+                    skippedDirectories++;
+                    break;
+                }
                 try
                 {
                     var attributes = File.GetAttributes(childPath);
@@ -83,21 +92,18 @@ public sealed class FileSearchService
                         pendingDirectories.Push(childPath);
                     }
 
-                    if (!name.Contains(normalizedQuery, StringComparison.CurrentCultureIgnoreCase))
-                    {
-                        continue;
-                    }
-
                     var info = isDirectory
                         ? (FileSystemInfo)new DirectoryInfo(childPath)
                         : new FileInfo(childPath);
-                    batch.Add(new FileSearchMatch(
+                    var match = new FileSearchMatch(
                         name,
                         info.FullName,
                         isDirectory,
                         isDirectory ? 0 : ((FileInfo)info).Length,
                         info.LastWriteTime,
-                        isDirectory ? string.Empty : info.Extension));
+                        isDirectory ? string.Empty : info.Extension);
+                    if (!parsedQuery.Matches(match)) continue;
+                    batch.Add(match);
                     resultCount++;
 
                     if (batch.Count == BatchSize)

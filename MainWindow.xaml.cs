@@ -47,6 +47,11 @@ public sealed partial class MainWindow : Window
         Microsoft.UI.Windowing.AppWindow sender,
         Microsoft.UI.Windowing.AppWindowClosingEventArgs args)
     {
+        if (RootFrame.Content is MainPage { HasPendingHistory: true })
+        {
+            args.Cancel = true;
+            return;
+        }
         if (_allowClose || RootFrame.Content is not MainPage { HasPendingTransfers: true } page)
         {
             return;

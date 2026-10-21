@@ -19,6 +19,116 @@ public sealed class FileOperationTests : IDisposable
     public FileOperationTests() => Directory.CreateDirectory(_root);
 
     [Fact]
+    public async Task BrokenJunctionCanBeCopiedMovedAndUndone()
+    {
+        var target = Directory.CreateDirectory(Path.Combine(_root, "vanishing-target")).FullName;
+        var link = Path.Combine(_root, "broken");
+        await CreateJunctionAsync(link, target);
+        Directory.Delete(target);
+        var destination = Directory.CreateDirectory(Path.Combine(_root, "destination")).FullName;
+        var service = new FileOperationService();
+        var copy = await service.TransferAsync([link], destination, FileTransferMode.Copy, ReplaceConflict);
+        Assert.True(copy.Succeeded, string.Join("; ", copy.Errors));
+        var record = Assert.Single(copy.Transfers);
+        Assert.Equal(LinkFileSystem.ReadLink(link), LinkFileSystem.ReadLink(record.DestinationPath));
+        await service.DeleteCreatedPathIfUnchangedAsync(record.DestinationPath, true, record.DestinationState);
+        var move = await service.TransferAsync([link], destination, FileTransferMode.Move, ReplaceConflict);
+        Assert.True(move.Succeeded, string.Join("; ", move.Errors));
+        Assert.False(LinkFileSystem.Exists(link));
+        LinkFileSystem.Delete(Assert.Single(move.Transfers).DestinationPath);
+    }
+
+    [Fact]
+    public async Task RelativeFileSymbolicLinkKeepsItsTargetText()
+    {
+        var source = Directory.CreateDirectory(Path.Combine(_root, "source")).FullName;
+        var link = Path.Combine(source, "relative.txt");
+        try { File.CreateSymbolicLink(link, "missing.txt"); }
+        catch (IOException ex) when ((ex.HResult & 0xFFFF) == 1314)
+        {
+            Assert.Skip("Windows symbolic-link creation requires Developer Mode or SeCreateSymbolicLinkPrivilege.");
+        }
+        var destination = Directory.CreateDirectory(Path.Combine(_root, "destination")).FullName;
+        try
+        {
+            var service = new FileOperationService();
+            var result = await service.TransferAsync([link], destination, FileTransferMode.Copy, ReplaceConflict);
+            Assert.True(result.Succeeded, string.Join("; ", result.Errors));
+            var record = Assert.Single(result.Transfers);
+            Assert.Equal("missing.txt", new FileInfo(record.DestinationPath).LinkTarget);
+            await service.DeleteCreatedPathIfUnchangedAsync(record.DestinationPath, false, record.DestinationState);
+            Assert.True(LinkFileSystem.Exists(link));
+        }
+        finally { File.Delete(link); }
+    }
+
+    [Fact]
+    public async Task CopyAndUndoJunctionLeavesTargetUntouched()
+    {
+        var target = Directory.CreateDirectory(Path.Combine(_root, "target")).FullName;
+        var file = Path.Combine(target, "keep.txt");
+        await File.WriteAllTextAsync(file, "original");
+        var source = Path.Combine(_root, "link");
+        await CreateJunctionAsync(source, target);
+        var destination = Directory.CreateDirectory(Path.Combine(_root, "destination")).FullName;
+        var service = new FileOperationService();
+        var result = await service.TransferAsync([source], destination, FileTransferMode.Copy, ReplaceConflict);
+        Assert.True(result.Succeeded, string.Join("; ", result.Errors));
+        var record = Assert.Single(result.Transfers);
+        Assert.Single(record.DestinationState.Entries);
+        Assert.Equal(new DirectoryInfo(source).LinkTarget, new DirectoryInfo(record.DestinationPath).LinkTarget);
+        await File.WriteAllTextAsync(file, "target changed");
+        await service.DeleteCreatedPathIfUnchangedAsync(record.DestinationPath, true, record.DestinationState);
+        Assert.Equal("target changed", await File.ReadAllTextAsync(file));
+        Assert.True(Directory.Exists(source));
+    }
+
+    [Fact]
+    public async Task ReplacingDestinationJunctionDoesNotMergeIntoTarget()
+    {
+        var source = Directory.CreateDirectory(Path.Combine(_root, "source")).FullName;
+        await File.WriteAllTextAsync(Path.Combine(source, "incoming.txt"), "incoming");
+        var target = Directory.CreateDirectory(Path.Combine(_root, "target")).FullName;
+        await File.WriteAllTextAsync(Path.Combine(target, "keep.txt"), "keep");
+        var destination = Directory.CreateDirectory(Path.Combine(_root, "destination")).FullName;
+        var link = Path.Combine(destination, "source");
+        await CreateJunctionAsync(link, target);
+        var result = await new FileOperationService().TransferAsync([source], destination, FileTransferMode.Copy, ReplaceConflict);
+        Assert.True(result.Succeeded, string.Join("; ", result.Errors));
+        Assert.False(File.GetAttributes(link).HasFlag(FileAttributes.ReparsePoint));
+        Assert.Equal("incoming", await File.ReadAllTextAsync(Path.Combine(link, "incoming.txt")));
+        Assert.Equal(new[] { "keep.txt" }, Directory.GetFiles(target).Select(Path.GetFileName));
+    }
+
+    [Fact]
+    public async Task NestedCyclicJunctionCopyPreservesLinkWithoutTraversal()
+    {
+        var source = Directory.CreateDirectory(Path.Combine(_root, "source")).FullName;
+        await CreateJunctionAsync(Path.Combine(source, "cycle"), source);
+        var destination = Directory.CreateDirectory(Path.Combine(_root, "destination")).FullName;
+        var result = await new FileOperationService().TransferAsync([source], destination, FileTransferMode.Copy, ReplaceConflict);
+        Assert.True(result.Succeeded, string.Join("; ", result.Errors));
+        var copy = Path.Combine(destination, "source", "cycle");
+        Assert.True(File.GetAttributes(copy).HasFlag(FileAttributes.ReparsePoint));
+        Assert.Equal(2, Assert.Single(result.Transfers).DestinationState.Entries.Count);
+        Directory.Delete(copy);
+    }
+
+    [Fact]
+    public async Task RetargetedJunctionIsNotRemovedByUndo()
+    {
+        var first = Directory.CreateDirectory(Path.Combine(_root, "first")).FullName;
+        var second = Directory.CreateDirectory(Path.Combine(_root, "second")).FullName;
+        var link = Path.Combine(_root, "link");
+        await CreateJunctionAsync(link, first);
+        var snapshot = FileOperationService.CapturePathState(link);
+        Directory.Delete(link);
+        await CreateJunctionAsync(link, second);
+        await Assert.ThrowsAsync<IOException>(() => new FileOperationService().DeleteCreatedPathIfUnchangedAsync(link, true, snapshot));
+        Assert.True(Directory.Exists(link));
+    }
+
+    [Fact]
     public void ValidatesWindowsNames()
     {
         Assert.Null(FileOperationService.ValidateLeafName("estimate.xlsx"));
@@ -310,8 +420,8 @@ public sealed class FileOperationTests : IDisposable
                 conflict.SourceIsDirectory ? ConflictAction.Replace : ConflictAction.Cancel)));
 
         Assert.True(result.Cancelled);
-        Assert.Single(result.Transfers);
-        Assert.False(result.Transfers[0].ReplacedExistingItem);
+        var group = Assert.Single(result.Transfers);
+        Assert.False(Assert.Single(group.Children!).ReplacedExistingItem);
         Assert.Equal("incoming-one", await File.ReadAllTextAsync(Path.Combine(destination, "one.txt")));
     }
 

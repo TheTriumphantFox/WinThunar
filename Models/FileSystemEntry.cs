@@ -1,3 +1,4 @@
+using WinThunar.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
@@ -39,7 +40,29 @@ public sealed class FileSystemEntry : ObservableObject
     public string FullPath { get; }
 
     // List items without an explicit automation name are announced by ToString().
-    public override string ToString() => Name;
+    public override string ToString() => AutomationName;
+    private GitFileStatus _gitStatus;
+    public GitFileStatus GitStatus
+    {
+        get => _gitStatus;
+        set
+        {
+            if (!SetProperty(ref _gitStatus, value)) return;
+            OnPropertyChanged(nameof(GitBadge));
+            OnPropertyChanged(nameof(GitDescription));
+            OnPropertyChanged(nameof(GitVisibility));
+            OnPropertyChanged(nameof(AutomationName));
+        }
+    }
+    public string GitBadge => GitStatus switch
+    {
+        GitFileStatus.Clean => "✓", GitFileStatus.Modified => "M", GitFileStatus.Added => "+",
+        GitFileStatus.Deleted => "−", GitFileStatus.Renamed => "R", GitFileStatus.Untracked => "?",
+        GitFileStatus.Ignored => "·", GitFileStatus.Conflict => "!", _ => ""
+    };
+    public string GitDescription => GitStatus == GitFileStatus.None ? "" : $"Git: {GitStatus}";
+    public Visibility GitVisibility => GitStatus == GitFileStatus.None ? Visibility.Collapsed : Visibility.Visible;
+    public string AutomationName => $"{Name}, {Type}{(Size.Length == 0 ? "" : $", {Size}")}{(GitStatus == GitFileStatus.None ? "" : $", {GitDescription}")}";
     public bool IsDirectory { get; }
     public string Size { get; }
     public string Type { get; }

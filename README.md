@@ -50,11 +50,25 @@ integration notes below before choosing it as your default file manager.
 ## Release and source status
 
 The latest published application release is **0.5.0** (14 October 2026), verified against
-GitHub Releases on 19 October 2026. Documentation and website updates do not update the
+GitHub Releases on 21 October 2026. The development checkout is preparing **0.5.3**. Documentation and website updates do not update the
 installed application. The feature list below describes that release; sections marked
 **unreleased source** describe work in the maintainer's local development checkout. These
-application changes are not yet in GitHub's `main` branch or a newer GitHub Release. The project version is still 0.5.0, so the
-version string alone does not establish that a local build matches the released binaries.
+application changes are not yet in GitHub's `main` branch or a newer GitHub Release.
+See the [0.5.3 release candidate notes](docs/RELEASE-0.5.3.md) for the prepared milestone and verification limits.
+The version string alone does not establish that a local build matches published binaries.
+
+### Daily-default improvements — unreleased 0.5.3 source
+
+- Transfer Undo/Redo includes Replace and directory Merge. Displaced items and exact Redo data
+  are retained until the window's ten-action history expires; history still does not survive restart.
+- Native copy, stream checks, and Undo handle long Windows paths. Disposable NTFS VHD tests verify
+  cross-volume history and real disk-full allocation failures; physical removal and SMB interruption remain open.
+- Search combines words, quoted names, wildcards, file types, modified dates, and sizes:
+  `name:"annual report" type:pdf modified:last7days size:>1MB`.
+- The interface follows Windows light/dark settings and uses system resources in the command panel,
+  preview text, and drop highlight. Full screen-reader and contrast-theme review remains open.
+- Folder enumeration checks cancellation between entries; filename search streams directory entries;
+  selection totals use the listing's metadata rather than reopening selected paths.
 
 ## Features in release 0.5.0
 
@@ -215,6 +229,16 @@ Run the isolated file-operation and browser-state tests:
 dotnet test .\tests\WinThunar.FileOps.Tests\WinThunar.FileOps.Tests.csproj --configuration Release
 ```
 
+The unreleased source also includes an isolated storage-failure and process-termination harness:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-FileOperationsStress.ps1
+```
+
+It injects native copy errors and terminates its own test workers. The JSON report separates those
+checks from optional real cross-volume tests and skipped physical-storage tests. See the
+[stress-harness scope and results](docs/FILE-OPERATIONS-STRESS.md).
+
 The maintainer's **unreleased local source** also includes a desktop smoke build. Its harness
 is not present in the published 0.5.0 source or GitHub `main` as of this audit. Run this command
 only from a checkout containing that harness; it does not restore or save your normal session:
@@ -237,10 +261,10 @@ Install the Velopack packaging tool once:
 dotnet tool install -g vpk --version 1.2.161
 ```
 
-Build a release from the main checkout; this example uses the current release version:
+Build a release from the main checkout; this example uses the prepared 0.5.3 candidate:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.5.0
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.5.3
 ```
 
 For a new release, choose an unused version and update all four version locations before
@@ -262,6 +286,7 @@ app does not overwrite them.
 - [Browser views, tabs, split panes, and preferences](docs/BROWSER-WORKSPACE.md)
 - [Search behavior and limits](docs/SEARCH.md)
 - [File operations, Undo, and recovery](docs/FILE-OPERATIONS.md)
+- [Storage-failure and process-termination checks](docs/FILE-OPERATIONS-STRESS.md)
 - [Released features, unreleased work, and remaining gaps](docs/ROADMAP.md)
 - [Accessibility status and verification limits](docs/ACCESSIBILITY.md)
 - [Building, packaging, and publishing releases](docs/RELEASES.md)

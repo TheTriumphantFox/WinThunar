@@ -1,6 +1,8 @@
 # Search behavior
 
-This page describes release 0.5.0 and the current source checkout.
+The navigation and result rules below apply to release 0.5.0 and current source.
+Query filters and streaming traversal are **unreleased 0.5.2 source**; release 0.5.0 matches
+one literal filename substring and does not understand filters or wildcards.
 
 `Ctrl+F` or the Search toolbar button searches the active pane's current folder. Subfolders
 are included by default. To search only the current folder, open **Edit > Preferences**,
@@ -13,8 +15,9 @@ returns to the ordinary folder listing.
 
 ## Matching, limits, and cancellation
 
-- Matches are case-insensitive literal substrings of the file or folder name. Queries are
-  trimmed; this is not wildcard, regular-expression, or file-content search.
+- In 0.5.2 source, words are case-insensitive filename substrings combined with AND.
+  Quote a phrase to match consecutive words. `*` and `?` match an entire filename.
+  This is not regular-expression or file-content search.
 - Results arrive in batches of up to 40 while traversal continues. The limit is 5,000 results
   per search; the final status reports when that limit is reached.
 - **Show Hidden Files** controls hidden, system, and dot-prefixed paths. Hidden folders are
@@ -36,3 +39,24 @@ blank search-result space is not a destination.
 
 Search is unavailable in Trash and This PC: open an ordinary folder or drive first.
 Search does not create an index or write metadata into the searched folders.
+
+## Query filters — unreleased 0.5.2 source
+
+| Query | Meaning |
+| --- | --- |
+| `report type:pdf` | PDF files with report in their names. |
+| `name:"annual report"` | Names containing the consecutive phrase annual report. |
+| `*.txt` | Text filenames; `?` matches one character. |
+| `type:folder` / `type:file` | Only directories / only files. |
+| `ext:jpg` / `type:.jpg` | A filename extension, case-insensitive; no content inspection. |
+| `modified:today` / `modified:yesterday` | Local calendar dates. |
+| `modified:last7days` | Today and the preceding six calendar days. |
+| `modified:>=2026-10-01` | On or after an ISO date; `<`, `<=`, `>`, and `=` also work. |
+| `modified:2026-10-01..2026-10-21` | An inclusive date range. `date:` is an alias. |
+| `size:>10MB` / `size:1KB..5MB` | File size comparisons or an inclusive range. Directories are excluded. |
+
+Size units are bytes or binary KB/MB/GB/TB (1 KB = 1,024 bytes); decimals use a period.
+All words and filters must match. Invalid filters produce an inline status explanation.
+Results retain filesystem enumeration order and appear in batches without sorting a whole
+directory first. Search still traverses accessible filesystem folders and caps output at 5,000;
+Windows Search index integration, content search, and This PC search remain future work.

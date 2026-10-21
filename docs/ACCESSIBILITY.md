@@ -18,7 +18,7 @@ See the [release/source status](ROADMAP.md#release-and-source-status).
   and optional Git status text. Recycled containers have their old name cleared.
 - Git status is text as well as a visual badge; status tooltips do not depend on color alone.
 
-The 0.5.1 source follows Windows light/dark settings and uses WinUI system resources for the
+The 0.5.2 source follows Windows light/dark settings and uses WinUI system resources for the
 browser chrome, command panel, preview path, and drop highlight. Light/dark desktop renders
 were inspected. Full high-contrast support must be verified rather than inferred from resources.
 
@@ -49,7 +49,7 @@ Those assertions do not run a screen reader, exercise every focus order, or prov
 Windows displayed a notification. File-service tests are separate; see
 [file-operation verification](FILE-OPERATIONS.md#verification).
 
-The expanded 0.5.1 harness also checks Windows-theme inheritance and light/dark renders with
+The expanded 0.5.2 harness also checks Windows-theme inheritance and light/dark renders with
 the command panel, combined search filters and invalid-filter feedback, queued replacement
 registration in window history, Undo/Redo content restoration, and retained-data expiry.
 Its file-operation journal is redirected into its generated fixture directory.
@@ -58,8 +58,8 @@ Its file-operation journal is redirected into its generated fixture directory.
 
 On 21 October, the expanded desktop harness passed its assertions and the light/dark renders
 were inspected. Notification registration still returned the module-loading diagnostic below.
-The final 0.5.1 service suite completed with **120 passed, one skipped, zero failed**.
-See [candidate notes](RELEASE-0.5.1.md) for current test scope and remaining storage checks.
+The final 0.5.2 service suite completed with **123 passed, one skipped, zero failed**.
+See [candidate notes](RELEASE-0.5.2.md) for current test scope and remaining storage checks.
 
 The previous baseline on 19 October is retained for comparison:
 

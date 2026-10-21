@@ -165,6 +165,9 @@ public sealed class TransferHistorySession : IDisposable
                     node.ParkedRecoveryId = _operations.RetainHistoryPath(node.ParkedPath, record.DestinationPath);
                 }
                 await MoveAsync(record.DestinationPath, node.ParkedPath, rollback);
+#if FILEOPS_FAULT_TESTS
+                FileOperationFaultHooks.Hit("HistoryAfterIncomingParked", record.SourcePath, record.DestinationPath);
+#endif
             }
             if (record.BackupPath is { } backup) await MoveAsync(backup, record.DestinationPath, rollback);
         }

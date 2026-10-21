@@ -64,12 +64,12 @@ creation; link-preserving file transfers do not add link support to ZIP archives
   the recursive content-snapshot guard.
 - Undo removes a created folder, blank document, template document, or archive only when its recursive metadata-and-content snapshot is unchanged; Redo recreates file content exactly.
 - In release 0.5.0, a transfer batch containing Replace or directory Merge is not entered into Undo history.
-  The **unreleased 0.5.1 source** retains displaced items and completed merge children for Undo,
+  The **unreleased 0.5.2 source** retains displaced items and completed merge children for Undo,
   including completed work in a cancelled transfer. Undo restores replaced content and keeps
   unrelated merge contents. Redo uses the exact retained incoming data, so later edits to a copy's
   original source do not change Redo. Destination, move-source, retained-backup, and Redo snapshots
   are checked before any replay; content guards include NTFS alternate streams.
-- In 0.5.1 source, Undo of Copy/Link parks the incoming item in a private `.winthunar-undo-*.tmp`
+- In 0.5.2 source, Undo of Copy/Link parks the incoming item in a private `.winthunar-undo-*.tmp`
   directory alongside the top-level destination, outside the transferred folder. Replacement backups
   use the same kind of directory. These consume disk space until that history entry expires,
   a new operation discards Redo, or its window closes. They are not persistent history or Recycle Bin
@@ -96,3 +96,10 @@ service tests use synthetic Recycle Bin records for restoration; they do not req
 personal files into the real Recycle Bin. Pointer-driven drag/drop and real Windows elevation/Recycle Bin interactions still
 need manual checks. The relative-symbolic-link test reports a skip when Windows denies link
 creation. See the [accessibility status](ACCESSIBILITY.md) for the separate desktop smoke checks.
+
+The unreleased source adds a separate [stress harness](FILE-OPERATIONS-STRESS.md) for injected native
+storage errors, real sharing locks, copy/delete fallback, and forced termination at transfer/recovery/
+history checkpoints. It reports real-volume and physical-storage coverage separately. Recovery now
+leases its journal to one process and protects staged incoming history data when overlapping records
+restore their paths in either order. A mismatched stage or an ambiguous older record is retained for
+attention instead of being discarded.

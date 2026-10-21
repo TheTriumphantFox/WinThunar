@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <DefineConstants>$(DefineConstants);FILEOPS_FAULT_TESTS</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\Shared\FileOperationFaultHooks.cs" Link="FileOperationFaultHooks.cs" />
+    <Compile Include="..\..\Services\FileOperationService.cs" Link="Services\FileOperationService.cs" />
+    <Compile Include="..\..\Services\TransferRecoveryService.cs" Link="Services\TransferRecoveryService.cs" />
+    <Compile Include="..\..\Services\TransferHistorySession.cs" Link="Services\TransferHistorySession.cs" />
+    <Compile Include="..\..\Services\LinkFileSystem.cs" Link="Services\LinkFileSystem.cs" />
+  </ItemGroup>
+</Project>

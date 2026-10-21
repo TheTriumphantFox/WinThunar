@@ -266,6 +266,49 @@ public sealed class TransferHistoryTests : IDisposable
         await history.UndoAsync();
         Assert.Equal("old", await File.ReadAllTextAsync(destination));
     }
+
+    [Theory]
+    [InlineData(true, true)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public async Task RecoveryPreservesHistoryMoveDataWhenAnotherRecordReoccupiesItsSource(bool historyMove, bool matchingStage)
+    {
+        var source = Path.Combine(_root, "restored-original.txt");
+        var destination = Path.Combine(_root, "undo-destination.txt");
+        var sourceRecovery = Path.Combine(_root, ".winthunar-history-source-fixture.tmp");
+        var staged = Path.Combine(_root, ".winthunar-history-fixture.tmp");
+        await File.WriteAllTextAsync(source, "old destination restored by another recovery record");
+        await File.WriteAllTextAsync(sourceRecovery, "incoming data that must remain accessible");
+        await File.WriteAllTextAsync(sourceRecovery + ":notes", "preserved stream");
+        var incoming = FileOperationService.CapturePathState(sourceRecovery);
+        File.Copy(sourceRecovery, staged);
+        if (!matchingStage) await File.WriteAllTextAsync(staged, "truncated or edited staging data");
+        var journal = new TransferRecoveryService(Path.Combine(_root, "history-recovery"));
+        journal.Register(source, destination, staged, sourceRecoveryPath: sourceRecovery,
+            finishStagedMoveOnSourceConflict: historyMove);
+
+        var result = journal.RecoverPending();
+
+        Assert.Equal("old destination restored by another recovery record", await File.ReadAllTextAsync(source));
+        if (historyMove && matchingStage)
+        {
+            Assert.Empty(result.Errors);
+            Assert.Equal(1, result.RecoveredOperations);
+            Assert.True(FileOperationService.PathMatchesState(destination, incoming));
+            Assert.False(File.Exists(sourceRecovery));
+            Assert.False(File.Exists(staged));
+            Assert.Equal(0, journal.RecoverPending().RecoveredOperations);
+        }
+        else
+        {
+            Assert.Single(result.Errors);
+            Assert.Equal(0, result.RecoveredOperations);
+            Assert.False(File.Exists(destination));
+            Assert.True(FileOperationService.PathMatchesState(sourceRecovery, incoming));
+            Assert.True(File.Exists(staged));
+            Assert.Single(Directory.GetFiles(Path.Combine(_root, "history-recovery"), "*.json"));
+        }
+    }
     public void Dispose()
     {
         var expected = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "WinThunar.FileOps.Tests")) + Path.DirectorySeparatorChar;

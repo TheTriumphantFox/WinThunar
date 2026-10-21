@@ -1,7 +1,7 @@
 # Search behavior
 
 The navigation and result rules below apply to release 0.5.0 and current source.
-Query filters and streaming traversal are **unreleased 0.5.1 source**; release 0.5.0 matches
+Query filters and streaming traversal are **unreleased 0.5.2 source**; release 0.5.0 matches
 one literal filename substring and does not understand filters or wildcards.
 
 `Ctrl+F` or the Search toolbar button searches the active pane's current folder. Subfolders
@@ -15,7 +15,7 @@ returns to the ordinary folder listing.
 
 ## Matching, limits, and cancellation
 
-- In 0.5.1 source, words are case-insensitive filename substrings combined with AND.
+- In 0.5.2 source, words are case-insensitive filename substrings combined with AND.
   Quote a phrase to match consecutive words. `*` and `?` match an entire filename.
   This is not regular-expression or file-content search.
 - Results arrive in batches of up to 40 while traversal continues. The limit is 5,000 results
@@ -40,7 +40,7 @@ blank search-result space is not a destination.
 Search is unavailable in Trash and This PC: open an ordinary folder or drive first.
 Search does not create an index or write metadata into the searched folders.
 
-## Query filters — unreleased 0.5.1 source
+## Query filters — unreleased 0.5.2 source
 
 | Query | Meaning |
 | --- | --- |

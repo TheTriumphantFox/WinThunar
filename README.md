@@ -50,13 +50,13 @@ integration notes below before choosing it as your default file manager.
 ## Release and source status
 
 The latest published application release is **0.5.0** (14 October 2026), verified against
-GitHub Releases on 21 October 2026. The development checkout is preparing **0.5.1**. Documentation and website updates do not update the
+GitHub Releases on 21 October 2026. The development checkout is preparing **0.5.2**. Documentation and website updates do not update the
 installed application. The feature list below describes that release; sections marked
 **unreleased source** describe work in the maintainer's local development checkout. These
 application changes are not yet in GitHub's `main` branch or a newer GitHub Release.
-See the [0.5.1 release candidate notes](docs/RELEASE-0.5.1.md) for the prepared milestone and verification limits.
+See the [0.5.2 release candidate notes](docs/RELEASE-0.5.2.md) for the prepared milestone and verification limits.
 
-### Daily-default improvements — unreleased 0.5.1 source
+### Daily-default improvements — unreleased 0.5.2 source
 
 - Transfer Undo/Redo includes Replace and directory Merge. Displaced items and exact Redo data
   are retained until the window's ten-action history expires; history still does not survive restart.
@@ -226,6 +226,16 @@ Run the isolated file-operation and browser-state tests:
 dotnet test .\tests\WinThunar.FileOps.Tests\WinThunar.FileOps.Tests.csproj --configuration Release
 ```
 
+The unreleased source also includes an isolated storage-failure and process-termination harness:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-FileOperationsStress.ps1
+```
+
+It injects native copy errors and terminates its own test workers. The JSON report separates those
+checks from optional real cross-volume tests and skipped physical-storage tests. See the
+[stress-harness scope and results](docs/FILE-OPERATIONS-STRESS.md).
+
 The maintainer's **unreleased local source** also includes a desktop smoke build. Its harness
 is not present in the published 0.5.0 source or GitHub `main` as of this audit. Run this command
 only from a checkout containing that harness; it does not restore or save your normal session:
@@ -248,10 +258,10 @@ Install the Velopack packaging tool once:
 dotnet tool install -g vpk --version 1.2.161
 ```
 
-Build a release from the main checkout; this example uses the prepared 0.5.1 candidate:
+Build a release from the main checkout; this example uses the prepared 0.5.2 candidate:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.5.1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.5.2
 ```
 
 For a new release, choose an unused version and update all four version locations before
@@ -273,6 +283,7 @@ app does not overwrite them.
 - [Browser views, tabs, split panes, and preferences](docs/BROWSER-WORKSPACE.md)
 - [Search behavior and limits](docs/SEARCH.md)
 - [File operations, Undo, and recovery](docs/FILE-OPERATIONS.md)
+- [Storage-failure and process-termination checks](docs/FILE-OPERATIONS-STRESS.md)
 - [Released features, unreleased work, and remaining gaps](docs/ROADMAP.md)
 - [Accessibility status and verification limits](docs/ACCESSIBILITY.md)
 - [Building, packaging, and publishing releases](docs/RELEASES.md)

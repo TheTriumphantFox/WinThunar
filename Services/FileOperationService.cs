@@ -119,14 +119,19 @@ public sealed class FileOperationService
     internal async Task MoveHistoryPathAsync(string source, string destination)
     {
         EnsurePathDoesNotExist(destination);
-        if (ArePathsOnSameVolume([source], Path.GetDirectoryName(destination)!))
+        if (ArePathsOnSameVolume([source], Path.GetDirectoryName(destination)!)
+#if FILEOPS_FAULT_TESTS
+            && !FileOperationFaultHooks.ForceCopyDelete
+#endif
+            )
         {
             MovePath(source, destination);
             return;
         }
         var staged = GetTemporarySiblingPath(destination, "history");
         var sourceRecovery = GetTemporarySiblingPath(source, "history-source");
-        var id = _recovery.Register(source, destination, staged, sourceRecoveryPath: sourceRecovery);
+        var id = _recovery.Register(source, destination, staged, sourceRecoveryPath: sourceRecovery,
+            finishStagedMoveOnSourceConflict: true);
         try
         {
             if (LinkFileSystem.CopyLink(source, staged)) { }
@@ -134,8 +139,14 @@ public sealed class FileOperationService
                 await CopyDirectoryPreservingMetadataAsync(source, staged, CancellationToken.None);
             else await CopyFilePreservingMetadataAsync(source, staged, CancellationToken.None);
             MovePath(source, sourceRecovery);
+#if FILEOPS_FAULT_TESTS
+            FileOperationFaultHooks.Hit("HistoryAfterSourceStaged", source, destination);
+#endif
             try { MovePath(staged, destination); }
             catch { MovePath(sourceRecovery, source); throw; }
+#if FILEOPS_FAULT_TESTS
+            FileOperationFaultHooks.Hit("HistoryAfterPromotion", source, destination);
+#endif
             // Once promoted, cleanup failures are recoverable; do not roll back a partial deletion.
             TryDeletePath(sourceRecovery);
         }
@@ -846,7 +857,11 @@ public sealed class FileOperationService
         var sourceLastWriteTime = Directory.GetLastWriteTimeUtc(sourcePath);
         var originalSource = DirectoryState.Read(sourcePath);
 
-        if (mode == FileTransferMode.Move && !Directory.Exists(destinationPath))
+        if (mode == FileTransferMode.Move && !Directory.Exists(destinationPath)
+#if FILEOPS_FAULT_TESTS
+            && !FileOperationFaultHooks.ForceCopyDelete
+#endif
+            )
         {
             try
             {
@@ -957,7 +972,11 @@ public sealed class FileOperationService
         CancellationToken cancellationToken,
         Action<string, long, long>? byteProgress)
     {
-        if (mode == FileTransferMode.Move)
+        if (mode == FileTransferMode.Move
+#if FILEOPS_FAULT_TESTS
+            && !FileOperationFaultHooks.ForceCopyDelete
+#endif
+            )
         {
             try
             {
@@ -976,6 +995,9 @@ public sealed class FileOperationService
         {
             await CopyFilePreservingMetadataAsync(sourcePath, temporaryPath, cancellationToken, byteProgress);
             File.Move(temporaryPath, destinationPath);
+#if FILEOPS_FAULT_TESTS
+            FileOperationFaultHooks.Hit("FileAfterPromotion", sourcePath, destinationPath);
+#endif
 
             if (mode == FileTransferMode.Move)
             {
@@ -985,6 +1007,9 @@ public sealed class FileOperationService
         }
         finally
         {
+#if FILEOPS_FAULT_TESTS
+            FileOperationFaultHooks.Hit("FileBeforeStagingCleanup", sourcePath, temporaryPath);
+#endif
             if (File.Exists(temporaryPath))
             {
                 File.Delete(temporaryPath);
@@ -1247,13 +1272,22 @@ public sealed class FileOperationService
             cancellationToken.ThrowIfCancellationRequested();
             MovePath(destinationPath, backupPath);
             destinationBackedUp = true;
+#if FILEOPS_FAULT_TESTS
+            FileOperationFaultHooks.Hit("ReplacementAfterBackup", sourcePath, destinationPath);
+#endif
             MovePath(stagedPath, destinationPath);
             promoted = true;
+#if FILEOPS_FAULT_TESTS
+            FileOperationFaultHooks.Hit("ReplacementAfterPromotion", sourcePath, destinationPath);
+#endif
 
             if (mode == FileTransferMode.Move)
             {
                 MovePath(sourcePath, sourceRecoveryPath);
                 sourceMovedAside = true;
+#if FILEOPS_FAULT_TESTS
+                FileOperationFaultHooks.Hit("ReplacementAfterSourceStaged", sourcePath, destinationPath);
+#endif
             }
 
             var destinationState = await CapturePathStateAsync(destinationPath, CancellationToken.None);
@@ -1374,9 +1408,31 @@ public sealed class FileOperationService
                         byteProgress(sourcePath, totalBytesTransferred, totalFileSize);
                         return 0;
                     };
+#if FILEOPS_FAULT_TESTS
+                int? injectedError = null;
+                Exception? hookError = null;
+                callback = (total, copied, _, _, _, _, _, _, _) =>
+                {
+                    // Never let a managed exception cross the native callback boundary.
+                    try
+                    {
+                        FileOperationFaultHooks.Hit("NativeCopyProgress", sourcePath, destinationPath, copied, total);
+                        injectedError = FileOperationFaultHooks.CopyError(sourcePath, destinationPath, copied, total);
+                        byteProgress?.Invoke(sourcePath, copied, total);
+                    }
+                    catch (Exception ex) { hookError = ex; }
+                    // Request a resumable stop; some providers still remove their partial file.
+                    return injectedError is not null ? 2u : hookError is not null ? 1u : 0u;
+                };
+#endif
                 if (!CopyFileEx(sourcePath, destinationPath, callback, IntPtr.Zero, cancelPointer, CopyFileFlags.FailIfExists))
                 {
                     var error = Marshal.GetLastWin32Error();
+#if FILEOPS_FAULT_TESTS
+                    if (hookError is not null) throw new IOException("The stress harness callback failed.", hookError);
+                    if (injectedError is { } simulated)
+                        throw new Win32Exception(simulated, $"Injected Windows copy error {simulated}: {new Win32Exception(simulated).Message}");
+#endif
                     if (cancellationToken.IsCancellationRequested || error == ErrorRequestAborted)
                     {
                         throw new OperationCanceledException(cancellationToken);

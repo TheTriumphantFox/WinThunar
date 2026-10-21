@@ -1,5 +1,7 @@
 # WinThunar 0.5.1 release candidate
 
+Historical source candidate; superseded by the [0.5.2 candidate](RELEASE-0.5.2.md).
+
 Prepared 21 October 2026. This is a local release candidate, not a published GitHub Release.
 Installed copies continue to receive 0.5.0 until 0.5.1 is published.
 

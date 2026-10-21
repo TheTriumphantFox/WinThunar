@@ -68,9 +68,9 @@ public sealed partial class MainWindow : Window
         {
             var dialog = new ContentDialog
             {
-                Title = "Transfers are still running",
-                Content = "Closing WinThunar will cancel the active transfer and every queued transfer. Incomplete staging data will be cleaned up or recovered on the next launch.",
-                PrimaryButtonText = "Close and cancel transfers",
+                Title = "File work is still running",
+                Content = "Closing WinThunar will cancel active and queued transfers or interrupt recovery. Incomplete file work will be checked again the next time WinThunar starts.",
+                PrimaryButtonText = "Close and stop file work",
                 CloseButtonText = "Keep working",
                 DefaultButton = ContentDialogButton.Close,
                 XamlRoot = RootFrame.XamlRoot

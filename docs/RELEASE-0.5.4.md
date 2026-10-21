@@ -1,8 +1,12 @@
-# WinThunar 0.5.4 candidate
+# WinThunar 0.5.4 candidate (superseded)
 
 Prepared 21 October 2026. This version is **not published**. The latest published application
 remains [0.5.3](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.3).
 Committing this candidate does not distribute it to installed users.
+
+This unpublished candidate and the subsequent local reliability/search/preview work below are
+superseded by **[0.5.5](RELEASE-0.5.5.md)**. Use that release's notes for current version and
+publication status; 0.5.4 was never published.
 
 ## Changes
 
@@ -19,12 +23,33 @@ Nine updater regression tests use an internal fake backend to exercise failure/r
 concurrent checks, portable copies, failed-check scheduling, and all-users exit behavior without
 installing updates or exiting the test process. The production backend still uses Velopack 1.2.161.
 
+Additional local work adds **Help > Interrupted Transfers...**, a persistent recovery warning,
+safe retry, and destination-content proof before displaced data is discarded. Unavailable storage
+cannot silently erase a staging journal, and post-commit source cleanup cannot roll a completed
+replacement Move back. See the [reliability milestone](RELIABILITY-MILESTONE.md) for findings.
+
+Explicit `content:` terms search supported text files up to 16 MiB. Search from This PC spans
+its filesystem drive listing. The preview pane supports bounded read-only text, and detailed
+filenames keep visible space when panes narrow. A new performance harness measures generated
+local search workloads. PDFs up to 64 MiB now have native page previews with Previous/Next
+navigation and a 1,024-pixel output cap. Explicit `index:true` queries the read-only Windows
+Search catalog, including indexed document contents when Windows provides the relevant filters.
+Status warns that index coverage/freshness differs from filesystem traversal; see [search](SEARCH.md).
+
+Notification initialization is idempotent and detaches activation handlers after registration
+failure. Diagnostics include the HRESULT. Registration still fails here with the upstream
+[self-contained Windows App SDK issue](https://github.com/microsoft/WindowsAppSDK/issues/6774),
+which is marked pending release; no unverified DLL substitution or SDK upgrade was made.
+
 ## Verification and limits
 
 - The startup regression failed against the previous source with `UriFormatException` and passes
   after the fix.
 - The x64 application build passed without warnings/errors. The service suite passed with
-  **134 passed, one skipped, zero failed**; symbolic-link creation requires Windows privilege.
+  **162 passed, one skipped, zero failed**; symbolic-link creation requires Windows privilege.
+- Normal-token stress passed **30/0/5** (passed/failed/skipped). Disposable-VHD stress passed
+  **40/0/2**, including native disk-full error 112 after 8 MiB copy progress. Disposable loopback
+  SMB passed all **five** cases, including loss after commit. Desktop smoke assertions passed.
 - Read-only inspection separately confirmed the existing all-users **0.5.0 to 0.5.3** full-package
   upgrade from updater logs and all **524 deployed file hashes**. This is evidence for 0.5.3, not
   an installed 0.5.4 upgrade. No user application was launched, closed, replaced, or downgraded.
@@ -33,7 +58,8 @@ installing updates or exiting the test process. The production backend still use
 - Controlled upgrade UI repetition, per-user apply-on-close, installed delta updates, UAC
   cancellation, and updater child-process failures after launch remain unverified. See
   [updater verification](UPDATER-VERIFICATION.md) for evidence and scope.
-- Existing storage, accessibility, notification, and recovery limits remain; see the
+- Remote-server/network outage, physical removal, separate-device, accessibility, notification,
+  and multi-item crash-atomicity limits remain; see the
   [roadmap](ROADMAP.md) and [stress notes](FILE-OPERATIONS-STRESS.md).
 
 ## Version and publication status

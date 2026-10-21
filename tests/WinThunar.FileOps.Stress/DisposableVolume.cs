@@ -45,7 +45,7 @@ internal sealed record DisposableVolume(string MountPath, string VolumePath, str
         return available;
     }
 
-    internal long Fill(Fixture fixture)
+    internal long Fill(Fixture fixture, bool leaveRoomForMainStream = false)
     {
         Fixture.Check(fixture.State.ExternalRoot is { } external &&
             string.Equals(Path.GetDirectoryName(external), Path.TrimEndingDirectorySeparator(MountPath), StringComparison.OrdinalIgnoreCase),
@@ -54,12 +54,13 @@ internal sealed record DisposableVolume(string MountPath, string VolumePath, str
         Fixture.Check(!LinkFileSystem.IsReparsePoint(fixture.State.ExternalRoot!), "The disk-full fixture cannot be a link.");
         var available = Validate(fixture.Root);
         const ulong reserve = 1024 * 1024;
+        var targetAvailable = leaveRoomForMainStream ? (ulong)Fixture.PayloadBytes + 4 * reserve : 2 * reserve;
         Fixture.Check(available > 2 * reserve, "Disposable volume lacks space to prepare a controlled disk-full check.");
         using var filler = new FileStream(fillerPath, FileMode.CreateNew, FileAccess.Write, FileShare.None);
         var bytes = new byte[1024 * 1024];
         new Random(91724).NextBytes(bytes); // Allocate real, non-sparse data.
         long written = 0;
-        while (available > 2 * reserve)
+        while (available > targetAvailable)
         {
             Fixture.Check(written < 512L * 1024 * 1024, "Disposable volume allocation exceeded its bound.");
             filler.Write(bytes);
@@ -67,7 +68,10 @@ internal sealed record DisposableVolume(string MountPath, string VolumePath, str
             written += bytes.Length;
             available = Validate(fixture.Root);
         }
-        Fixture.Check(available < Fixture.PayloadBytes / 2, "The disposable target still has room for the incoming file.");
+        Fixture.Check(leaveRoomForMainStream
+                ? available > Fixture.PayloadBytes && available < 2UL * Fixture.PayloadBytes
+                : available < Fixture.PayloadBytes / 2,
+            "The disposable free-space budget does not match the intended failure point.");
         return written;
     }
 

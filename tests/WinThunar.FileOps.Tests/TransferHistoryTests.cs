@@ -115,6 +115,8 @@ public sealed class TransferHistoryTests : IDisposable
             Assert.Equal("untouched", await File.ReadAllTextAsync(Path.Combine(destination, "keep.txt")));
             Assert.Equal(mode == FileTransferMode.Copy, Directory.Exists(source));
         }
+        history.Dispose();
+        Assert.Empty(Directory.EnumerateFiles(Path.Combine(_root, "journal")));
     }
 
     [Fact]

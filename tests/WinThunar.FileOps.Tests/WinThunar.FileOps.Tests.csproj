@@ -20,6 +20,8 @@
     <Compile Include="..\..\Services\AppSessionService.cs" Link="Services\AppSessionService.cs" />
     <Compile Include="..\..\Services\FileSearchService.cs" Link="Services\FileSearchService.cs" />
     <Compile Include="..\..\Services\FileSearchQuery.cs" Link="Services\FileSearchQuery.cs" />
+    <Compile Include="..\..\Services\IndexedFileSearchService.cs" Link="Services\IndexedFileSearchService.cs" />
+    <Compile Include="..\..\Services\TextFileContent.cs" Link="Services\TextFileContent.cs" />
     <Compile Include="..\..\Services\BulkRenameService.cs" Link="Services\BulkRenameService.cs" />
     <Compile Include="..\..\Services\PluginService.cs" Link="Services\PluginService.cs" />
     <Compile Include="..\..\Services\ArchiveService.cs" Link="Services\ArchiveService.cs" />

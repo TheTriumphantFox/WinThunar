@@ -8,9 +8,11 @@ The application changes are merged into `main` through PR #13, and the GitHub up
 offers 0.5.3. Documentation-only commits do not distribute an application version.
 See [release notes](RELEASE-0.5.3.md) for package verification and remaining limits.
 
-The current source candidate is **0.5.4**, with updater startup/installer-launch failure handling
-and nine updater regression tests. It is **not published**; installed copies still receive 0.5.3.
-See the [0.5.4 candidate notes](RELEASE-0.5.4.md).
+The current source candidate is **0.5.5**, with updater startup/installer-launch failure handling
+and nine updater regression tests. Additional local work adds an Interrupted Transfers view,
+conservative recovery/SMB cleanup, text-content/Windows-index search, This PC search, and text/PDF previews.
+It is **not published**; installed copies still receive 0.5.3.
+See the [0.5.5 candidate notes](RELEASE-0.5.5.md) and [reliability milestone](RELIABILITY-MILESTONE.md).
 
 The checked foundation items in sections 1–5 were already in 0.5.0. The additions listed
 below are now in published 0.5.3; test harnesses are source tools excluded from app packages.
@@ -114,9 +116,16 @@ and [accessibility status](ACCESSIBILITY.md) for package behavior and remaining 
 - [x] Confirm the existing all-users 0.5.0 to 0.5.3 full-package upgrade from updater logs and all 524 deployed file hashes; see [updater verification](UPDATER-VERIFICATION.md).
 - [ ] Repeat the installed upgrade under controlled UI conditions; verify per-user apply-on-close, installed delta updates, and Windows Installer repair/uninstall metadata. The logged all-users full-package upgrade succeeded; the original MSI product entry still reports 0.5.0.0.
 - [ ] Complete the manual accessibility checks documented in [ACCESSIBILITY.md](ACCESSIBILITY.md).
-- [ ] Verify SMB disconnection, physical device removal, disk-full after partial writes, and history across separate physical devices. Real disk-full allocation failures and distinct-NTFS-volume history pass on a disposable VHD backed by the system SSD; see the [stress-harness results](FILE-OPERATIONS-STRESS.md).
+- [x] Verify real disk-full after main-stream writes on a disposable NTFS VHD, including Copy/Move and new/Replace recovery, retry, and Undo.
+- [x] Reproduce and fix lost staging-journal tracking during owned loopback-SMB share removal; verify source loss after replacement Move commit.
+- [x] Add an actionable recovery warning/dialog and safe retry while protecting live transfers/history and ambiguous copies.
+- [ ] Verify remote SMB server/network interruption, physical device removal, and history across separate physical devices. VHD and loopback SMB tests use one SSD; see the [stress-harness results](FILE-OPERATIONS-STRESS.md).
 - [ ] Verify notifications on installed and portable builds; registration remains unavailable on this machine.
-- [ ] Broader Shell/device browsing, cloud status, document previews, and indexed/content search.
+- [x] Add bounded text-content search, filesystem drive search from This PC, and read-only text previews.
+- [x] Add bounded native PDF preview with page navigation and explicit read-only Windows Search index queries.
+- [ ] Verify generated PDF/Office content-indexing matches and representative document/filter coverage; index inclusion and freshness are controlled by Windows.
+- [ ] Broader Shell/device browsing, cloud status, Office/general document previews, and fresh document-content extraction.
+- [ ] Extend local search performance measurements to sustained UI/thumbnail and slow-network endurance checks.
 - [ ] Add and verify native handling of unsupported reparse-point types before claiming support.
 
 Release ZIP/MSI packages currently target x64. The project lists other build platforms,

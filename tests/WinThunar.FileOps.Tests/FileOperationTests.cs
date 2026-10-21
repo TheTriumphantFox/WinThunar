@@ -630,6 +630,22 @@ public sealed class FileOperationTests : IDisposable
         }
     }
 
+    [Fact]
+    public async Task IndexedSearchDoesNotReturnDescendantsThroughJunctions()
+    {
+        var target = Directory.CreateDirectory(Path.Combine(_root, "index-target")).FullName;
+        var scope = Directory.CreateDirectory(Path.Combine(_root, "index-scope")).FullName;
+        var link = Path.Combine(scope, "link");
+        await CreateJunctionAsync(link, target);
+        File.WriteAllText(Path.Combine(target, "one.txt"), "target data");
+        var service = new IndexedFileSearchService((_, _) => [Path.Combine(link, "one.txt")]);
+        var result = service.Search([scope], FileSearchQuery.Parse("one"), true,
+            _ => throw new InvalidOperationException("A linked descendant escaped the scope guard."));
+        Assert.Equal(0, result.ResultCount);
+        Assert.Equal(1, result.SkippedIndexEntries);
+        Assert.Equal("target data", File.ReadAllText(Path.Combine(target, "one.txt")));
+    }
+
     private static Task<ConflictResolution> ReplaceConflict(FileConflict _) =>
         Task.FromResult(new ConflictResolution(ConflictAction.Replace));
 

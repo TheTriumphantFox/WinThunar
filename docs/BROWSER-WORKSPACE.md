@@ -29,6 +29,20 @@ The last active layout is saved. **Edit > Preferences** can also remember view, 
 sorting separately for each folder. Single-click activation and the image-preview side pane
 are optional. Preferences take effect after **Apply**.
 
+**Unreleased 0.5.5 source:** **View > Preview Pane** supports images and bounded, selectable,
+read-only text. Text previews show at most 32,768 characters from supported text/configuration/
+source-code files; binary data, unsupported encodings, links, and online-only placeholders are
+not read as text. Preview does not edit files or execute markup/scripts. PDFs up to **64 MiB**
+render through Windows' PDF API with **Previous/Next page** buttons and an announced page count.
+The source is read into a bounded snapshot and closed before rendering; each page reloads the
+current file rather than holding it open. Output is capped at **1,024 physical pixels per side**,
+including on scaled displays. Links, online-only placeholders, invalid pages, and oversized inputs
+are rejected; malformed/password-protected documents report preview unavailability. Changing
+selection or hiding the pane cancels the preview. PDF text selection/extraction, password entry,
+Office rendering, and general Shell preview handlers remain open.
+Metadata/path details scroll when the pane is short. Both detailed
+lists reserve filename space when split/preview panes narrow the available width.
+
 ## Tabs and windows
 
 - `Ctrl+T` or the plus button opens a primary-pane tab at the active folder, including the

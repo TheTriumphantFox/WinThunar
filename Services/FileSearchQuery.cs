@@ -4,10 +4,15 @@ using System.Text;
 
 namespace WinThunar.Services;
 
-/// <summary>A filesystem-only query: filters inspect metadata and never open file contents.</summary>
+/// <summary>Filename/metadata filters plus explicit, bounded text-content terms.</summary>
 public sealed class FileSearchQuery
 {
     private readonly List<Func<FileSearchMatch, bool>> _filters = [];
+    private readonly List<string> _contentTerms = [];
+    private readonly List<string> _nameTerms = [];
+    public IReadOnlyList<string> ContentTerms => _contentTerms;
+    public IReadOnlyList<string> NameTerms => _nameTerms;
+    public bool UseWindowsIndex { get; private set; }
 
     public static FileSearchQuery Parse(string query, DateTime? today = null)
     {
@@ -19,6 +24,15 @@ public sealed class FileSearchQuery
             var value = colon < 0 ? token : token[(colon + 1)..];
             switch (key)
             {
+                case "index":
+                    if (!bool.TryParse(value, out var useIndex)) throw new FormatException("Use index:true for the Windows index, or index:false to search the filesystem.");
+                    parsed.UseWindowsIndex = useIndex;
+                    break;
+                case "content":
+                    if (value.Length is 0 or > 1024 || parsed._contentTerms.Count >= 16)
+                        throw new FormatException("Use content:word or content:\"a phrase\" (up to 16 terms of 1,024 characters each).");
+                    parsed._contentTerms.Add(value);
+                    break;
                 case "name":
                     if (value.Length == 0) throw new FormatException("Use name:report or name:\"annual report\".");
                     parsed.AddName(value);
@@ -51,9 +65,13 @@ public sealed class FileSearchQuery
 
     public bool Matches(FileSearchMatch item) => _filters.All(filter => filter(item));
 
-    private void AddName(string value) => _filters.Add(value.IndexOfAny(['*', '?']) >= 0
-        ? item => FileSystemName.MatchesSimpleExpression(value, item.Name, ignoreCase: true)
-        : item => item.Name.Contains(value, StringComparison.CurrentCultureIgnoreCase));
+    private void AddName(string value)
+    {
+        _nameTerms.Add(value);
+        _filters.Add(value.IndexOfAny(['*', '?']) >= 0
+            ? item => FileSystemName.MatchesSimpleExpression(value, item.Name, ignoreCase: true)
+            : item => item.Name.Contains(value, StringComparison.CurrentCultureIgnoreCase));
+    }
 
     private static IEnumerable<string> Tokenize(string query)
     {

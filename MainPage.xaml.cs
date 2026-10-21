@@ -6,6 +6,7 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Navigation;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.WindowsRuntime;
 using System.Text.RegularExpressions;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.ApplicationModel.DataTransfer.DragDrop;
@@ -80,7 +81,7 @@ public sealed partial class MainPage : Page
     public MainPageViewModel ViewModel { get; } = new();
     public MainPageViewModel SplitViewModel { get; } = new();
     public bool HasPendingTransfers =>
-        _transferQueue.ActiveJob is not null || _transferQueue.QueuedCount > 0 || HasPendingHistory;
+        _transferQueue.ActiveJob is not null || _transferQueue.QueuedCount > 0 || HasPendingHistory || _recoveryRunning;
     public bool HasPendingHistory => _history.IsReplaying;
 
     public void CancelTransfersForClose() => _transferQueue.Dispose();
@@ -114,7 +115,6 @@ public sealed partial class MainPage : Page
 #if ROADMAP_SMOKE_TEST
         await RunRoadmapSmokeAsync();
 #else
-        var recovery = _fileOperations.RecoverInterruptedTransfers(skipActiveProcesses: true);
         _restoringSession = true;
         _pluginService.Reload();
         RefreshCreateDocumentMenus();
@@ -213,15 +213,9 @@ public sealed partial class MainPage : Page
         _sessionReady = true;
         UpdateCommandState();
         SaveSession();
-        if (recovery.RecoveredOperations > 0 || recovery.Errors.Count > 0)
-        {
-            ViewModel.StatusText = recovery.Errors.Count == 0
-                ? $"Recovered {recovery.RecoveredOperations} interrupted transfer{(recovery.RecoveredOperations == 1 ? string.Empty : "s")}."
-                : $"Recovered {recovery.RecoveredOperations} interrupted transfers; {recovery.Errors.Count} need attention.";
-        }
-
         App.Updates.StateChanged += Updates_StateChanged;
         ApplyUpdateState();
+        await RecoverTransfersAsync();
     #endif
     }
 
@@ -551,6 +545,14 @@ public sealed partial class MainPage : Page
         if (_showImagePreview)
         {
             _ = UpdateImagePreviewAsync(SelectedEntries().FirstOrDefault());
+        }
+        else
+        {
+            _previewCancellation?.Cancel();
+            _pdfPreviewEntry = null;
+            PreviewImage.Source = null;
+            PreviewText.Text = string.Empty;
+            PdfPageControls.Visibility = Visibility.Collapsed;
         }
     }
 
@@ -2115,7 +2117,7 @@ public sealed partial class MainPage : Page
         var restoreTabs = new CheckBox { Content = "Restore tabs on startup", IsChecked = _restoreTabs };
         var singleClick = new CheckBox { Content = "Single click opens files and folders", IsChecked = _singleClickActivation };
         var rememberFolders = new CheckBox { Content = "Remember view, zoom, and sorting for each folder", IsChecked = _rememberFolderViews };
-        var previewImages = new CheckBox { Content = "Show image preview side pane", IsChecked = _showImagePreview };
+        var previewImages = new CheckBox { Content = "Show image and text preview side pane", IsChecked = _showImagePreview };
         var shellSupported = ShellRegistrationService.IsSupported && Environment.ProcessPath is not null;
         var shellRegistration = new ShellRegistrationService(Environment.ProcessPath ?? string.Empty);
         var openVerb = new CheckBox
@@ -3593,7 +3595,22 @@ public sealed partial class MainPage : Page
         }
     }
 
-    private async Task UpdateImagePreviewAsync(FileSystemEntry? entry)
+    private FileSystemEntry? _pdfPreviewEntry;
+    private uint _pdfPageIndex;
+
+    private async void PdfPreviousPage_Click(object sender, RoutedEventArgs e)
+    {
+        if (_pdfPreviewEntry is not null && _pdfPageIndex > 0)
+            await UpdateImagePreviewAsync(_pdfPreviewEntry, _pdfPageIndex - 1);
+    }
+
+    private async void PdfNextPage_Click(object sender, RoutedEventArgs e)
+    {
+        if (_pdfPreviewEntry is not null && PdfNextPage.IsEnabled)
+            await UpdateImagePreviewAsync(_pdfPreviewEntry, _pdfPageIndex + 1);
+    }
+
+    private async Task UpdateImagePreviewAsync(FileSystemEntry? entry, uint pdfPageIndex = 0)
     {
         _previewCancellation?.Cancel();
         _previewCancellation?.Dispose();
@@ -3601,6 +3618,12 @@ public sealed partial class MainPage : Page
         var cancellationToken = _previewCancellation.Token;
 
         PreviewImage.Source = null;
+        PreviewImage.Visibility = Visibility.Collapsed;
+        PdfPageControls.Visibility = Visibility.Collapsed;
+        _pdfPreviewEntry = null;
+        PreviewText.Text = string.Empty;
+        PreviewText.Visibility = Visibility.Collapsed;
+        PreviewStatus.Text = string.Empty;
         PreviewTitle.Text = entry?.Name ?? "No item selected";
         PreviewMetadata.Text = entry is null
             ? string.Empty
@@ -3615,23 +3638,59 @@ public sealed partial class MainPage : Page
         {
             ".avif", ".bmp", ".gif", ".heic", ".heif", ".ico", ".jpeg", ".jpg", ".png", ".tif", ".tiff", ".webp"
         };
-        if (!imageExtensions.Contains(Path.GetExtension(entry.FullPath)))
-        {
-            return;
-        }
-
         try
         {
+            if (Path.GetExtension(entry.FullPath).Equals(".pdf", StringComparison.OrdinalIgnoreCase))
+            {
+                PreviewStatus.Text = "Loading PDF page…";
+                var page = await Task.Run(() => PdfFilePreview.ReadAsync(entry.FullPath, pdfPageIndex, cancellationToken), cancellationToken);
+                using var stream = new MemoryStream(page.Image).AsRandomAccessStream();
+                var bitmap = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage();
+                await bitmap.SetSourceAsync(stream);
+                cancellationToken.ThrowIfCancellationRequested();
+                PreviewImage.Source = bitmap;
+                PreviewImage.Visibility = Visibility.Visible;
+                Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(PreviewImage, "Selected PDF page preview");
+                _pdfPreviewEntry = entry;
+                _pdfPageIndex = page.PageIndex;
+                PdfPageNumber.Text = $"Page {page.PageIndex + 1} of {page.PageCount}";
+                PdfPreviousPage.IsEnabled = page.PageIndex > 0;
+                PdfNextPage.IsEnabled = page.PageIndex + 1 < page.PageCount;
+                PdfPageControls.Visibility = Visibility.Visible;
+                PreviewStatus.Text = "PDF preview";
+                return;
+            }
+            var text = await Task.Run(() => TextFileContent.Supports(entry.FullPath, File.GetAttributes(entry.FullPath))
+                ? TextFileContent.ReadPreview(entry.FullPath, cancellationToken) : null, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (text is not null)
+            {
+                PreviewText.Text = text.Text;
+                PreviewText.Visibility = Visibility.Visible;
+                PreviewStatus.Text = text.Truncated ? "Showing the first 32,768 characters." : "Text preview";
+                return;
+            }
+            if (!imageExtensions.Contains(Path.GetExtension(entry.FullPath)))
+            {
+                PreviewStatus.Text = "Preview is available for images, PDFs up to 64 MiB, and supported text files stored on this device.";
+                return;
+            }
             var image = await _shellImageService.GetPreviewAsync(
                 entry.FullPath,
                 512,
                 cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             PreviewImage.Source = image;
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(PreviewImage, "Selected image preview");
+            PreviewImage.Visibility = image is null ? Visibility.Collapsed : Visibility.Visible;
         }
         catch (OperationCanceledException)
         {
             // A newer selection superseded this preview.
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.DecoderFallbackException or COMException or ArgumentException)
+        {
+            if (!cancellationToken.IsCancellationRequested) PreviewStatus.Text = $"Preview unavailable: {ex.Message}";
         }
     }
 

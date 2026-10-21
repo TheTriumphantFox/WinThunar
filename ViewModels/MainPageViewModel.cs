@@ -20,6 +20,7 @@ public partial class MainPageViewModel : ObservableObject, IDisposable
     private CancellationTokenSource? _watcherRefreshCancellation;
     private FileSystemWatcher? _folderWatcher;
     private int _searchVersion;
+    private string[]? _computerSearchRoots;
     private int _imageVersion;
     private int _historyIndex = -1;
     private bool _disposed;
@@ -495,11 +496,9 @@ public partial class MainPageViewModel : ObservableObject, IDisposable
 
     public async Task SearchAsync(string query)
     {
-        if (IsVirtualView)
+        if (IsRecycleBinView)
         {
-            StatusText = IsRecycleBinView
-                ? "Search is not available while viewing Trash."
-                : "Open a drive to search it.";
+            StatusText = "Search is not available while viewing Trash.";
             return;
         }
 
@@ -520,14 +519,20 @@ public partial class MainPageViewModel : ObservableObject, IDisposable
         }
 
         CancelSearchCore();
+        var searchingComputer = PathEquals(CurrentPath, ComputerPath);
+        var searchRoots = searchingComputer
+            ? _computerSearchRoots ??= Entries.Where(entry => entry.IsDirectory).Select(entry => entry.FullPath).ToArray()
+            : [CurrentPath];
+        if (!searchingComputer) _computerSearchRoots = null;
         _searchCancellation = new CancellationTokenSource();
         var cancellationToken = _searchCancellation.Token;
         var version = ++_searchVersion;
         IsSearchMode = true;
+        IsComputerView = false; // Results are ordinary filesystem items, not drive entries.
         IsBusy = true;
         Entries.Clear();
         RestartImageLoadingScope();
-        StatusText = $"Searching {CurrentPath} for '{normalizedQuery}'...";
+        StatusText = $"Searching {(searchingComputer ? "This PC drives" : CurrentPath)} for '{normalizedQuery}'...";
 
         var progress = new Progress<IReadOnlyList<FileSearchMatch>>(batch =>
         {
@@ -567,8 +572,8 @@ public partial class MainPageViewModel : ObservableObject, IDisposable
 
         try
         {
-            var summary = await Task.Run(() => _searchService.Search(
-                CurrentPath,
+            var summary = await Task.Run(() => _searchService.SearchRoots(
+                searchRoots,
                 normalizedQuery,
                 ShowHiddenFiles,
                 progressReporter.Report,
@@ -588,6 +593,14 @@ public partial class MainPageViewModel : ObservableObject, IDisposable
             if (summary.SkippedDirectories > 0)
             {
                 StatusText += $"; {summary.SkippedDirectories} inaccessible folder{(summary.SkippedDirectories == 1 ? string.Empty : "s")} skipped";
+            }
+            if (summary.SkippedContentFiles > 0)
+                StatusText += $"; {summary.SkippedContentFiles} unsupported, unavailable, or oversized text files skipped";
+            if (summary.UsedWindowsIndex)
+            {
+                StatusText = "Windows index: " + StatusText + "; coverage and content depend on Windows indexing. Remove index:true for a filesystem search.";
+                if (summary.IndexCandidateLimitReached) StatusText += $" First {IndexedFileSearchService.MaximumCandidates:N0} index candidates checked; narrow the query.";
+                if (summary.SkippedIndexEntries > 0) StatusText += $" {summary.SkippedIndexEntries} stale, unavailable, or out-of-scope entries skipped.";
             }
         }
         catch (OperationCanceledException)
@@ -612,8 +625,9 @@ public partial class MainPageViewModel : ObservableObject, IDisposable
         var wasSearching = IsSearchMode;
         CancelSearchCore();
         IsSearchMode = false;
-        if (wasSearching && Directory.Exists(CurrentPath))
+        if (wasSearching && (PathEquals(CurrentPath, ComputerPath) || Directory.Exists(CurrentPath)))
         {
+            _computerSearchRoots = null;
             await NavigateAsync(CurrentPath, false);
         }
     }
@@ -747,6 +761,7 @@ public partial class MainPageViewModel : ObservableObject, IDisposable
             _folderWatcher = null;
             IsRecycleBinView = false;
             IsComputerView = true;
+            _computerSearchRoots = null;
             CurrentPath = ComputerPath;
             StatusText = $"{entries.Count} drive{(entries.Count == 1 ? string.Empty : "s")}";
             if (entriesChanged)

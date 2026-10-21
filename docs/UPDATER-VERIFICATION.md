@@ -51,7 +51,7 @@ Its file check looked for the two helper executables beneath `current/`; the fin
 compares their actual deployment paths. The capture script is retained at
 `artifacts/Capture-InstalledUpgrade-0.5.3.ps1`.
 
-## Updater hardening in the 0.5.4 source candidate
+## Updater hardening prepared in 0.5.4, included in the 0.5.5 candidate
 
 These changes are **unreleased** and are not part of the installed 0.5.3 binaries:
 

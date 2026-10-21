@@ -5,7 +5,16 @@ using System.Text;
 
 namespace WinThunar.Services;
 
-public sealed record TransferRecoveryResult(int RecoveredOperations, IReadOnlyList<string> Errors);
+public sealed record TransferRecoveryIssue(string JournalPath, string Message,
+    string? SourcePath = null, string? DestinationPath = null, string? StagedPath = null,
+    string? BackupPath = null, string? SourceRecoveryPath = null);
+
+public sealed record TransferRecoveryResult(int RecoveredOperations, IReadOnlyList<string> Errors)
+{
+    public IReadOnlyList<TransferRecoveryIssue> Issues { get; init; } = [];
+    public int ActiveOperations { get; init; }
+    public bool RecoveryBusy { get; init; }
+}
 
 public sealed class TransferRecoveryService
 {
@@ -20,6 +29,11 @@ public sealed class TransferRecoveryService
             "WinThunar",
             "TransferRecovery");
     }
+
+    // Recovery uses the journal-wide process lease, while its instance lock stays separate from
+    // live operations. A disconnected provider must not block another window's history cleanup
+    // or registration of a new transfer behind the recovery worker's instance lock.
+    internal TransferRecoveryService CreateRecoveryWorker() => new(_journalDirectory);
 
     public string Register(
         string sourcePath,
@@ -66,6 +80,32 @@ public sealed class TransferRecoveryService
         }
     }
 
+    internal void RecordPreparedDestination(string id, PathStateSnapshot state)
+    {
+        lock (_sync)
+        {
+            var path = RecordPath(id);
+            var record = JsonSerializer.Deserialize<RecoveryRecord>(File.ReadAllText(path))
+                ?? throw new InvalidDataException("The recovery record is empty.");
+            var temporary = path + ".new";
+            File.WriteAllText(temporary, JsonSerializer.Serialize(record with { PreparedDestination = state }));
+            File.Move(temporary, path, true);
+        }
+    }
+
+    internal void ConfirmSourceCleanup(string id)
+    {
+        lock (_sync)
+        {
+            var path = RecordPath(id);
+            var record = JsonSerializer.Deserialize<RecoveryRecord>(File.ReadAllText(path))
+                ?? throw new InvalidDataException("The recovery record is empty.");
+            var temporary = path + ".new";
+            File.WriteAllText(temporary, JsonSerializer.Serialize(record with { SourceRecoveryPath = null }));
+            File.Move(temporary, path, true);
+        }
+    }
+
     public void Complete(string id)
     {
         lock (_sync)
@@ -101,6 +141,8 @@ public sealed class TransferRecoveryService
 
         var recovered = 0;
         var errors = new List<string>();
+        var issues = new List<TransferRecoveryIssue>();
+        var active = 0;
         // A recovering process also needs exclusive ownership. The originating transfer may
         // already be dead, so its PID alone cannot prevent concurrent restart recovery.
         var journalIdentity = Path.GetFullPath(_journalDirectory).TrimEnd(Path.DirectorySeparatorChar).ToUpperInvariant();
@@ -115,21 +157,26 @@ public sealed class TransferRecoveryService
             return new TransferRecoveryResult(0, [$"Could not acquire the recovery lease: {ex.Message}"]);
         }
         using var ownedLease = lease!;
-        if (!acquired) return new TransferRecoveryResult(0, []);
+        if (!acquired) return new TransferRecoveryResult(0, []) { RecoveryBusy = true };
         try
         {
             lock (_sync)
             {
                 foreach (var path in Directory.EnumerateFiles(_journalDirectory, "*.json").ToArray())
                 {
+                    RecoveryRecord? record = null;
                     try
                     {
-                        var record = JsonSerializer.Deserialize<RecoveryRecord>(File.ReadAllText(path))
+                        record = JsonSerializer.Deserialize<RecoveryRecord>(File.ReadAllText(path))
                             ?? throw new InvalidDataException("The recovery record is empty.");
-                        if (skipActiveProcesses && IsOwnerAlive(record)) continue;
+                        // The lease prevents overlapping recoveries. A failed recovery claimed by
+                        // this process is retryable, while live transfers/history remain protected.
+                        var ownRecovery = record.RecoveryClaimed && record.OwnerProcessId == Environment.ProcessId &&
+                            record.OwnerStartTicks == ProcessStartTicks;
+                        if (skipActiveProcesses && !ownRecovery && IsOwnerAlive(record)) { active++; continue; }
                         // Persist the recovery owner before mutating filesystem items. Atomic
                         // replacement leaves the previous complete record if writing is interrupted.
-                        record = record with { OwnerProcessId = Environment.ProcessId, OwnerStartTicks = ProcessStartTicks };
+                        record = record with { OwnerProcessId = Environment.ProcessId, OwnerStartTicks = ProcessStartTicks, RecoveryClaimed = true };
                         var claim = path + ".new";
                         File.WriteAllText(claim, JsonSerializer.Serialize(record));
                         File.Move(claim, path, true);
@@ -140,13 +187,19 @@ public sealed class TransferRecoveryService
                     catch (Exception ex)
                     {
                         errors.Add($"{Path.GetFileName(path)}: {ex.Message}");
+                        issues.Add(new(path, ex.Message, record?.SourcePath, record?.DestinationPath,
+                            record?.StagedPath, record?.BackupPath, record?.SourceRecoveryPath));
                     }
                 }
             }
         }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+        {
+            errors.Add($"Could not read recovery records: {ex.Message}");
+        }
         finally { ownedLease.ReleaseMutex(); }
 
-        return new TransferRecoveryResult(recovered, errors);
+        return new TransferRecoveryResult(recovered, errors) { Issues = issues, ActiveOperations = active };
     }
 
     private static long ReadCurrentProcessStart()
@@ -181,6 +234,11 @@ public sealed class TransferRecoveryService
             ValidateTemporarySibling(record.SourceRecoveryPath, record.SourcePath);
         }
 
+        // Missing leaves do not establish that an unavailable share/device contains no staging
+        // data. Prove the containing folders are accessible before interpreting absence.
+        RequireAvailableParent(record.DestinationPath);
+        if (!string.IsNullOrWhiteSpace(record.SourceRecoveryPath)) RequireAvailableParent(record.SourcePath);
+
         // A completed transfer's undo data expires with the process/window history.
         if (record.Retained)
         {
@@ -193,6 +251,16 @@ public sealed class TransferRecoveryService
             Delete(record.BackupPath);
             DeleteEmptyBackupRoot(record.BackupRoot);
             return;
+        }
+
+        // The destination name alone does not prove promotion completed. Another application
+        // may have occupied it or edited it after the crash. Preserve displaced originals until
+        // the complete staged content (including streams) is proven at the destination.
+        if (Exists(record.DestinationPath) && (Exists(record.BackupPath) || Exists(record.SourceRecoveryPath)))
+        {
+            if (record.PreparedDestination is null ||
+                !FileOperationService.PathMatchesState(record.DestinationPath, record.PreparedDestination))
+                throw new IOException("The destination cannot be verified as the completed transfer. All copies and the recovery record were retained for review.");
         }
 
         if (Exists(record.SourceRecoveryPath) && !Exists(record.DestinationPath))
@@ -250,6 +318,14 @@ public sealed class TransferRecoveryService
     private static void DeleteEmptyBackupRoot(string? path)
     {
         if (path is not null && Directory.Exists(path) && !Directory.EnumerateFileSystemEntries(path).Any()) Directory.Delete(path);
+    }
+
+    private static void RequireAvailableParent(string path)
+    {
+        var parent = Path.GetDirectoryName(Path.GetFullPath(path))
+            ?? throw new InvalidDataException("A recovery path has no parent folder.");
+        if (!File.GetAttributes(parent).HasFlag(FileAttributes.Directory))
+            throw new IOException("A recovery parent is not an available folder.");
     }
 
     private static void ValidateBackupRoot(string rootPath, string backupPath, string destinationPath)
@@ -321,5 +397,7 @@ public sealed class TransferRecoveryService
         bool Retained = false,
         int OwnerProcessId = 0,
         long OwnerStartTicks = 0,
-        bool FinishStagedMoveOnSourceConflict = false);
+        bool FinishStagedMoveOnSourceConflict = false,
+        bool RecoveryClaimed = false,
+        PathStateSnapshot? PreparedDestination = null);
 }

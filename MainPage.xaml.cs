@@ -777,7 +777,7 @@ public sealed partial class MainPage : Page
         content.Children.Add(size);
         content.Children.Add(type);
         content.Children.Add(modified);
-        var dialog = new ContentDialog
+        var dialog = new ThemedContentDialog
         {
             Title = "Configure Columns",
             Content = content,
@@ -927,7 +927,7 @@ public sealed partial class MainPage : Page
             }
         }
 
-        var dialog = new ContentDialog
+        var dialog = new ThemedContentDialog
         {
             Title = "Configure Toolbar",
             Content = content,
@@ -1730,7 +1730,7 @@ public sealed partial class MainPage : Page
         content.Children.Add(new TextBlock { Text = "Preview", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
         content.Children.Add(previewScroll);
 
-        var dialog = new ContentDialog
+        var dialog = new ThemedContentDialog
         {
             Title = $"Bulk Rename {selected.Count} Items",
             Content = content,
@@ -1833,7 +1833,7 @@ public sealed partial class MainPage : Page
 
         if (_confirmMoveToTrash)
         {
-            var confirmation = new ContentDialog
+            var confirmation = new ThemedContentDialog
             {
                 Title = "Move to Recycle Bin?",
                 Content = $"Move {selected.Count} selected item{(selected.Count == 1 ? string.Empty : "s")} to the Windows Recycle Bin?",
@@ -1875,7 +1875,7 @@ public sealed partial class MainPage : Page
             itemNames += $", and {selected.Count - 3} more";
         }
 
-        var dialog = new ContentDialog
+        var dialog = new ThemedContentDialog
         {
             XamlRoot = XamlRoot,
             Title = "Permanently Delete?",
@@ -2084,7 +2084,7 @@ public sealed partial class MainPage : Page
             TextWrapping = TextWrapping.Wrap
         });
 
-        var dialog = new ContentDialog
+        var dialog = new ThemedContentDialog
         {
             XamlRoot = XamlRoot,
             Title = "Properties",
@@ -2108,8 +2108,23 @@ public sealed partial class MainPage : Page
         return unit == 0 ? $"{bytes:N0} {units[unit]}" : $"{value:N1} {units[unit]}";
     }
 
-    private async void Preferences_Click(object sender, RoutedEventArgs e)
+    private ContentDialog? _preferencesDialog;
+
+    private async void Preferences_Click(object sender, RoutedEventArgs e) => await ShowPreferencesAsync();
+
+    private async Task ShowPreferencesAsync()
     {
+        if (_preferencesDialog is not null) return;
+        var originalTheme = App.ThemePreference;
+        var theme = new ComboBox
+        {
+            Header = "Theme",
+            ItemsSource = new[] { "System", "Light", "Dark" },
+            SelectedIndex = (int)originalTheme,
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(theme, "Color theme");
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetHelpText(theme, "Choose System, Light, or Dark. Apply changes all WinThunar windows.");
         var thumbnails = new CheckBox { Content = "Show Windows thumbnails", IsChecked = ViewModel.ShowThumbnails };
         var foldersFirst = new CheckBox { Content = "Sort folders before files", IsChecked = ViewModel.FoldersFirst };
         var recursiveSearch = new CheckBox { Content = "Include subfolders in search", IsChecked = ViewModel.IncludeSubfolders };
@@ -2117,8 +2132,12 @@ public sealed partial class MainPage : Page
         var restoreTabs = new CheckBox { Content = "Restore tabs on startup", IsChecked = _restoreTabs };
         var singleClick = new CheckBox { Content = "Single click opens files and folders", IsChecked = _singleClickActivation };
         var rememberFolders = new CheckBox { Content = "Remember view, zoom, and sorting for each folder", IsChecked = _rememberFolderViews };
-        var previewImages = new CheckBox { Content = "Show image and text preview side pane", IsChecked = _showImagePreview };
+        var previewImages = new CheckBox { Content = "Show preview side pane", IsChecked = _showImagePreview };
+#if ROADMAP_SMOKE_TEST
+        var shellSupported = false; // Preferences tests must never change the user's Explorer registration.
+#else
         var shellSupported = ShellRegistrationService.IsSupported && Environment.ProcessPath is not null;
+#endif
         var shellRegistration = new ShellRegistrationService(Environment.ProcessPath ?? string.Empty);
         var openVerb = new CheckBox
         {
@@ -2138,8 +2157,7 @@ public sealed partial class MainPage : Page
                 ? $"Applies to your Windows account only and can be turned off here or with \"WinThunar.exe {ShellRegistrationService.UnregisterSwitch}\". Turn it off before moving or deleting WinThunar."
                 : "Windows integration is available in the portable build.",
             TextWrapping = TextWrapping.Wrap,
-            MaxWidth = 430,
-            Foreground = (Brush)Application.Current.Resources["SystemControlForegroundBaseMediumBrush"]
+            MaxWidth = 430
         };
         var updates = App.Updates;
         var checkForUpdates = new CheckBox
@@ -2156,8 +2174,7 @@ public sealed partial class MainPage : Page
                     : "Checks once a day. Updates download in the background and install when you close WinThunar."
                 : "Automatic updates are available in the installed version of WinThunar.",
             TextWrapping = TextWrapping.Wrap,
-            MaxWidth = 430,
-            Foreground = (Brush)Application.Current.Resources["SystemControlForegroundBaseMediumBrush"]
+            MaxWidth = 430
         };
         var defaultView = new ComboBox
         {
@@ -2173,6 +2190,13 @@ public sealed partial class MainPage : Page
 
         var content = new StackPanel { Spacing = 10, MinWidth = 430 };
         content.Children.Add(new TextBlock { Text = "Display", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+        content.Children.Add(theme);
+        content.Children.Add(new TextBlock
+        {
+            Text = "System follows your Windows app color setting. Applies to all WinThunar windows.",
+            TextWrapping = TextWrapping.Wrap,
+            MaxWidth = 430
+        });
         content.Children.Add(defaultView);
         content.Children.Add(thumbnails);
         content.Children.Add(foldersFirst);
@@ -2191,16 +2215,21 @@ public sealed partial class MainPage : Page
         content.Children.Add(checkForUpdates);
         content.Children.Add(updatesNote);
 
-        var dialog = new ContentDialog
+        var dialog = new ThemedContentDialog
         {
             Title = "WinThunar Preferences",
-            Content = content,
+            Content = new ScrollViewer { Content = content, VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, MaxHeight = 520 },
             PrimaryButtonText = "Apply",
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = XamlRoot
         };
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        _preferencesDialog = dialog;
+        ContentDialogResult preferenceResult;
+        try { preferenceResult = await dialog.ShowAsync(); }
+        finally { _preferencesDialog = null; }
+        if (preferenceResult != ContentDialogResult.Primary)
         {
             return;
         }
@@ -2233,6 +2262,13 @@ public sealed partial class MainPage : Page
         if (updates.IsSupported && updates.Settings.CheckAutomatically != (checkForUpdates.IsChecked == true))
         {
             updates.SetCheckAutomatically(checkForUpdates.IsChecked == true);
+        }
+        // Applying unrelated preferences from an older dialog must not revert another window's theme.
+        if (theme.SelectedIndex != (int)originalTheme)
+        {
+            try { App.SetThemePreference((AppThemePreference)theme.SelectedIndex); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            { ViewModel.StatusText = $"Could not save the color theme: {ex.Message}"; }
         }
     }
 
@@ -2270,9 +2306,9 @@ public sealed partial class MainPage : Page
         {
             Text = "WinThunar is not affiliated with or endorsed by the Xfce project.",
             TextWrapping = TextWrapping.Wrap,
-            Foreground = (Brush)Application.Current.Resources["SystemControlForegroundBaseMediumBrush"]
+            Style = (Style)Application.Current.Resources["SecondaryTextStyle"]
         });
-        var dialog = new ContentDialog
+        var dialog = new ThemedContentDialog
         {
             Title = "About WinThunar",
             Content = content,
@@ -2326,7 +2362,7 @@ public sealed partial class MainPage : Page
 
     private async Task ShowUpdateMessageAsync(string message, string title = "Check for Updates")
     {
-        var dialog = new ContentDialog
+        var dialog = new ThemedContentDialog
         {
             Title = title,
             Content = new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap, MaxWidth = 430, IsTextSelectionEnabled = true },
@@ -2419,7 +2455,7 @@ public sealed partial class MainPage : Page
         }
 
         var scroll = new ScrollViewer { Content = rows, MaxHeight = 430, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
-        var dialog = new ContentDialog
+        var dialog = new ThemedContentDialog
         {
             Title = "Keyboard Shortcuts",
             Content = scroll,
@@ -2497,7 +2533,7 @@ public sealed partial class MainPage : Page
             content.Children.Add(removeButton);
 
             var removeRequested = false;
-            var dialog = new ContentDialog
+            var dialog = new ThemedContentDialog
             {
                 Title = "Custom Actions",
                 Content = content,
@@ -2520,7 +2556,7 @@ public sealed partial class MainPage : Page
                 {
                     continue;
                 }
-                var confirmation = new ContentDialog
+                var confirmation = new ThemedContentDialog
                 {
                     Title = $"Remove {selected.Name}?",
                     Content = "This removes the custom action from WinThunar's context menu.",
@@ -2621,7 +2657,7 @@ public sealed partial class MainPage : Page
         content.Children.Add(targets);
         content.Children.Add(confirmation);
 
-        var dialog = new ContentDialog
+        var dialog = new ThemedContentDialog
         {
             Title = existing is null ? "Add Custom Action" : "Edit Custom Action",
             Content = content,
@@ -2681,7 +2717,7 @@ public sealed partial class MainPage : Page
             {
                 Text = $"{plugin.Description}\n{plugin.Actions.Count} action{(plugin.Actions.Count == 1 ? string.Empty : "s")}",
                 Margin = new Thickness(28, -5, 0, 4),
-                Foreground = (Brush)Application.Current.Resources["SystemControlForegroundBaseMediumBrush"],
+                Style = (Style)Application.Current.Resources["SecondaryTextStyle"],
                 TextWrapping = TextWrapping.Wrap
             });
         }
@@ -2690,7 +2726,7 @@ public sealed partial class MainPage : Page
             content.Children.Add(new TextBlock
             {
                 Text = "Diagnostics:\n" + string.Join(Environment.NewLine, _pluginService.Diagnostics),
-                Foreground = (Brush)Application.Current.Resources["SystemControlErrorTextForegroundBrush"],
+                Style = (Style)Application.Current.Resources["ErrorTextStyle"],
                 TextWrapping = TextWrapping.Wrap
             });
         }
@@ -2702,7 +2738,7 @@ public sealed partial class MainPage : Page
             TextWrapping = TextWrapping.Wrap
         });
 
-        var dialog = new ContentDialog
+        var dialog = new ThemedContentDialog
         {
             Title = "WinThunar Plugins",
             Content = new ScrollViewer { Content = content, MaxHeight = 480, VerticalScrollBarVisibility = ScrollBarVisibility.Auto },
@@ -2864,7 +2900,7 @@ public sealed partial class MainPage : Page
         }
         if (available.Action.RequiresConfirmation)
         {
-            var dialog = new ContentDialog
+            var dialog = new ThemedContentDialog
             {
                 Title = $"Run {available.Action.Name}?",
                 Content = $"Plugin: {available.Plugin.Name}\nSelected items: {selected.Count}",
@@ -3021,7 +3057,7 @@ public sealed partial class MainPage : Page
         content.Children.Add(album);
         content.Children.Add(track);
         content.Children.Add(year);
-        var dialog = new ContentDialog
+        var dialog = new ThemedContentDialog
         {
             Title = $"Edit Media Tags — {entry.Name}",
             Content = content,
@@ -3352,7 +3388,7 @@ public sealed partial class MainPage : Page
         }
 
         var choices = new ComboBox { Header = "Drive", ItemsSource = drives, SelectedIndex = 0, MinWidth = 280 };
-        var dialog = new ContentDialog
+        var dialog = new ThemedContentDialog
         {
             Title = "Eject Removable Drive",
             Content = choices,
@@ -3370,7 +3406,7 @@ public sealed partial class MainPage : Page
 
     private async void EmptyTrash_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new ContentDialog
+        var dialog = new ThemedContentDialog
         {
             Title = "Empty Recycle Bin?",
             Content = "All items in the Windows Recycle Bin will be permanently deleted.",
@@ -4377,7 +4413,7 @@ public sealed partial class MainPage : Page
     {
         if (_confirmMoveToTrash)
         {
-            var confirmation = new ContentDialog
+            var confirmation = new ThemedContentDialog
             {
                 Title = "Move to Recycle Bin?",
                 Content = $"Move {paths.Count} item{(paths.Count == 1 ? string.Empty : "s")} to the Windows Recycle Bin?",
@@ -4736,7 +4772,7 @@ public sealed partial class MainPage : Page
         content.Children.Add(choices);
         content.Children.Add(renameBox);
 
-        var dialog = new ContentDialog
+        var dialog = new ThemedContentDialog
         {
             XamlRoot = XamlRoot,
             Title = "File Conflict",
@@ -4774,7 +4810,7 @@ public sealed partial class MainPage : Page
         };
         var validationMessage = new TextBlock
         {
-            Foreground = (Brush)Application.Current.Resources["SystemControlErrorTextForegroundBrush"],
+            Style = (Style)Application.Current.Resources["ErrorTextStyle"],
             TextWrapping = TextWrapping.Wrap,
             Visibility = Visibility.Collapsed
         };
@@ -4789,7 +4825,7 @@ public sealed partial class MainPage : Page
         content.Children.Add(textBox);
         content.Children.Add(validationMessage);
 
-        var dialog = new ContentDialog
+        var dialog = new ThemedContentDialog
         {
             XamlRoot = XamlRoot,
             Title = title,
@@ -4896,7 +4932,7 @@ public sealed partial class MainPage : Page
 
     private async Task<bool> ConfirmWindowsAssistAsync(string title, string message, string continueText)
     {
-        var dialog = new ContentDialog
+        var dialog = new ThemedContentDialog
         {
             XamlRoot = XamlRoot,
             Title = title,
@@ -4925,7 +4961,7 @@ public sealed partial class MainPage : Page
 
     private async Task ShowMessageAsync(string title, string message)
     {
-        var dialog = new ContentDialog
+        var dialog = new ThemedContentDialog
         {
             XamlRoot = XamlRoot,
             Title = title,

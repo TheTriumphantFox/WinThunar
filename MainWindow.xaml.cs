@@ -27,6 +27,7 @@ public sealed partial class MainWindow : Window
     public MainWindow(LaunchRequest launchRequest)
     {
         InitializeComponent();
+        ApplyTheme(App.ThemePreference);
         var version = typeof(App).Assembly.GetName().Version;
         Title = version is null
             ? "WinThunar"
@@ -41,6 +42,17 @@ public sealed partial class MainWindow : Window
 
         // Navigate the root frame to the main page on startup.
         RootFrame.Navigate(typeof(MainPage), launchRequest);
+    }
+
+    internal void ApplyTheme(AppThemePreference preference)
+    {
+        RootFrame.RequestedTheme = App.GetElementTheme(preference);
+        AppWindow.TitleBar.PreferredTheme = preference switch
+        {
+            AppThemePreference.Light => Microsoft.UI.Windowing.TitleBarTheme.Light,
+            AppThemePreference.Dark => Microsoft.UI.Windowing.TitleBarTheme.Dark,
+            _ => Microsoft.UI.Windowing.TitleBarTheme.UseDefaultAppMode
+        };
     }
 
     private async void AppWindow_Closing(
@@ -66,7 +78,7 @@ public sealed partial class MainWindow : Window
         _closePromptOpen = true;
         try
         {
-            var dialog = new ContentDialog
+            var dialog = new ThemedContentDialog
             {
                 Title = "File work is still running",
                 Content = "Closing WinThunar will cancel active and queued transfers or interrupt recovery. Incomplete file work will be checked again the next time WinThunar starts.",

@@ -29,6 +29,14 @@ The last active layout is saved. **Edit > Preferences** can also remember view, 
 sorting separately for each folder. Single-click activation and the image-preview side pane
 are optional. Preferences take effect after **Apply**.
 
+**Unreleased source:** **Edit > Preferences > Display > Theme** offers **System**, **Light**, and
+**Dark**. Select a theme and choose **Apply** to update all open WinThunar windows, their title
+bars, and application dialogs. New windows and restarts retain the choice. **System** follows
+the Windows app color setting; **Cancel** keeps the previous choice. Appearance is stored
+separately in `%LOCALAPPDATA%\WinThunar\appearance.json`, so another window's session save cannot
+revert it. Missing or invalid appearance settings fall back to System. A failed save reports an
+error and keeps the previous theme. This control is not in the published 0.5.5 download.
+
 **Since 0.5.5:** **View > Preview Pane** supports images and bounded, selectable,
 read-only text. Text previews show at most 32,768 characters from supported text/configuration/
 source-code files; binary data, unsupported encodings, links, and online-only placeholders are

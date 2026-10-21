@@ -29,6 +29,28 @@ public partial class App : Application
     /// <summary>The process-wide updater shared by every window.</summary>
     public static UpdateService Updates { get; private set; } = null!;
 
+    public static AppThemePreference ThemePreference { get; private set; } = AppThemePreference.System;
+    private static AppearanceSettingsStore _appearanceStore = null!;
+    internal static event EventHandler? ThemeChanged;
+
+    internal static ElementTheme GetElementTheme(AppThemePreference preference) => preference switch
+    {
+        AppThemePreference.Light => ElementTheme.Light,
+        AppThemePreference.Dark => ElementTheme.Dark,
+        _ => ElementTheme.Default
+    };
+
+    public static void SetThemePreference(AppThemePreference preference)
+    {
+        if (!Enum.IsDefined(preference)) throw new ArgumentOutOfRangeException(nameof(preference));
+        if (preference == ThemePreference) return;
+        // Persist first: a failed save leaves both the visible and stored choice unchanged.
+        _appearanceStore.Save(new AppearanceSettings { Theme = preference });
+        ThemePreference = preference;
+        foreach (var window in OpenWindows.OfType<MainWindow>()) window.ApplyTheme(preference);
+        ThemeChanged?.Invoke(null, EventArgs.Empty);
+    }
+
     /// <summary>True while any window is copying or moving files, which a restart would cancel.</summary>
     public static bool HasPendingTransfers =>
         OpenWindows.OfType<MainWindow>().Any(window => window.Page?.HasPendingTransfers == true);
@@ -80,6 +102,14 @@ public partial class App : Application
     protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
     {
         DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
+#if ROADMAP_SMOKE_TEST
+        _appearanceStore = new AppearanceSettingsStore(Path.Combine(
+            Environment.GetEnvironmentVariable("WINTHUNAR_SMOKE_DIRECTORY")
+                ?? throw new InvalidOperationException("The desktop smoke test needs an isolated directory."), "appearance.json"));
+#else
+        _appearanceStore = new AppearanceSettingsStore();
+#endif
+        ThemePreference = _appearanceStore.Load().Theme;
         Updates = new UpdateService();
         TaskbarService.Initialize();
         Window = OpenWindow(_launchRequest);

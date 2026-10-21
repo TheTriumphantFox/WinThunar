@@ -55,6 +55,7 @@ installed application. The feature list below describes that release; sections m
 **unreleased source** describe work in the maintainer's local development checkout. These
 application changes are not yet in GitHub's `main` branch or a newer GitHub Release.
 See the [0.5.3 release candidate notes](docs/RELEASE-0.5.3.md) for the prepared milestone and verification limits.
+The version string alone does not establish that a local build matches published binaries.
 
 ### Daily-default improvements — unreleased 0.5.3 source
 

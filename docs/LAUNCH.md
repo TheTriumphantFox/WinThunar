@@ -19,6 +19,8 @@ that a person tried the application or continued using it.
 
 Update these statuses only after observing a successful submission or a public post URL.
 AlternativeTo submissions can remain pending review and are not public listings until approved.
+The earlier PR #12 record described the AlternativeTo copy as a draft with browser sign-in pending;
+the maintainer-confirmed submission status above supersedes that preparation state.
 
 ## A short workflow for testers
 

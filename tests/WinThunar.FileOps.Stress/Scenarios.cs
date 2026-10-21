@@ -8,9 +8,51 @@ internal static class Scenarios
 {
     internal static Task<ConflictResolution> Replace(FileConflict _) => Task.FromResult(new ConflictResolution(ConflictAction.Replace));
 
-    internal static async Task<string> RealDiskFull(Fixture fixture, DisposableVolume volume, FileTransferMode mode)
+    internal static async Task<string> RecoveryDoesNotBlockLiveJournalWrites(Fixture fixture)
     {
-        var allocated = volume.Fill(fixture);
+        var journal = new TransferRecoveryService(fixture.Journal);
+        var operations = new FileOperationService(journal);
+        var stage = Path.Combine(Path.GetDirectoryName(fixture.State.Destination)!, ".winthunar-responsiveness-fixture.tmp");
+        File.WriteAllText(stage, "partial generated data");
+        var id = journal.Register(fixture.State.Source, fixture.State.Destination, stage);
+        var recordPath = Path.Combine(fixture.Journal, id + ".json");
+        var record = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(recordPath))!;
+        record["OwnerProcessId"] = 0;
+        File.WriteAllText(recordPath, record.ToJsonString());
+        using var entered = new ManualResetEventSlim();
+        using var resume = new ManualResetEventSlim();
+        using var observation = new FileOperationFaultHooks.Scope(new(Checkpoint: point =>
+        {
+            if (point.Phase != "RecoveryBeforeDelete" || point.Source != stage) return;
+            entered.Set();
+            if (!resume.Wait(TimeSpan.FromSeconds(10))) throw new TimeoutException("Recovery test pause timed out.");
+        }));
+        var recovery = Task.Run(() => operations.RecoverInterruptedTransfers(skipActiveProcesses: true));
+        Task<string>? registration = null;
+        try
+        {
+            Fixture.Check(entered.Wait(TimeSpan.FromSeconds(5)), "Recovery did not reach the controlled pause.");
+            registration = Task.Run(() => journal.Register(fixture.State.Source, fixture.State.Destination,
+                Path.Combine(Path.GetDirectoryName(fixture.State.Destination)!, ".winthunar-live-fixture.tmp")));
+            var liveId = await registration.WaitAsync(TimeSpan.FromSeconds(2));
+            journal.Complete(liveId);
+        }
+        finally
+        {
+            resume.Set();
+            var result = await recovery;
+            Fixture.Check(result.Errors.Count == 0, string.Join("; ", result.Errors));
+            if (registration is not null) journal.Complete(await registration);
+        }
+        fixture.AssertOriginals();
+        fixture.AssertJournalEmpty();
+        fixture.AssertNoTemporaryItems();
+        return "A paused recovery worker did not hold the live service's journal lock; another transfer registered while recovery was still paused. Process lease and live-owner protection remained enabled.";
+    }
+
+    internal static async Task<string> RealDiskFull(Fixture fixture, DisposableVolume volume, FileTransferMode mode, bool requireProgress = false)
+    {
+        var allocated = volume.Fill(fixture, leaveRoomForMainStream: requireProgress);
         var progress = 0L;
         int? observedError = null;
         // Observe the real native error before the service turns it into a UI error string.
@@ -26,6 +68,8 @@ internal static class Scenarios
             Fixture.Check(observedError is 112 or 39, $"Expected a real native disk-full error (112/39), observed {observedError}: {string.Join("; ", result.Errors)}");
             Fixture.Check(!result.Succeeded && !result.Cancelled && result.Errors.Count > 0 && result.Transfers.Count == 0,
                 "Real disk-full was not reported as a failed transfer.");
+            Fixture.Check(!requireProgress || progress >= Fixture.PayloadBytes,
+                $"Disk-full occurred without the required completed main-stream progress ({progress} bytes). This does not establish failure after partial writes.");
         }
         fixture.AssertOriginals();
         // Release only this fixture's filler so recovery and a real retry have working space.

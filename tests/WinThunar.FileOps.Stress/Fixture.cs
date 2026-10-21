@@ -20,7 +20,8 @@ internal sealed class Fixture
 
     private Fixture(FixtureState state) => State = state;
 
-    internal static Fixture Create(string runRoot, string name, bool replace, bool merge = false, string? secondVolumeRoot = null, bool alternateStreams = true)
+    internal static Fixture Create(string runRoot, string name, bool replace, bool merge = false, string? secondVolumeRoot = null, bool alternateStreams = true,
+        bool largeAlternateStream = false)
     {
         var runId = File.ReadAllText(Path.Combine(runRoot, "run-id.txt")).Trim();
         var root = Path.GetFullPath(Path.Combine(runRoot, "fixtures", name));
@@ -51,6 +52,17 @@ internal sealed class Fixture
             File.WriteAllText(Path.Combine(destination, "keep.txt"), "unrelated destination item");
         }
         WritePayload(payloadSource, alternateStreams);
+        if (largeAlternateStream)
+        {
+            Check(alternateStreams, "A partial-write fixture requires an alternate stream.");
+            using (var stream = new FileStream(payloadSource + ":WinThunar.Stress", FileMode.Create, FileAccess.Write))
+            {
+                var block = new byte[128 * 1024];
+                new Random(71823).NextBytes(block);
+                for (var offset = 0; offset < PayloadBytes; offset += block.Length) stream.Write(block);
+            }
+            File.SetLastWriteTimeUtc(payloadSource, new DateTime(2020, 2, 3, 4, 5, 6, DateTimeKind.Utc));
+        }
         if (replace)
         {
             File.WriteAllText(payloadDestination, "old destination content");

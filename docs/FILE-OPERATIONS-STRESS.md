@@ -154,3 +154,50 @@ formats a newly created image and enables filling its disposable volume.
 
 Multi-item history remains window-local and is not crash-atomic. A process crash can leave part of
 a merge undone; successful recovery of individual records does not resume the window's history.
+
+## Additional unreleased reliability coverage
+
+The current source adds four **real disk-full-after-progress** cases to the disposable-VHD run.
+An 8 MiB main stream plus an 8 MiB alternate stream is copied to a target with room for only the
+main stream. All four Copy/Move and new/Replace combinations returned native error **112 after
+8,388,608 reported bytes** and passed original-data/stream, recovery, retry, and Undo checks.
+The updated VHD suite passed **40 cases, zero failed, two skipped** at
+`artifacts/fileops-realstorage-20261021-123301-d75f6d91/stress/report.json`; its image is detached.
+This establishes failure after main-stream writes, not exhaustion midway through that main stream.
+The older 0.5.3 results and both original images described above remain unchanged.
+
+Run the separate disposable loopback-SMB suite with:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-FileOperationsSmb.ps1
+```
+
+It builds before requesting UAC, creates a new uniquely named share over a generated local folder,
+and grants share access only to the current Windows account. Manifest, token, path, principal,
+and ordinary-directory checks guard every disconnect/reconnect/cleanup. It removes only that
+exact share while the native copy callback is paused after progress, then reconnects it for
+original-data checks, recovery, retry, and Undo. It never stops a service, changes firewall rules,
+closes an SMB session, or modifies existing shares. Share handles are invalidated using Windows'
+[Remove-SmbShare](https://learn.microsoft.com/en-us/powershell/module/smbshare/remove-smbshare)
+operation. Generated backing data and journals are preserved; the share is removed in `finally`.
+
+Five cases passed in `artifacts/fileops-smb-20261021-122213-2dabc5bc/stress/report.json`.
+All four Copy/Move and new/Replace interruptions returned native error **67 after 1,048,576
+reported bytes**. A fifth case disconnects the source after a replacement Move commits and verifies
+the completed destination is not rolled back by cleanup failure. Move's copy/delete route is forced
+only in the test build. These are real loopback-SMB outages, not injected errors; they do not prove
+remote-server restart, cable/Wi-Fi loss, network timeout, normal-token SMB permission handling,
+or physical removal. The ordinary baseline still skips these separately provisioned checks.
+
+The first SMB run found a cleanup bug: `File.Exists` treated the unavailable share as absent and
+new-file transfers deleted their journals while staging files remained. That failed run is preserved
+at `artifacts/fileops-smb-20261021-120613-89f15883/`. Cleanup/recovery now requires accessible parents
+before interpreting a missing stage, and records confirmed source cleanup before merge parents
+are removed. Recovery also retains displaced data unless the completed destination matches its
+recorded staged snapshot. See the [milestone](RELIABILITY-MILESTONE.md) for evidence and limits.
+
+A separate concurrency scenario pauses recovery before deleting its generated stage and verifies
+that a live transfer can still register its journal while recovery remains paused. Recovery uses
+its own service-instance lock and the shared process lease, so blocked storage does not monopolize
+the live operation service. With this case, the final normal-token baseline passed **30/0/5** at
+`artifacts/fileops-stress-20261021-123128-608859e2/report.json`.

@@ -99,6 +99,133 @@ public sealed partial class MainPage
             _history.Dispose();
             Require(!Directory.EnumerateDirectories(outgoing).Any(), "Expiring window history releases retained data", checks);
 
+            var recoveryJournal = Directory.CreateDirectory(Path.Combine(directory, "recovery")).FullName;
+            var brokenRecord = Path.Combine(recoveryJournal, "broken.json");
+            File.WriteAllText(brokenRecord, "{ deliberately invalid smoke record");
+            await RecoverTransfersAsync();
+            Require(RecoveryInfoBar.IsOpen && _recoveryResult.Errors.Count == 1,
+                "Recovery issues have a persistent review warning", checks);
+            Require(RecoveryDetails(_recoveryResult).Contains(brokenRecord),
+                "Recovery details identify the preserved journal", checks);
+            var recoveryDialog = ShowRecoveryDialogAsync();
+            await Task.Delay(200);
+            Require(_recoveryDialog is not null && _recoveryDialogOpen, "Interrupted Transfers dialog opens", checks);
+            var recoveryPanel = (StackPanel)_recoveryDialog!.Content;
+            var recoveryDetails = (TextBlock)recoveryPanel.Children.OfType<ScrollViewer>().Single().Content;
+            Require(recoveryDetails.IsTextSelectionEnabled && AutomationProperties.GetName(recoveryDetails) == "Interrupted transfer details",
+                "Recovery details are read-only and have an accessible name", checks);
+            await CaptureSmokeImageAsync(directory, "RecoveryDialog", _recoveryDialog);
+            _recoveryDialog.Hide();
+            await recoveryDialog;
+            Require(File.Exists(brokenRecord), "Review leaves ambiguous recovery records intact", checks);
+            File.Delete(brokenRecord); // Only this test's intentionally corrupt record.
+            await RecoverTransfersAsync();
+            Require(!RecoveryInfoBar.IsOpen, "Successful recovery retry clears the warning", checks);
+
+            await ViewModel.NavigateAsync(fixture);
+            await ViewModel.SearchAsync("type:txt content:\"Desktop smoke\"");
+            await Task.Delay(100);
+            Require(ViewModel.Entries.Count == 1, "Text-content search finds a phrase inside the fixture", checks);
+            await ViewModel.EndSearchAsync();
+            _showImagePreview = true;
+            ApplyImagePreview();
+            await UpdateImagePreviewAsync(ViewModel.Entries.Single());
+            Require(PreviewText.Visibility == Visibility.Visible && PreviewText.IsReadOnly && PreviewText.Text.Contains("Desktop smoke fixture"),
+                "Preview pane displays bounded read-only text", checks);
+            UpdateLayout();
+            await Task.Delay(100);
+            var filename = FindSmokeText(FileList.ContainerFromIndex(0), "example.txt");
+            Require(filename is not null && filename.ActualWidth >= 48,
+                "Detailed filenames keep visible space when the preview narrows the pane", checks);
+            await CaptureSmokeImageAsync(directory, "TextPreview");
+
+            var documents = Directory.CreateDirectory(Path.Combine(directory, "documents")).FullName;
+            var pdfPath = Path.Combine(documents, "preview.pdf");
+            WriteSmokePdf(pdfPath);
+            var pdfEntry = new FileSystemEntry("preview.pdf", pdfPath, false, "", "PDF document", "", "");
+            await UpdateImagePreviewAsync(pdfEntry);
+            UpdateLayout();
+            await Task.Delay(100);
+            checks.Add($"PDF render diagnostics: {((PreviewImage.Source as BitmapImage)?.PixelWidth)}x{((PreviewImage.Source as BitmapImage)?.PixelHeight)}, {PdfPageNumber.Text}, {PreviewStatus.Text}");
+            Require(PreviewImage.Source is BitmapImage firstPage && firstPage.PixelWidth > 0 && firstPage.PixelWidth <= PdfFilePreview.MaximumRenderPixels &&
+                firstPage.PixelHeight <= PdfFilePreview.MaximumRenderPixels && PdfPageNumber.Text == "Page 1 of 2" && !PdfPreviousPage.IsEnabled && PdfNextPage.IsEnabled,
+                "Native PDF preview renders the first page within the pixel limit", checks);
+            Require(AutomationProperties.GetName(PdfNextPage) == "Next PDF page" && AutomationProperties.GetLiveSetting(PdfPageNumber) == Microsoft.UI.Xaml.Automation.Peers.AutomationLiveSetting.Polite,
+                "PDF navigation has accessible names and announces page changes", checks);
+            PdfNextPage_Click(PdfNextPage, new RoutedEventArgs());
+            for (var attempt = 0; attempt < 100 && (_pdfPageIndex != 1 || _pdfPreviewEntry is null); attempt++) await Task.Delay(30);
+            Require(PdfPageNumber.Text == "Page 2 of 2" && PdfPreviousPage.IsEnabled && !PdfNextPage.IsEnabled,
+                "Next PDF page reaches the final page and disables Next", checks);
+            PdfPreviousPage_Click(PdfPreviousPage, new RoutedEventArgs());
+            for (var attempt = 0; attempt < 100 && (_pdfPageIndex != 0 || _pdfPreviewEntry is null); attempt++) await Task.Delay(30);
+            Require(PdfPageNumber.Text == "Page 1 of 2" && !PdfPreviousPage.IsEnabled,
+                "Previous PDF page returns to the first page", checks);
+            UpdateLayout();
+            await Task.Delay(100);
+            await CaptureSmokeImageAsync(directory, "PdfPreview");
+            using (var exclusive = new FileStream(pdfPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+                Require(exclusive.Length > 0, "PDF preview releases the source handle after rendering", checks);
+            using (var cancelled = new CancellationTokenSource())
+            {
+                cancelled.Cancel();
+                try { await PdfFilePreview.ReadAsync(pdfPath, 0, cancelled.Token); throw new InvalidOperationException("PDF cancellation was ignored."); }
+                catch (OperationCanceledException) { checks.Add("PDF preview observes cancellation"); }
+            }
+            try { await PdfFilePreview.ReadAsync(pdfPath, 2, default); throw new InvalidOperationException("Invalid PDF page was accepted."); }
+            catch (IOException) { checks.Add("PDF preview rejects an unavailable page"); }
+            var malformedPdf = Path.Combine(documents, "malformed.pdf");
+            File.WriteAllText(malformedPdf, "This is not a PDF document.");
+            await UpdateImagePreviewAsync(new FileSystemEntry("malformed.pdf", malformedPdf, false, "", "PDF document", "", ""));
+            Require(PreviewImage.Source is null && PdfPageControls.Visibility == Visibility.Collapsed && PreviewStatus.Text.StartsWith("Preview unavailable:"),
+                "Malformed PDF reports an error without leaving an old image or page controls", checks);
+            var oversizedPdf = Path.Combine(documents, "oversized.pdf");
+            using (var oversized = File.Create(oversizedPdf)) oversized.SetLength(PdfFilePreview.MaximumFileBytes + 1L);
+            await UpdateImagePreviewAsync(new FileSystemEntry("oversized.pdf", oversizedPdf, false, "", "PDF document", "", ""));
+            Require(PreviewStatus.Text.Contains("64 MiB"), "PDF preview rejects oversized input before parsing", checks);
+            File.Delete(oversizedPdf); // Only the generated size-limit fixture.
+            var pendingPdf = UpdateImagePreviewAsync(pdfEntry);
+            await UpdateImagePreviewAsync(ViewModel.Entries.Single());
+            await pendingPdf;
+            Require(PreviewText.Visibility == Visibility.Visible && PreviewImage.Source is null && PdfPageControls.Visibility == Visibility.Collapsed,
+                "A newer selection supersedes an unfinished PDF preview", checks);
+            File.Delete(pdfPath);
+            File.Delete(malformedPdf);
+            await ViewModel.SearchAsync("index:true name:example type:txt");
+            Require(!ViewModel.IsBusy && ViewModel.StatusText.StartsWith("Windows index:"),
+                "Native read-only Windows index query completes with an explicit coverage warning", checks);
+            Require(ViewModel.Entries.All(match => match.FullPath.StartsWith(fixture + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)),
+                "Native Windows index results stay inside the requested fixture scope", checks);
+            checks.Add($"Generated index fixture matches: {ViewModel.Entries.Count} (index inclusion is controlled by Windows)");
+            await ViewModel.EndSearchAsync();
+            // Read at most one existing file's metadata to exercise a non-empty native rowset.
+            // No filename/path/content is logged or shown, and the index configuration is untouched.
+            var indexProbe = await Task.Run(() => new IndexedFileSearchService().Search(
+                [Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)], FileSearchQuery.Parse("type:file"),
+                false, _ => { }, maximumResults: 1));
+            checks.Add(indexProbe.ResultCount == 1 ? "Native Windows index returned and validated a filesystem metadata row" :
+                "No accessible indexed user-profile file was available for a positive-row probe");
+            await ViewModel.SearchAsync("index:true content:\"Desktop smoke\" type:txt");
+            Require(ViewModel.StatusText.StartsWith("Windows index:"), "Native index accepts a quoted document-content query", checks);
+            await ViewModel.EndSearchAsync();
+            _showImagePreview = false;
+            ApplyImagePreview();
+
+            // Use generated folders as synthetic drive roots; never recursively search real drives
+            // merely to prove This PC's routing and scope retention across successive queries.
+            ViewModel.CurrentPath = ViewModels.MainPageViewModel.ComputerPath;
+            ViewModel.IsComputerView = true;
+            ViewModel.Entries.Clear();
+            ViewModel.Entries.Add(new FileSystemEntry("Fixture drive", fixture, true, "", "Drive", "", ""));
+            await ViewModel.SearchAsync("content:\"Desktop smoke\" type:txt");
+            await Task.Delay(100);
+            Require(ViewModel.Entries.Count == 1 && !ViewModel.IsComputerView,
+                "This PC search returns actionable filesystem matches from its drive roots", checks);
+            await ViewModel.SearchAsync("content:nonexistent-phrase type:txt");
+            Require(ViewModel.Entries.Count == 0, "This PC retains its original scope for the next query", checks);
+            await ViewModel.EndSearchAsync();
+            Require(ViewModel.IsComputerView && !ViewModel.IsSearchMode, "Closing This PC search restores the drive listing", checks);
+            await ViewModel.NavigateAsync(fixture);
+
             Require(TaskbarService.LastError is null, "Windows accepted the jump-list tasks", checks);
             checks.Add(NotificationService.LastError is null ? "Windows notification registration succeeded" : "Notification registration unavailable: " + NotificationService.LastError);
         }
@@ -117,10 +244,51 @@ public sealed partial class MainPage
         checks.Add(description);
     }
 
-    private async Task CaptureSmokeImageAsync(string directory, string name)
+    private static void WriteSmokePdf(string path)
+    {
+        static string Page(string label) => $"BT /F1 20 Tf 32 160 Td ({label}) Tj ET";
+        var first = Page("WINTHUNAR PDF PREVIEW");
+        var second = Page("SECOND PAGE");
+        string[] objects =
+        [
+            "<< /Type /Catalog /Pages 2 0 R >>",
+            "<< /Type /Pages /Kids [3 0 R 5 0 R] /Count 2 >>",
+            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 360 240] /Resources << /Font << /F1 7 0 R >> >> /Contents 4 0 R >>",
+            $"<< /Length {first.Length} >>\nstream\n{first}\nendstream",
+            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 360 240] /Resources << /Font << /F1 7 0 R >> >> /Contents 6 0 R >>",
+            $"<< /Length {second.Length} >>\nstream\n{second}\nendstream",
+            "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"
+        ];
+        var pdf = new System.Text.StringBuilder("%PDF-1.4\n");
+        var offsets = new List<int> { 0 };
+        for (var index = 0; index < objects.Length; index++)
+        {
+            offsets.Add(pdf.Length);
+            pdf.Append($"{index + 1} 0 obj\n{objects[index]}\nendobj\n");
+        }
+        var xref = pdf.Length;
+        pdf.Append($"xref\n0 {offsets.Count}\n0000000000 65535 f \n");
+        foreach (var offset in offsets.Skip(1)) pdf.Append($"{offset:D10} 00000 n \n");
+        pdf.Append($"trailer\n<< /Size {offsets.Count} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n");
+        File.WriteAllText(path, pdf.ToString(), System.Text.Encoding.ASCII);
+    }
+
+    private static TextBlock? FindSmokeText(DependencyObject? root, string text)
+    {
+        if (root is TextBlock block && block.Text == text) return block;
+        if (root is null) return null;
+        for (var index = 0; index < Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChildrenCount(root); index++)
+        {
+            var found = FindSmokeText(Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChild(root, index), text);
+            if (found is not null) return found;
+        }
+        return null;
+    }
+
+    private async Task CaptureSmokeImageAsync(string directory, string name, UIElement? element = null)
     {
         var bitmap = new RenderTargetBitmap();
-        await bitmap.RenderAsync(this);
+        await bitmap.RenderAsync(element ?? this);
         var pixels = await bitmap.GetPixelsAsync();
         var folder = await StorageFolder.GetFolderFromPathAsync(directory);
         var file = await folder.CreateFileAsync(name + ".png", CreationCollisionOption.ReplaceExisting);

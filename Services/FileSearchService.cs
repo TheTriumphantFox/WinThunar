@@ -11,7 +11,13 @@ public sealed record FileSearchMatch(
 public sealed record FileSearchSummary(
     int ResultCount,
     int SkippedDirectories,
-    bool LimitReached);
+    bool LimitReached)
+{
+    public int SkippedContentFiles { get; init; }
+    public bool UsedWindowsIndex { get; init; }
+    public bool IndexCandidateLimitReached { get; init; }
+    public int SkippedIndexEntries { get; init; }
+}
 
 public sealed class FileSearchService
 {
@@ -35,22 +41,39 @@ public sealed class FileSearchService
             throw new DirectoryNotFoundException($"Folder not found: {rootPath}");
         }
 
+        return SearchRoots([rootPath], query, showHiddenFiles, reportBatch, cancellationToken, maximumResults, includeSubfolders);
+    }
+
+    public FileSearchSummary SearchRoots(
+        IEnumerable<string> rootPaths, string query, bool showHiddenFiles,
+        Action<IReadOnlyList<FileSearchMatch>> reportBatch, CancellationToken cancellationToken = default,
+        int maximumResults = DefaultMaximumResults, bool includeSubfolders = true)
+    {
+        ArgumentNullException.ThrowIfNull(rootPaths);
+        ArgumentException.ThrowIfNullOrWhiteSpace(query);
+        ArgumentNullException.ThrowIfNull(reportBatch);
+
         if (maximumResults <= 0)
         {
             throw new ArgumentOutOfRangeException(nameof(maximumResults));
         }
 
         var parsedQuery = FileSearchQuery.Parse(query);
+        if (parsedQuery.UseWindowsIndex)
+            return new IndexedFileSearchService().Search(rootPaths, parsedQuery, showHiddenFiles, reportBatch, cancellationToken, maximumResults, includeSubfolders);
         var pendingDirectories = new Stack<string>();
         var batch = new List<FileSearchMatch>(BatchSize);
         var resultCount = 0;
         var skippedDirectories = 0;
+        var skippedContentFiles = 0;
         var limitReached = false;
-        pendingDirectories.Push(Path.GetFullPath(rootPath));
+        foreach (var root in rootPaths.Reverse()) pendingDirectories.Push(Path.GetFullPath(root));
+        var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         while (pendingDirectories.TryPop(out var directory))
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (!visited.Add(Path.TrimEndingDirectorySeparator(directory))) continue;
             IEnumerator<string> children;
             try
             {
@@ -103,6 +126,15 @@ public sealed class FileSearchService
                         info.LastWriteTime,
                         isDirectory ? string.Empty : info.Extension);
                     if (!parsedQuery.Matches(match)) continue;
+                    if (parsedQuery.ContentTerms.Count > 0)
+                    {
+                        if (isDirectory) continue;
+                        if (!TextFileContent.Contains(childPath, parsedQuery.ContentTerms, cancellationToken, out var skipped))
+                        {
+                            if (skipped) skippedContentFiles++;
+                            continue;
+                        }
+                    }
                     batch.Add(match);
                     resultCount++;
 
@@ -134,7 +166,7 @@ public sealed class FileSearchService
             reportBatch(batch.ToArray());
         }
 
-        return new FileSearchSummary(resultCount, skippedDirectories, limitReached);
+        return new FileSearchSummary(resultCount, skippedDirectories, limitReached) { SkippedContentFiles = skippedContentFiles };
     }
 
     private static bool IsHidden(string name, FileAttributes attributes) =>

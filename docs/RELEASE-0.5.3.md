@@ -69,6 +69,9 @@ content hashes. The 0.5.0 full package is preserved with its original hash.
 
 Historical 0.6.0 packages and generic assets were archived intact outside the upload directory in
 `artifacts/unpublished-preview-0.6.0-before-0.5.3/`. Local verification evidence is in
-`artifacts/verification-0.5.3/`. The release is stable and marked latest. An end-to-end installed
-upgrade remains unverified; delta reconstruction and public feed checks do not establish that UI workflow.
+`artifacts/verification-0.5.3/`. The release is stable and marked latest. Subsequent read-only inspection
+confirmed the existing all-users 0.5.0 to 0.5.3 full-package upgrade in updater logs and verified all
+524 deployed file hashes. A controlled UI repeat, per-user apply-on-close, and installed delta updates
+remain unverified. The original MSI product entry still reports 0.5.0.0 while Velopack's uninstall
+entry reports 0.5.3. See [updater verification](UPDATER-VERIFICATION.md) for evidence and limits.
 See [release publishing](RELEASES.md).

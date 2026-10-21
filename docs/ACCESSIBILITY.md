@@ -87,3 +87,21 @@ check.
 
 Keep these checks open until observed on the relevant Windows configuration. Update this
 page and the roadmap when the support is released or the manual checks are completed.
+
+## Additional unreleased desktop coverage
+
+The current source smoke harness also checks the recovery warning/dialog and accessible,
+selectable recovery details; preserved corrupt journals; text-content search; a read-only text
+preview; visible filename width with the preview open; and This PC search scope/return behavior.
+This PC tests use generated folders as synthetic drive roots and do not recursively search the
+user's drives. The updated assertions pass and rendered recovery/preview views were inspected.
+See [reliability evidence](RELIABILITY-MILESTONE.md). These checks do not close the manual
+screen-reader, contrast, scaling, Shell, notification, or pointer-workflow checklist above.
+
+The document-preview extension checks native two-page PDF rendering, accessible Previous/Next
+names, a polite page-number live region, first/final-page button states, malformed/oversized
+input, source-handle release, and selection cancellation. Rendered PDF controls were inspected
+at this machine's 125% display scale. The preview is an image of the page; it does not expose
+extracted PDF body text to a screen reader. The native index query is also checked, with an
+explicit coverage warning and a separate read-only metadata probe; this does not establish
+document-filter coverage or screen-reader result announcements.

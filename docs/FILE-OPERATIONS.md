@@ -103,3 +103,22 @@ history checkpoints. It reports real-volume and physical-storage coverage separa
 leases its journal to one process and protects staged incoming history data when overlapping records
 restore their paths in either order. A mismatched stage or an ambiguous older record is retained for
 attention instead of being discarded.
+
+## Unreleased recovery improvements
+
+The 0.5.5 source candidate adds a persistent warning for recovery failures and
+**Help > Interrupted Transfers...**. The dialog shows selectable details, including the source,
+destination, retained-copy paths, and journal path. Reconnect unavailable storage or close apps
+locking these files, then select **Retry recovery**. Active transfers and window Undo data stay
+protected; a failed recovery claimed by the current process can be retried safely.
+
+Recovery runs off the UI thread. It verifies containing folders before treating private staging
+data as absent, so a disconnected share cannot cause silent journal deletion. New replacement and
+history-move journals record the complete staged content before destructive renames. A destination
+that changed, or an older ambiguous journal without proof of promotion, leaves all displaced copies
+and the journal intact for review. There is no force-discard action in this dialog.
+
+Real loopback-SMB tests reproduced and fixed missing staging-journal tracking, including loss of
+the source share after a replacement Move commits. Real VHD tests now cover error 112 after 8 MiB
+of main-stream progress. These additions do not make multi-item history crash-atomic or persistent.
+See the [reliability milestone](RELIABILITY-MILESTONE.md).

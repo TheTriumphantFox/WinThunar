@@ -57,6 +57,13 @@ portable copies are updated manually. Documentation and website updates alone do
 See the [0.5.3 release notes](docs/RELEASE-0.5.3.md) for verification and remaining limits.
 The version string alone does not establish that a local build matches published binaries.
 
+The unpublished **0.5.5 source candidate** adds updater error handling, an Interrupted Transfers
+review/retry view, conservative recovery for unavailable storage, text-content search, This PC
+filesystem search, read-only text/PDF previews with page navigation, and explicit `index:true`
+Windows Search queries with coverage warnings. Disposable tests cover real disk-full after
+main-stream writes and owned loopback-SMB interruption. These additions are not in the published
+0.5.3 download. See the [reliability milestone](docs/RELIABILITY-MILESTONE.md) for results and limits.
+
 ### Daily-default improvements in 0.5.3
 
 - Transfer Undo/Redo includes Replace and directory Merge. Displaced items and exact Redo data
@@ -261,10 +268,10 @@ Install the Velopack packaging tool once:
 dotnet tool install -g vpk --version 1.2.161
 ```
 
-Build a release from the main checkout; this example uses 0.5.3 (select a new version for the next release):
+Build a release from the main checkout; this example uses the unpublished 0.5.5 candidate:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.5.3
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.5.5
 ```
 
 For a new release, choose an unused version and update all four version locations before

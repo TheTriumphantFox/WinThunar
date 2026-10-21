@@ -235,7 +235,7 @@
                 <ToggleMenuFlyoutItem x:Name="ShowThumbnailsMenuItem" Text="Show Thumbnails" Click="ShowThumbnails_Click" />
                 <MenuFlyoutItem Text="Configure Columns..." Click="ConfigureColumns_Click" />
                 <MenuFlyoutItem Text="Configure Toolbar..." Click="ConfigureToolbar_Click" />
-                <ToggleMenuFlyoutItem x:Name="ImagePreviewMenuItem" Text="Image Preview" Click="ImagePreview_Click" />
+                <ToggleMenuFlyoutItem x:Name="ImagePreviewMenuItem" Text="Preview Pane" Click="ImagePreview_Click" />
                 <ToggleMenuFlyoutItem x:Name="TerminalPanelMenuItem" Text="Terminal Panel" Click="TerminalPanel_Click">
                     <ToggleMenuFlyoutItem.KeyboardAccelerators>
                         <KeyboardAccelerator Key="F4" />
@@ -280,6 +280,7 @@
                 <MenuFlyoutItem Text="Move Current Bookmark Down" Click="MoveBookmarkDown_Click" />
             </MenuBarItem>
             <MenuBarItem Title="Help" AccessKey="H">
+                <MenuFlyoutItem Text="Interrupted Transfers..." Click="InterruptedTransfers_Click" />
                 <MenuFlyoutItem Text="Check for Updates..." Click="CheckForUpdates_Click" />
                 <MenuFlyoutSeparator />
                 <MenuFlyoutItem Text="About WinThunar" Click="About_Click" />
@@ -358,9 +359,9 @@
             <TextBox
                 x:Name="SearchBox" AutomationProperties.Name="Search files"
                 Grid.Column="1"
-                PlaceholderText="Search names, or type:pdf modified:last7days size:&gt;1MB"
-                ToolTipService.ToolTip="Combine words and filters: name:&quot;annual report&quot; type:pdf modified:last7days size:&gt;1MB. Wildcards: *.txt. Dates: modified:2026-10-01..2026-10-21."
-                AutomationProperties.HelpText="Search names or combine name, type, modified date, and size filters."
+                PlaceholderText="Search names or use content:&quot;a phrase&quot; type:txt"
+                ToolTipService.ToolTip="Combine name:&quot;annual report&quot; type:pdf modified:last7days size:&gt;1MB. content:&quot;a phrase&quot; reads supported text files up to 16 MiB. Add index:true to query the Windows index, including indexed document contents; unindexed items are omitted. Wildcards: *.txt."
+                AutomationProperties.HelpText="Search names or combine name, type, modified date, size, and content filters. Add index:true to use Windows indexing; unindexed items are omitted."
                 TextChanged="SearchBox_TextChanged"
                 KeyDown="SearchBox_KeyDown"
                 Visibility="Collapsed" />
@@ -539,7 +540,7 @@
                         <DataTemplate x:DataType="models:FileSystemEntry">
                             <Grid ToolTipService.ToolTip="{x:Bind FullPath}">
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" MinWidth="100" />
                                     <ColumnDefinition Width="{x:Bind NameSizeGripWidth, Mode=OneWay}" />
                                     <ColumnDefinition Width="{x:Bind SizeColumnWidth, Mode=OneWay}" />
                                     <ColumnDefinition Width="{x:Bind SizeTypeGripWidth, Mode=OneWay}" />
@@ -547,7 +548,11 @@
                                     <ColumnDefinition Width="{x:Bind TypeModifiedGripWidth, Mode=OneWay}" />
                                     <ColumnDefinition Width="{x:Bind ModifiedColumnWidth, Mode=OneWay}" />
                                 </Grid.ColumnDefinitions>
-                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Grid ColumnSpacing="8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
                                     <Grid Width="20" Height="22" VerticalAlignment="Center">
                                         <Image Source="{Binding Thumbnail}" Visibility="{Binding ThumbnailVisibility}" Stretch="Uniform" />
                                         <FontIcon Glyph="{x:Bind Glyph}" Visibility="{Binding GlyphVisibility}" FontSize="16" />
@@ -555,8 +560,8 @@
                                             <TextBlock Text="{Binding GitBadge}" FontSize="10" FontWeight="Bold" HorizontalAlignment="Center" Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}" />
                                         </Border>
                                     </Grid>
-                                    <TextBlock Text="{x:Bind Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-                                </StackPanel>
+                                    <TextBlock Grid.Column="1" Text="{x:Bind Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                </Grid>
                                 <TextBlock Grid.Column="2" Text="{x:Bind Size}" VerticalAlignment="Center" />
                                 <TextBlock Grid.Column="4" Text="{x:Bind Type}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                                 <TextBlock Grid.Column="6" Text="{x:Bind Modified}" VerticalAlignment="Center" />
@@ -765,13 +770,17 @@
                                 <DataTemplate x:DataType="models:FileSystemEntry">
                                     <Grid ToolTipService.ToolTip="{x:Bind FullPath}">
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" MinWidth="80" />
                                             <ColumnDefinition Width="{x:Bind NameSizeGripWidth, Mode=OneWay}" />
                                             <ColumnDefinition Width="{x:Bind SizeColumnWidth, Mode=OneWay}" />
                                             <ColumnDefinition Width="{x:Bind SizeTypeGripWidth, Mode=OneWay}" />
                                             <ColumnDefinition Width="{x:Bind TypeColumnWidth, Mode=OneWay}" />
                                         </Grid.ColumnDefinitions>
-                                        <StackPanel Orientation="Horizontal" Spacing="7">
+                                        <Grid ColumnSpacing="7">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
                                             <Grid Width="20" Height="22" VerticalAlignment="Center">
                                                 <Image Source="{Binding Thumbnail}" Visibility="{Binding ThumbnailVisibility}" Stretch="Uniform" />
                                                 <FontIcon Glyph="{x:Bind Glyph}" Visibility="{Binding GlyphVisibility}" FontSize="16" />
@@ -782,8 +791,8 @@
                                                 Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}" />
                                         </Border>
                                             </Grid>
-                                            <TextBlock Text="{x:Bind Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-                                        </StackPanel>
+                                            <TextBlock Grid.Column="1" Text="{x:Bind Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                        </Grid>
                                         <TextBlock Grid.Column="2" Text="{x:Bind Size}" VerticalAlignment="Center" />
                                         <TextBlock Grid.Column="4" Text="{x:Bind Type}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                                     </Grid>
@@ -809,13 +818,31 @@
                     BorderBrush="{ThemeResource SystemControlForegroundBaseMediumLowBrush}"
                     BorderThickness="1,0,0,0"
                     Visibility="Collapsed">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <StackPanel Spacing="10">
-                        <TextBlock Text="IMAGE PREVIEW" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" />
-                        <Image x:Name="PreviewImage" AutomationProperties.Name="Selected image preview" Height="220" Stretch="Uniform" />
+                        <TextBlock Text="PREVIEW" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" />
                         <TextBlock x:Name="PreviewTitle" FontWeight="SemiBold" TextWrapping="Wrap" />
                         <TextBlock x:Name="PreviewMetadata" FontSize="12" Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" TextWrapping="Wrap" />
+                        <Grid x:Name="PdfPageControls" ColumnSpacing="8" Visibility="Collapsed">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Button x:Name="PdfPreviousPage" Content="&#xE76B;" FontFamily="Segoe MDL2 Assets"
+                                Click="PdfPreviousPage_Click" AutomationProperties.Name="Previous PDF page" ToolTipService.ToolTip="Previous page" />
+                            <TextBlock x:Name="PdfPageNumber" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center"
+                                AutomationProperties.LiveSetting="Polite" />
+                            <Button x:Name="PdfNextPage" Grid.Column="2" Content="&#xE76C;" FontFamily="Segoe MDL2 Assets"
+                                Click="PdfNextPage_Click" AutomationProperties.Name="Next PDF page" ToolTipService.ToolTip="Next page" />
+                        </Grid>
+                        <Image x:Name="PreviewImage" AutomationProperties.Name="Selected image preview" Height="220" Stretch="Uniform" Visibility="Collapsed" />
+                        <TextBox x:Name="PreviewText" AutomationProperties.Name="Selected text file preview" IsReadOnly="True"
+                            AcceptsReturn="True" TextWrapping="Wrap" FontFamily="Consolas" Height="260" Visibility="Collapsed" />
+                        <TextBlock x:Name="PreviewStatus" TextWrapping="Wrap" FontSize="12" />
                         <TextBlock x:Name="PreviewPath" FontSize="11" Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" TextWrapping="Wrap" />
                     </StackPanel>
+                    </ScrollViewer>
                 </Border>
             </Grid>
         </Grid>
@@ -898,6 +925,12 @@
         </Border>
 
         <StackPanel Grid.Row="7">
+            <InfoBar x:Name="RecoveryInfoBar" Title="Interrupted transfers need attention"
+                Severity="Warning" IsOpen="False" IsClosable="True">
+                <InfoBar.ActionButton>
+                    <Button Content="Review" Click="InterruptedTransfers_Click" AutomationProperties.Name="Review interrupted transfers" />
+                </InfoBar.ActionButton>
+            </InfoBar>
             <InfoBar
                 x:Name="UpdateInfoBar"
                 Title="Update ready"

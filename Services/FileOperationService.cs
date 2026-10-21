@@ -103,7 +103,8 @@ public sealed class FileOperationService
         _recovery = recovery ?? new TransferRecoveryService();
     }
 
-    public TransferRecoveryResult RecoverInterruptedTransfers(bool skipActiveProcesses = false) => _recovery.RecoverPending(skipActiveProcesses);
+    public TransferRecoveryResult RecoverInterruptedTransfers(bool skipActiveProcesses = false) =>
+        _recovery.CreateRecoveryWorker().RecoverPending(skipActiveProcesses);
 
     internal void ForgetRecovery(string? id) { if (id is not null) _recovery.ReleaseRetained(id); }
     internal void SetHistoryRetention(string? id, bool retained) { if (id is not null) _recovery.CommitRetained(id, retained); }
@@ -138,6 +139,7 @@ public sealed class FileOperationService
             else if (LinkFileSystem.IsDirectory(source))
                 await CopyDirectoryPreservingMetadataAsync(source, staged, CancellationToken.None);
             else await CopyFilePreservingMetadataAsync(source, staged, CancellationToken.None);
+            _recovery.RecordPreparedDestination(id, await CapturePathStateAsync(staged, CancellationToken.None));
             MovePath(source, sourceRecovery);
 #if FILEOPS_FAULT_TESTS
             FileOperationFaultHooks.Hit("HistoryAfterSourceStaged", source, destination);
@@ -153,7 +155,12 @@ public sealed class FileOperationService
         finally
         {
             TryDeletePath(staged);
-            if (!PathExists(staged) && !PathExists(sourceRecovery)) _recovery.Complete(id);
+            if (!PathExists(staged) && !PathExists(sourceRecovery))
+            {
+                EnsureDirectoryExists(Path.GetDirectoryName(destination)!);
+                EnsureDirectoryExists(Path.GetDirectoryName(source)!);
+                _recovery.Complete(id);
+            }
         }
     }
 
@@ -787,6 +794,7 @@ public sealed class FileOperationService
             finally
             {
                 LinkFileSystem.Delete(staged);
+                EnsureDirectoryExists(Path.GetDirectoryName(destinationPath)!);
                 _recovery.Complete(recoveryId);
             }
             var state = await CapturePathStateAsync(destinationPath, CancellationToken.None);
@@ -1010,10 +1018,10 @@ public sealed class FileOperationService
 #if FILEOPS_FAULT_TESTS
             FileOperationFaultHooks.Hit("FileBeforeStagingCleanup", sourcePath, temporaryPath);
 #endif
-            if (File.Exists(temporaryPath))
-            {
-                File.Delete(temporaryPath);
-            }
+            LinkFileSystem.Delete(temporaryPath);
+            // File.Exists reports false for an unavailable SMB share. That must not erase the
+            // journal while an incomplete file may still exist on the disconnected storage.
+            EnsureDirectoryExists(Path.GetDirectoryName(destinationPath)!);
             _recovery.Complete(recoveryId);
         }
     }
@@ -1241,7 +1249,7 @@ public sealed class FileOperationService
             destinationPath,
             stagedPath,
             backupPath,
-            sourceRecoveryPath,
+            mode == FileTransferMode.Move ? sourceRecoveryPath : null,
             backupRoot);
         var destinationBackedUp = false;
         var promoted = false;
@@ -1270,6 +1278,7 @@ public sealed class FileOperationService
             }
 
             cancellationToken.ThrowIfCancellationRequested();
+            _recovery.RecordPreparedDestination(recoveryId, await CapturePathStateAsync(stagedPath, cancellationToken));
             MovePath(destinationPath, backupPath);
             destinationBackedUp = true;
 #if FILEOPS_FAULT_TESTS
@@ -1302,11 +1311,23 @@ public sealed class FileOperationService
             {
                 _recovery.CommitRetained(recoveryId);
                 retained = true;
+#if FILEOPS_FAULT_TESTS
+                FileOperationFaultHooks.Hit("ReplacementAfterHistoryCommitted", sourcePath, destinationPath);
+#endif
             }
             if (sourceMovedAside)
             {
-                TryDeletePath(sourceRecoveryPath);
-                sourceMovedAside = PathExists(sourceRecoveryPath);
+                try
+                {
+                    TryDeletePath(sourceRecoveryPath);
+                    // An unavailable source must leave its recovery path recorded. A cleanup
+                    // failure after the commit point must never roll the completed transfer back.
+                    EnsureDirectoryExists(Path.GetDirectoryName(sourcePath)!);
+                    sourceMovedAside = PathExists(sourceRecoveryPath);
+                    if (!sourceMovedAside && retained) _recovery.ConfirmSourceCleanup(recoveryId);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Win32Exception)
+                { sourceMovedAside = true; }
             }
             return new FileTransferRecord(sourcePath, destinationPath, mode, true, destinationState)
             {
@@ -1349,6 +1370,8 @@ public sealed class FileOperationService
                 !PathExists(backupPath) &&
                 !PathExists(sourceRecoveryPath))
             {
+                EnsureDirectoryExists(Path.GetDirectoryName(destinationPath)!);
+                if (mode == FileTransferMode.Move) EnsureDirectoryExists(Path.GetDirectoryName(sourcePath)!);
                 _recovery.Complete(recoveryId);
             }
             if (backupRoot is not null && Directory.Exists(backupRoot) && !Directory.EnumerateFileSystemEntries(backupRoot).Any())

@@ -104,9 +104,9 @@ leases its journal to one process and protects staged incoming history data when
 restore their paths in either order. A mismatched stage or an ambiguous older record is retained for
 attention instead of being discarded.
 
-## Unreleased recovery improvements
+## Recovery improvements in 0.5.5
 
-The 0.5.5 source candidate adds a persistent warning for recovery failures and
+Release 0.5.5 adds a persistent warning for recovery failures and
 **Help > Interrupted Transfers...**. The dialog shows selectable details, including the source,
 destination, retained-copy paths, and journal path. Reconnect unavailable storage or close apps
 locking these files, then select **Retry recovery**. Active transfers and window Undo data stay

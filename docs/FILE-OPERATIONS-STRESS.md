@@ -155,9 +155,9 @@ formats a newly created image and enables filling its disposable volume.
 Multi-item history remains window-local and is not crash-atomic. A process crash can leave part of
 a merge undone; successful recovery of individual records does not resume the window's history.
 
-## Additional unreleased reliability coverage
+## Additional reliability coverage for 0.5.5
 
-The current source adds four **real disk-full-after-progress** cases to the disposable-VHD run.
+Release 0.5.5 adds four **real disk-full-after-progress** cases to the disposable-VHD run.
 An 8 MiB main stream plus an 8 MiB alternate stream is copied to a target with room for only the
 main stream. All four Copy/Move and new/Replace combinations returned native error **112 after
 8,388,608 reported bytes** and passed original-data/stream, recovery, retry, and Undo checks.

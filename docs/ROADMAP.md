@@ -3,16 +3,17 @@
 ## Release and source status
 
 Checked 21 October 2026. The latest published application is
-[0.5.3](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.3), published 21 October 2026.
-The application changes are merged into `main` through PR #13, and the GitHub updater feed
-offers 0.5.3. Documentation-only commits do not distribute an application version.
-See [release notes](RELEASE-0.5.3.md) for package verification and remaining limits.
+[0.5.5](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.5), published 21 October 2026.
+The application changes are merged into `main` through PR #15 (source `e705d5c`), and the GitHub updater feed
+offers 0.5.5. Documentation-only commits do not distribute an application version.
+See [release notes](RELEASE-0.5.5.md) for package verification and remaining limits.
 
-The current source candidate is **0.5.5**, with updater startup/installer-launch failure handling
-and nine updater regression tests. Additional local work adds an Interrupted Transfers view,
+Release **0.5.5** includes updater startup/installer-launch failure handling
+and nine updater regression tests, an Interrupted Transfers view,
 conservative recovery/SMB cleanup, text-content/Windows-index search, This PC search, and text/PDF previews.
-It is **not published**; installed copies still receive 0.5.3.
-See the [0.5.5 candidate notes](RELEASE-0.5.5.md) and [reliability milestone](RELIABILITY-MILESTONE.md).
+The unpublished 0.5.4 candidate was folded into this release. All five public binary hashes,
+the updater feed, and reconstruction of all 528 package entries using the 0.5.3-to-0.5.5 delta were verified.
+See the [0.5.5 release notes](RELEASE-0.5.5.md) and [reliability milestone](RELIABILITY-MILESTONE.md).
 
 The checked foundation items in sections 1–5 were already in 0.5.0. The additions listed
 below are now in published 0.5.3; test harnesses are source tools excluded from app packages.
@@ -42,7 +43,7 @@ below are now in published 0.5.3; test harnesses are source tools excluded from 
 - [x] Storage-error/process-termination stress harness and recovery fixes for overlapping history records and concurrent restart recovery.
 - [x] Disposable NTFS VHD verification of cross-volume history and actual disk-full allocation failures; native long-path copy/stream/history fixes.
 
-Installed copies can discover 0.5.3 through GitHub Releases. See [release publishing](RELEASES.md)
+Installed copies can discover 0.5.5 through GitHub Releases. See [release publishing](RELEASES.md)
 and [accessibility status](ACCESSIBILITY.md) for package behavior and remaining checks.
 
 ## 1. Browser foundation
@@ -113,6 +114,7 @@ and [accessibility status](ACCESSIBILITY.md) for package behavior and remaining 
 ## Remaining gaps
 
 - [x] Publish the application additions as 0.5.3 with the verified GitHub update feed.
+- [x] Publish 0.5.5 with the complete updater/recovery/search/preview changes, verified assets/feed, and a reconstructed 0.5.3-to-0.5.5 delta.
 - [x] Confirm the existing all-users 0.5.0 to 0.5.3 full-package upgrade from updater logs and all 524 deployed file hashes; see [updater verification](UPDATER-VERIFICATION.md).
 - [ ] Repeat the installed upgrade under controlled UI conditions; verify per-user apply-on-close, installed delta updates, and Windows Installer repair/uninstall metadata. The logged all-users full-package upgrade succeeded; the original MSI product entry still reports 0.5.0.0.
 - [ ] Complete the manual accessibility checks documented in [ACCESSIBILITY.md](ACCESSIBILITY.md).

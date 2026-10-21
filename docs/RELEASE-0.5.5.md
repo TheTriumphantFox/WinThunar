@@ -1,8 +1,9 @@
 # WinThunar 0.5.5
 
-Prepared 21 October 2026 for Windows 11 x64. Publication is pending. This release includes the
-unpublished 0.5.4 updater candidate and the complete recovery, storage, search, and preview work.
-The latest public release remains 0.5.3 until the GitHub upload completes.
+Published [21 October 2026](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.5)
+for Windows 11 x64 from source `e705d5c` (PR #15). This is the latest stable release and includes
+the unpublished 0.5.4 updater candidate and the complete recovery, storage, search, and preview work.
+The public updater feed offers 0.5.5 full/delta packages.
 
 ## Changes since 0.5.3
 
@@ -42,9 +43,15 @@ The latest public release remains 0.5.3 until the GitHub upload completes.
 - Ten generated 10,000-file searches establish a warmed local service baseline; see the
   [reliability milestone](RELIABILITY-MILESTONE.md) for timings and evidence paths.
 
-Packaging validation and public asset/feed verification will be recorded here after the release
-build. Test-project builds report NU1900 when NuGet vulnerability metadata is unreachable;
-restoration and compilation completed.
+The packaged app/MSI report **0.5.5.0**; release assemblies match across archives and contain no
+stress/desktop test hooks. MSI shortcut choices and local ZIP/MSI checksum sidecars passed.
+All **five public binary asset sizes and SHA-256 digests** match the upload files. The public
+updater feed contains only the 0.5.5 full/delta entries. The **801,572-byte 0.5.3-to-0.5.5 delta**
+reconstructed all **528 full-package entries** with matching names, lengths, and content hashes.
+All three earlier local packages retain their original hashes. Verification is preserved at
+`artifacts/verification-0.5.5/verification.json`; fresh service/stress/desktop reports are also retained.
+Test-project builds report NU1900 when NuGet vulnerability metadata is unreachable; restoration
+and compilation completed.
 
 ## Known limits
 
@@ -77,3 +84,5 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Releas
 
 Preserve `artifacts/installer`, all previous packages, retained VHDs, and recovery evidence.
 The earlier unpublished 0.6.0 assets remain archived outside the upload directory.
+Generic pre-release installer assets were copied to `artifacts/verification-0.5.5/previous-installer-assets/`
+before packaging. No installed application was launched, closed, replaced, or downgraded by this release workflow.

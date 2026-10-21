@@ -1,8 +1,8 @@
 # WinThunar 0.5.4 candidate (superseded)
 
-Prepared 21 October 2026. This version is **not published**. The latest published application
-remains [0.5.3](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.3).
-Committing this candidate does not distribute it to installed users.
+Prepared 21 October 2026. This historical candidate was **not published**; its work is included
+in the published [0.5.5 release](RELEASE-0.5.5.md). Committing a candidate alone does not
+distribute it to installed users.
 
 This unpublished candidate and the subsequent local reliability/search/preview work below are
 superseded by **[0.5.5](RELEASE-0.5.5.md)**. Use that release's notes for current version and

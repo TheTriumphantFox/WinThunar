@@ -50,19 +50,19 @@ integration notes below before choosing it as your default file manager.
 
 ## Release and source status
 
-The latest published application release is **[0.5.3](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.3)**
+The latest published application release is **[0.5.5](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.5)**
 (21 October 2026). Its application changes are merged into `main`, and the GitHub updater feed
-offers 0.5.3 to installed copies. Use **Help > Check for Updates...** to check immediately;
+offers 0.5.5 to installed copies. Use **Help > Check for Updates...** to check immediately;
 portable copies are updated manually. Documentation and website updates alone do not update the app.
-See the [0.5.3 release notes](docs/RELEASE-0.5.3.md) for verification and remaining limits.
+See the [0.5.5 release notes](docs/RELEASE-0.5.5.md) for verification and remaining limits.
 The version string alone does not establish that a local build matches published binaries.
 
-The unpublished **0.5.5 source candidate** adds updater error handling, an Interrupted Transfers
+Release **0.5.5** adds updater error handling, an Interrupted Transfers
 review/retry view, conservative recovery for unavailable storage, text-content search, This PC
 filesystem search, read-only text/PDF previews with page navigation, and explicit `index:true`
 Windows Search queries with coverage warnings. Disposable tests cover real disk-full after
-main-stream writes and owned loopback-SMB interruption. These additions are not in the published
-0.5.3 download. See the [reliability milestone](docs/RELIABILITY-MILESTONE.md) for results and limits.
+main-stream writes and owned loopback-SMB interruption. It includes the unpublished 0.5.4 candidate.
+See the [reliability milestone](docs/RELIABILITY-MILESTONE.md) for results and limits.
 
 ### Daily-default improvements in 0.5.3
 
@@ -268,7 +268,7 @@ Install the Velopack packaging tool once:
 dotnet tool install -g vpk --version 1.2.161
 ```
 
-Build a release from the main checkout; this example uses the unpublished 0.5.5 candidate:
+Build a release from the main checkout; this example uses 0.5.5:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.5.5

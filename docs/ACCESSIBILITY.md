@@ -88,7 +88,7 @@ check.
 Keep these checks open until observed on the relevant Windows configuration. Update this
 page and the roadmap when the support is released or the manual checks are completed.
 
-## Additional unreleased desktop coverage
+## Additional desktop coverage for 0.5.5
 
 The current source smoke harness also checks the recovery warning/dialog and accessible,
 selectable recovery details; preserved corrupt journals; text-content search; a read-only text

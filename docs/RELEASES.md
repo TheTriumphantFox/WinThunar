@@ -1,10 +1,10 @@
 # Building and publishing releases
 
 Checked 21 October 2026 against the release script, project/manifest versions, and GitHub
-Releases. The latest published application is **[0.5.3](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.3)**,
-released 21 October 2026 from source commit `43b0311` (PR #13). Its public MSI, portable ZIP,
+Releases. The latest published application is **[0.5.5](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.5)**,
+released 21 October 2026 from source commit `e705d5c` (PR #15). Its public MSI, portable ZIP,
 setup executable, full/delta packages, and update feed were verified. See the
-[release notes](RELEASE-0.5.3.md) and [updater verification](UPDATER-VERIFICATION.md) for the
+[release notes](RELEASE-0.5.5.md) and [updater verification](UPDATER-VERIFICATION.md) for the
 confirmed logged all-users upgrade and the remaining controlled UI, per-user, and delta checks.
 
 ## Prerequisites and version checklist
@@ -23,13 +23,13 @@ Before a new release, select an unused three-part version and update all of thes
 3. The default `$Version` in `scripts/Publish-Release.ps1`.
 4. The README release example and the current release/status references in these docs.
 
-The current source candidate is **0.5.5**, which is not yet published; see its
+The current published version is **0.5.5**; see its
 [release notes](RELEASE-0.5.5.md). For example, a release `X.Y.Z` uses assembly/file/manifest version `X.Y.Z.0`.
 Documentation-only changes do not require a new application version.
 
 ## Build and local outputs
 
-Run from the main checkout. This example uses the unpublished 0.5.5 candidate;
+Run from the main checkout. This example uses 0.5.5;
 existing output paths are deliberately not overwritten:
 
 ```powershell

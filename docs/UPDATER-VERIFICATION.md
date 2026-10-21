@@ -51,9 +51,10 @@ Its file check looked for the two helper executables beneath `current/`; the fin
 compares their actual deployment paths. The capture script is retained at
 `artifacts/Capture-InstalledUpgrade-0.5.3.ps1`.
 
-## Updater hardening prepared in 0.5.4, included in the 0.5.5 candidate
+## Updater hardening prepared in 0.5.4, published in 0.5.5
 
-These changes are **unreleased** and are not part of the installed 0.5.3 binaries:
+These changes are included in **[0.5.5](RELEASE-0.5.5.md)** and are not part of the inspected
+installed 0.5.3 binaries:
 
 - Updater initialization errors become a failed update state. A malformed `WINTHUNAR_UPDATE_FEED`
   previously threw `UriFormatException` during `App.OnLaunched`, before a window could open.
@@ -69,12 +70,19 @@ Nine updater regressions cover the malformed feed, initialization and pending-pa
 portable copies, concurrent checks, download retry, failed-check scheduling, installer launch
 retry, all-users exit behavior, and failure while scheduling an update on exit.
 
-The normal x64 application build passed with **zero warnings/errors**. The complete service suite
+In the initial updater-only validation, the normal x64 application build passed with
+**zero warnings/errors**. The complete service suite
 passed with **134 passed, one skipped, zero failed** (135 total); the skip requires Windows
 symbolic-link privilege. The built xUnit executable ran outside the sandbox because the sandboxed
 VSTest host could not connect. Its XML report is preserved as `service-tests.xml` in the final
 evidence directory above. The test-project build reported NU1900 because NuGet vulnerability
 metadata was unavailable from the sandbox; package restoration and compilation completed.
+
+The final 0.5.5 release validation passed **162 service tests, one skipped**, all **50 desktop
+checks**, and **30 normal-token stress cases, five skipped**. Its 801,572-byte delta reconstructed
+all 528 full-package entries from 0.5.3. All five public binary hashes and the 0.5.5 updater feed
+were verified. These package checks do not establish an installed 0.5.5 upgrade; see the
+[release notes](RELEASE-0.5.5.md) and `artifacts/verification-0.5.5/verification.json`.
 
 ## Still unverified
 

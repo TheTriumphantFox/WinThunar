@@ -1,7 +1,7 @@
 # Reliability and discovery milestone
 
 Local source work on 21 October 2026 for 0.5.5, following the unpublished 0.5.4 updater candidate. These additions are
-**unreleased**. Published 0.5.3 and the installed application were not changed.
+included in published **[0.5.5](RELEASE-0.5.5.md)**. The installed application was not changed by this workflow.
 
 ## Completed work
 
@@ -80,6 +80,9 @@ artifacts/desktop-candidate-final-20261021/             # desktop renders/result
 artifacts/desktop-documents-final-20261021-b/           # extended PDF/index desktop checks and current service XML
 artifacts/search-performance-20261021-121745-618b2a13/  # report; generated files cleaned
 artifacts/document-discovery-milestone-20261021.json   # current document/index evidence and normal-build hash
+artifacts/verification-0.5.5/verification.json         # published assets/feed, delta reconstruction, fresh service results
+artifacts/fileops-release-0.5.5/                       # fresh 30/0/5 normal-token stress
+artifacts/desktop-release-0.5.5/                       # fresh 50-check desktop run
 ```
 
 Earlier VHDs, installer packages, historical previews, and recovery evidence are preserved.

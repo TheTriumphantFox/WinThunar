@@ -1,6 +1,7 @@
 # Search behavior
 
-The navigation and result rules below apply to release 0.5.3.
+The opening sections document the 0.5.3 filename-search baseline. Release 0.5.5 adds the
+text-content, This PC, and Windows-index behavior described in the later sections.
 Query filters and streaming traversal are included in **0.5.3**; release 0.5.0 matches
 one literal filename substring and does not understand filters or wildcards.
 
@@ -61,11 +62,11 @@ Results retain filesystem enumeration order and appear in batches without sortin
 directory first. Search still traverses accessible filesystem folders and caps output at 5,000;
 Windows Search index integration, content search, and This PC search remain future work.
 
-The following unreleased sections supersede those 0.5.3 limits in the current source candidate.
+The following 0.5.5 sections supersede those historical 0.5.3 limits.
 
-## Unreleased text-content and This PC search
+## Text-content and This PC search in 0.5.5
 
-The 0.5.5 source candidate adds `content:word` and `content:"a phrase"`. Content terms are literal,
+Release 0.5.5 adds `content:word` and `content:"a phrase"`. Content terms are literal,
 case-insensitive, combined with AND, and can be combined with the existing filename/metadata
 filters. For example, `type:txt content:"annual report" content:approved` searches inside text,
 while `report type:txt` continues to inspect names/metadata without opening contents.
@@ -98,7 +99,7 @@ cancellation. Successful fixtures are deleted only after ownership/path checks; 
 fixtures remain. This service workload does not establish UI rendering speed, remote-provider
 latency, or long-session memory stability. See the [milestone](RELIABILITY-MILESTONE.md).
 
-## Unreleased Windows index search
+## Windows index search in 0.5.5
 
 Add **`index:true`** to explicitly query the local Windows Search catalog. Examples:
 

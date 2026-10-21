@@ -1,6 +1,6 @@
 # Browser workspace behavior
 
-Unless marked **unreleased source**, this page describes release 0.5.0. See the
+This page describes release 0.5.5, with selected earlier additions marked below. See the
 [release/source status](ROADMAP.md#release-and-source-status) before comparing a local build
 with the downloaded application.
 
@@ -29,7 +29,7 @@ The last active layout is saved. **Edit > Preferences** can also remember view, 
 sorting separately for each folder. Single-click activation and the image-preview side pane
 are optional. Preferences take effect after **Apply**.
 
-**Unreleased 0.5.5 source:** **View > Preview Pane** supports images and bounded, selectable,
+**Since 0.5.5:** **View > Preview Pane** supports images and bounded, selectable,
 read-only text. Text previews show at most 32,768 characters from supported text/configuration/
 source-code files; binary data, unsupported encodings, links, and online-only placeholders are
 not read as text. Preview does not edit files or execute markup/scripts. PDFs up to **64 MiB**
@@ -55,7 +55,7 @@ lists reserve filename space when split/preview panes narrow the available width
 - An explicit folder launch replaces saved-tab restoration for that new window.
 - `Ctrl+N` opens a new window. Further launches reuse the existing process and open windows
   there; they do not automatically turn the folder request into a tab.
-- **Unreleased source:** `Ctrl+Tab` / `Ctrl+Shift+Tab` cycles through the folder tabs.
+- **Since 0.5.3:** `Ctrl+Tab` / `Ctrl+Shift+Tab` cycles through the folder tabs.
 
 ## Split pane
 
@@ -66,7 +66,7 @@ lists reserve filename space when split/preview panes narrow the available width
 - File operations refresh both visible panes. Copy and move progress uses a shared transfer strip.
 - The split state and right-side path are restored when starting without an explicit folder
   request and when the saved right-side folder still exists.
-- **Unreleased source:** keyboard focus moving into a file pane also makes that pane active;
+- **Since 0.5.3:** keyboard focus moving into a file pane also makes that pane active;
   `F6` / `Shift+F6` cycles between the main keyboard regions.
 
 ## Bookmarks and session state
@@ -103,6 +103,6 @@ panel. The bundled actions cover ZIP creation/extraction, one-file media-tag edi
 status/diff/log, and Windows folder Properties for sharing/security. Git inspection needs
 Git installed; media metadata support depends on the Windows property handler for the file.
 
-**Unreleased source:** optional Git badges are populated during ordinary folder browsing in
+**Since 0.5.3:** optional Git badges are populated during ordinary folder browsing in
 the three primary layouts and the right detailed list. Search results, Trash, and This PC
 do not receive badges. A missing Git executable or an unavailable repository leaves them blank.

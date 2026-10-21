@@ -1,7 +1,7 @@
 # WinThunar 0.5.5
 
 Published [21 October 2026](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.5)
-for Windows 11 x64 from source `e705d5c` (PR #15). This is the latest stable release and includes
+for Windows 11 x64 from source `e705d5c` (PR #15). This release includes
 the unpublished 0.5.4 updater candidate and the complete recovery, storage, search, and preview work.
 The public updater feed offers 0.5.5 full/delta packages.
 

@@ -3,10 +3,15 @@
 ## Release and source status
 
 Checked 21 October 2026. The latest published application is
-[0.5.5](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.5), published 21 October 2026.
-The application changes are merged into `main` through PR #15 (source `e705d5c`), and the GitHub updater feed
-offers 0.5.5. Documentation-only commits do not distribute an application version.
-See [release notes](RELEASE-0.5.5.md) for package verification and remaining limits.
+[0.5.6](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.6), published 21 October 2026.
+The application changes are merged into `main` through PR #17 (source `7ed9574`), and the GitHub updater feed
+offers 0.5.6. Documentation-only commits do not distribute an application version.
+See [release notes](RELEASE-0.5.6.md) for package verification and remaining limits.
+
+Release **0.5.6** adds persistent **System / Light / Dark** selection in Preferences, shared by
+windows, native title bars, and application dialogs. Verification passed 171 service tests with
+one skip, 65 desktop checks, and two restart checks. All five public binary hashes, the updater
+feed, and all 528 entries reconstructed from the 731,233-byte 0.5.5-to-0.5.6 delta were verified.
 
 Release **0.5.5** includes updater startup/installer-launch failure handling
 and nine updater regression tests, an Interrupted Transfers view,
@@ -43,7 +48,7 @@ below are now in published 0.5.3; test harnesses are source tools excluded from 
 - [x] Storage-error/process-termination stress harness and recovery fixes for overlapping history records and concurrent restart recovery.
 - [x] Disposable NTFS VHD verification of cross-volume history and actual disk-full allocation failures; native long-path copy/stream/history fixes.
 
-Installed copies can discover 0.5.5 through GitHub Releases. See [release publishing](RELEASES.md)
+Installed copies can discover 0.5.6 through GitHub Releases. See [release publishing](RELEASES.md)
 and [accessibility status](ACCESSIBILITY.md) for package behavior and remaining checks.
 
 ## 1. Browser foundation
@@ -115,6 +120,7 @@ and [accessibility status](ACCESSIBILITY.md) for package behavior and remaining 
 
 - [x] Publish the application additions as 0.5.3 with the verified GitHub update feed.
 - [x] Publish 0.5.5 with the complete updater/recovery/search/preview changes, verified assets/feed, and a reconstructed 0.5.3-to-0.5.5 delta.
+- [x] Publish 0.5.6 with persistent theme selection, window/dialog propagation, verified assets/feed, and a reconstructed 0.5.5-to-0.5.6 delta.
 - [x] Confirm the existing all-users 0.5.0 to 0.5.3 full-package upgrade from updater logs and all 524 deployed file hashes; see [updater verification](UPDATER-VERIFICATION.md).
 - [ ] Repeat the installed upgrade under controlled UI conditions; verify per-user apply-on-close, installed delta updates, and Windows Installer repair/uninstall metadata. The logged all-users full-package upgrade succeeded; the original MSI product entry still reports 0.5.0.0.
 - [ ] Complete the manual accessibility checks documented in [ACCESSIBILITY.md](ACCESSIBILITY.md).

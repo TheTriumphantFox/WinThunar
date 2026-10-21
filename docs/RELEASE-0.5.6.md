@@ -1,7 +1,8 @@
 # WinThunar 0.5.6
 
-Prepared 21 October 2026 for Windows 11 x64. Publication is pending; the latest public release
-remains 0.5.5 until the verified packages are uploaded.
+Published [21 October 2026](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.6)
+for Windows 11 x64 from source `7ed9574` (PR #17). This is the latest stable release;
+the public updater feed offers 0.5.6 full/delta packages.
 
 ## Changes since 0.5.5
 
@@ -33,8 +34,15 @@ Preferences content scrolls to keep the expanded settings usable in smaller wind
   Test-project builds report NU1900 when NuGet vulnerability metadata is unreachable; restoration
   and compilation completed.
 
-Release packaging, delta reconstruction, and public asset/feed verification will be recorded
-after the build and upload. Existing file-operation code is unchanged from 0.5.5; the earlier
+The packaged app/MSI report **0.5.6.0**. Release assemblies match across archives, contain the
+theme implementation, and exclude test hooks. MSI shortcut choices and local checksum sidecars
+passed. All **five public binary sizes and SHA-256 digests** match the upload files, and the
+public feed contains exactly the 0.5.6 full/delta entries. The **731,233-byte 0.5.5-to-0.5.6 delta**
+reconstructed all **528 package entries** with matching names, lengths, and SHA-256 content hashes.
+All five earlier packages retain their original hashes. Evidence and reports are preserved in
+`artifacts/verification-0.5.6/verification.json` and `artifacts/desktop-release-0.5.6/`.
+
+Existing file-operation code is unchanged from 0.5.5; the earlier
 [reliability evidence](RELIABILITY-MILESTONE.md) remains available. General accessibility,
 contrast themes, live Windows-setting changes, native Shell dialogs, notification availability,
 and controlled installed-upgrade checks remain outside this theme verification. See the
@@ -51,3 +59,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Releas
 
 Preserve all previous packages in `artifacts/installer`, the retained VHDs, and ambiguous
 recovery data. The historical unpublished 0.6.0 assets remain archived outside the upload folder.
+Generic previous-release installer assets were saved in
+`artifacts/verification-0.5.6/previous-installer-assets/` before packaging. No installed application
+was launched, closed, replaced, or downgraded by this workflow. A controlled installed 0.5.6
+upgrade remains unverified.

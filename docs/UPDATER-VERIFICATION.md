@@ -13,8 +13,11 @@ The corrected-MSI policy was tested in a separate guest using a corrected 0.5.5 
 the 0.5.7 target package. This does not establish an installed 0.5.8 upgrade or migration
 from an original old MSI. Existing cached MSIs retain their earlier maintenance behavior.
 See [release notes](RELEASE-0.5.8.md) and `artifacts/verification-0.5.8/verification.json`.
-Read-only captures immediately before/after publication found installed **0.5.7.0**,
-zero WinThunar processes and identical hashes for all five observed installation/state files.
+Read-only captures immediately before/after publication found installed **0.5.7.0** and
+identical hashes for three observed installation files (DLL, updater and manifest). Their
+default app-data path was sandbox-redirected, so real-user settings/log hashes were not part
+of that comparison. An explicit real-user capture afterward found those files last modified
+at 08:49–08:50, before publication; no full immediate pre-publication state baseline is claimed.
 The publication workflow did not launch or upgrade the host app.
 
 ## 0.5.7 publication and host adoption check

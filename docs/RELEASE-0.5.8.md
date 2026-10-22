@@ -81,5 +81,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Releas
 
 Keep all historical packages in `artifacts/installer`, retained recovery/stress data and the
 guest snapshots/evidence. Release verification does not launch or change the host installation.
-Read-only captures around publication found installed **0.5.7.0**, no app process, and
-unchanged hashes for the DLL, updater, manifest, update settings and updater log.
+Read-only captures around publication found installed **0.5.7.0** and unchanged hashes for
+the DLL, updater and manifest. Those captures used redirected sandbox app-data paths, so
+they did not establish before/after hashes for the real user's settings and log. An explicit
+real-user capture afterward found settings/log timestamps from 08:49–08:50, before publication.

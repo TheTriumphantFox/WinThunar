@@ -39,6 +39,9 @@ public sealed partial class MainWindow : Window
 
         AppWindow.Resize(new Windows.Graphics.SizeInt32(1100, 720));
         AppWindow.Closing += AppWindow_Closing;
+        // Closed also runs for programmatic Close(), including confirmed transfer cancellation.
+        // Register before App's Closed handler schedules an update after the final window.
+        Closed += (_, _) => Page?.SaveSessionForClose();
 
         // Navigate the root frame to the main page on startup.
         RootFrame.Navigate(typeof(MainPage), launchRequest);

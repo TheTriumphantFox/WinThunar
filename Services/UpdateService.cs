@@ -39,9 +39,14 @@ public sealed class UpdateService
     private Task? _check;
     private bool _automaticChecksStarted;
 
-    public UpdateService() : this(
+    public UpdateService() : this(new UpdateSettingsStore())
+    {
+    }
+
+    // The integration probe uses the real backend with settings inside its owned run directory.
+    internal UpdateService(UpdateSettingsStore settingsStore) : this(
         () => new VelopackUpdateBackend(new UpdateManager(CreateSource())),
-        new UpdateSettingsStore(),
+        settingsStore,
         !IsInstallFolderWritable())
     {
     }

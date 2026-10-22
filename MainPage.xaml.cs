@@ -86,12 +86,17 @@ public sealed partial class MainPage : Page
 
     public void CancelTransfersForClose() => _transferQueue.Dispose();
 
+    // Another window may have overwritten the shared session since this page last changed.
+    // Save at Window.Closed while its controls still exist; cancelled closes do not reach it.
+    internal void SaveSessionForClose() => SaveSession();
+
     public MainPage()
     {
 #if ROADMAP_SMOKE_TEST
         var smokeDirectory = Environment.GetEnvironmentVariable("WINTHUNAR_SMOKE_DIRECTORY")
             ?? throw new InvalidOperationException("The desktop smoke build needs an isolated directory.");
         _fileOperations = new FileOperationService(new TransferRecoveryService(Path.Combine(smokeDirectory, "recovery")));
+        _sessionService = new AppSessionService(Path.Combine(smokeDirectory, "session.json"));
 #endif
         _transferQueue = new FileTransferQueue(_fileOperations);
         _transferQueue.StateChanged += TransferQueue_StateChanged;

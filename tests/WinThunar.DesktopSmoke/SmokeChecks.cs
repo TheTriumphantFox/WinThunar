@@ -239,6 +239,7 @@ public sealed partial class MainPage
             Require(ViewModel.IsComputerView && !ViewModel.IsSearchMode, "Closing This PC search restores the drive listing", checks);
             await ViewModel.NavigateAsync(fixture);
 
+            await CheckWindowCloseSessionAsync(directory, checks);
             Require(TaskbarService.LastError is null, "Windows accepted the jump-list tasks", checks);
             checks.Add(NotificationService.LastError is null ? "Windows notification registration succeeded" : "Notification registration unavailable: " + NotificationService.LastError);
         }
@@ -249,6 +250,51 @@ public sealed partial class MainPage
             try { await CaptureSmokeImageAsync(directory, "Final"); } catch (Exception ex) { checks.Add("Screenshot unavailable: " + ex.Message); }
             File.WriteAllText(Path.Combine(directory, themeRestart ? "theme-restart-result.json" : "result.json"), JsonSerializer.Serialize(new { checks, failure }, new JsonSerializerOptions { WriteIndented = true }));
             App.Window.Close();
+        }
+    }
+
+    private async Task CheckWindowCloseSessionAsync(string directory, List<string> checks)
+    {
+        var firstPath = Directory.CreateDirectory(Path.Combine(directory, "session-first")).FullName;
+        var secondPath = Directory.CreateDirectory(Path.Combine(directory, "session-second")).FullName;
+        var otherPath = Directory.CreateDirectory(Path.Combine(directory, "session-other-window")).FullName;
+        var firstWindow = (MainWindow)App.OpenWindow(LaunchRequest.Empty);
+        var otherWindow = (MainWindow)App.OpenWindow(LaunchRequest.Empty);
+        var firstClosed = false;
+        var otherClosed = false;
+        try
+        {
+            await Task.Delay(150);
+            async Task Configure(MainPage page, string[] paths)
+            {
+                page._restoringSession = true;
+                foreach (var path in paths) page.AddBrowserTab(path, false);
+                page.BrowserTabs.SelectedIndex = paths.Length - 1;
+                await page.ViewModel.NavigateAsync(paths[^1]);
+                page.ViewModel.ViewMode = BrowserViewMode.Compact;
+                page._restoringSession = false;
+                page._sessionReady = true;
+                page.SaveSession();
+            }
+            await Configure(firstWindow.Page!, [firstPath, secondPath]);
+            await Configure(otherWindow.Page!, [otherPath]);
+            var store = new AppSessionService(Path.Combine(directory, "session.json"));
+            Require(store.Load().Tabs.SequenceEqual([otherPath]),
+                "An additional window can replace the shared saved session", checks);
+            otherWindow.Close();
+            otherClosed = true;
+            firstWindow.Close();
+            firstClosed = true;
+            await Task.Delay(100);
+            var restored = store.Load();
+            Require(restored.Tabs.SequenceEqual([firstPath, secondPath]) && restored.ActiveTabIndex == 1 &&
+                restored.LastPath == secondPath && restored.ViewMode == BrowserViewMode.Compact,
+                "Closing the remaining window saves its own tabs, active folder and view for restart", checks);
+        }
+        finally
+        {
+            if (!otherClosed) otherWindow.Close();
+            if (!firstClosed) firstWindow.Close();
         }
     }
 

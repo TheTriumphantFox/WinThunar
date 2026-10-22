@@ -1,11 +1,12 @@
 # Building and publishing releases
 
-Checked 21 October 2026 against the release script, project/manifest versions, and GitHub
-Releases. The latest published application is **[0.5.6](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.6)**,
-released 21 October 2026 from source commit `7ed9574` (PR #17). Its public MSI, portable ZIP,
+Checked 22 October 2026 against the release script, project/manifest versions, and GitHub
+Releases. The latest published application is **[0.5.7](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.7)**,
+released 22 October 2026 from source commit `24042d5` (PR #19). Its public MSI, portable ZIP,
 setup executable, full/delta packages, and update feed were verified. See the
-[release notes](RELEASE-0.5.6.md) and [updater verification](UPDATER-VERIFICATION.md) for the
-confirmed logged all-users upgrade and the remaining controlled UI, per-user, and delta checks.
+[release notes](RELEASE-0.5.7.md) and [updater verification](UPDATER-VERIFICATION.md) for the
+controlled per-user 0.5.5-to-0.5.6 delta, confirmed older-MSI repair and uninstall settings
+failures, and remaining guest/UAC checks. An installed 0.5.7 guest upgrade remains unverified.
 
 ## Prerequisites and version checklist
 
@@ -23,17 +24,17 @@ Before a new release, select an unused three-part version and update all of thes
 3. The default `$Version` in `scripts/Publish-Release.ps1`.
 4. The README release example and the current release/status references in these docs.
 
-The current published version is **0.5.6**; see its
-[release notes](RELEASE-0.5.6.md). For example, a release `X.Y.Z` uses assembly/file/manifest version `X.Y.Z.0`.
+The current published version is **0.5.7**; see its
+[release notes](RELEASE-0.5.7.md). For example, a release `X.Y.Z` uses assembly/file/manifest version `X.Y.Z.0`.
 Documentation-only changes do not require a new application version.
 
 ## Build and local outputs
 
-Run from the main checkout. This example uses 0.5.6;
+Run from the main checkout. This example uses 0.5.7;
 existing output paths are deliberately not overwritten:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.5.6
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.5.7
 ```
 
 For version `X.Y.Z`, the script writes:
@@ -84,7 +85,7 @@ releases and upload assets for this repository. Keep it out of source, command h
 and logs. With the token already supplied, run:
 
 ```powershell
-$releaseVersion = '0.5.6' # Replace with the version just built.
+$releaseVersion = '0.5.7' # Replace with the version just built.
 try {
     vpk upload github --outputDir .\artifacts\installer --repoUrl https://github.com/TheTriumphantFox/WinThunar --token $env:GITHUB_TOKEN --publish --releaseName "WinThunar $releaseVersion" --tag "v$releaseVersion"
     if ($LASTEXITCODE -ne 0) { throw 'GitHub release upload failed.' }

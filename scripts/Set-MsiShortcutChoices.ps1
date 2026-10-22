@@ -29,8 +29,8 @@ function Invoke-Member($target, [string]$name, [System.Reflection.BindingFlags]$
 
 function Invoke-Sql($database, [string]$sql, [object[]]$values = @()) {
     $view = Invoke-Member $database 'OpenView' 'InvokeMethod' @($sql)
+    $record = $null
     try {
-        $record = $null
         if ($values.Count -gt 0) {
             $record = Invoke-Member $installer 'CreateRecord' 'InvokeMethod' @($values.Count)
             for ($index = 0; $index -lt $values.Count; $index++) {
@@ -44,13 +44,22 @@ function Invoke-Sql($database, [string]$sql, [object[]]$values = @()) {
             return , $rows
         }
         while ($row = Invoke-Member $view 'Fetch' 'InvokeMethod' $null) {
-            $count = Invoke-Member $row 'FieldCount' 'GetProperty' $null
-            $rows += , @(for ($field = 1; $field -le $count; $field++) { Invoke-Member $row 'StringData' 'GetProperty' @($field) })
+            try {
+                $count = Invoke-Member $row 'FieldCount' 'GetProperty' $null
+                $rows += , @(for ($field = 1; $field -le $count; $field++) { Invoke-Member $row 'StringData' 'GetProperty' @($field) })
+            }
+            finally {
+                [System.Runtime.InteropServices.Marshal]::ReleaseComObject($row) | Out-Null
+            }
         }
         return , $rows
     }
     finally {
         Invoke-Member $view 'Close' 'InvokeMethod' $null | Out-Null
+        [System.Runtime.InteropServices.Marshal]::ReleaseComObject($view) | Out-Null
+        if ($null -ne $record) {
+            [System.Runtime.InteropServices.Marshal]::ReleaseComObject($record) | Out-Null
+        }
     }
 }
 

@@ -1,5 +1,22 @@
 # Installed updater verification
 
+## 0.5.8 publication and host check
+
+Published 22 October 2026 from source `b8cf52a` (PRs #21 and #22). Five public binary
+sizes/SHA-256 digests, the source tag, latest stable pointer and 0.5.8 full/delta feed match
+the verified build. The 202,337-byte 0.5.7-to-0.5.8 delta reconstructed all 528 package entries;
+all nine historical update packages retain their hashes. Both MSI copies contain the new
+maintenance policy and shortcut choices. The build passed 171 service tests with one skip
+and the normal x64 build; native policy regression evidence is recorded below.
+
+The corrected-MSI policy was tested in a separate guest using a corrected 0.5.5 MSI and
+the 0.5.7 target package. This does not establish an installed 0.5.8 upgrade or migration
+from an original old MSI. Existing cached MSIs retain their earlier maintenance behavior.
+See [release notes](RELEASE-0.5.8.md) and `artifacts/verification-0.5.8/verification.json`.
+Read-only captures immediately before/after publication found installed **0.5.7.0**,
+zero WinThunar processes and identical hashes for all five observed installation/state files.
+The publication workflow did not launch or upgrade the host app.
+
 ## 0.5.7 publication and host adoption check
 
 Published 22 October 2026 from source `24042d5` (PR #19). The public tag, latest stable release,
@@ -277,7 +294,7 @@ directories and the failing source regression are preserved. The read-only captu
 uses shared-read streams so it can inspect an active Velopack log; a held-writer fixture and
 the running guest app both verified that behavior.
 
-## Unpublished corrected-MSI regression (22 October 2026)
+## Corrected-MSI regression (22 October 2026; policy published in 0.5.8)
 
 The [maintenance postprocessor](MSI-MAINTENANCE.md) fixes the cleanup ID in newly built MSIs
 and rejects older-MSI maintenance before file changes when an updated payload is installed.
@@ -302,7 +319,7 @@ The 657,834-byte guest archive was exported with matching SHA-256; see
 and the extracted `maintenance-evidence-20261022/` case. Snapshot
 `guarded-msi-maintenance-passed-20261022` preserves the passing guest. These are silent
 MSI/native updater checks, not an interactive released-app upgrade or an all-users/UAC test.
-The policy is unpublished; the historical public-installer failures above remain valid.
+The policy ships in the 0.5.8 MSI; the historical failures in older public installers remain valid.
 
 ## Still unverified
 

@@ -2,7 +2,8 @@
 
 Published [22 October 2026](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.7)
 for Windows 11 x64 from source `24042d5049bb15f36d08bc4f3bec93e3bce974b9` (PR #19).
-This is the latest stable release; the public updater feed offers 0.5.7 full/delta packages.
+This release's public updater feed contains 0.5.7 full/delta packages. See
+[0.5.8](RELEASE-0.5.8.md) for the current stable release and corrected MSI policy.
 
 ## Changes since 0.5.6
 

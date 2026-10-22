@@ -50,21 +50,21 @@ integration notes below before choosing it as your default file manager.
 
 ## Release and source status
 
-The latest published application release is **[0.5.7](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.7)**
-(22 October 2026), from source `24042d5` (PR #19). Its application changes are merged into `main`, and the GitHub updater feed
-offers 0.5.7 to installed copies. Use **Help > Check for Updates...** to check immediately;
+The latest published application release is **[0.5.8](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.8)**
+(22 October 2026), from source `b8cf52a` (PRs #21 and #22). Its changes are merged into `main`, and the GitHub updater feed
+offers 0.5.8 to installed copies. Use **Help > Check for Updates...** to check immediately;
 portable copies are updated manually. Documentation and website updates alone do not update the app.
-See the [0.5.7 release notes](docs/RELEASE-0.5.7.md) for verification and remaining limits.
+See the [0.5.8 release notes](docs/RELEASE-0.5.8.md) for verification and remaining limits.
 The version string alone does not establish that a local build matches published binaries.
 
-The **0.5.8 release candidate** adds safer MSI repair and uninstall retention for newly built
+Release **0.5.8** adds safer MSI repair and uninstall retention for newly built
 installers. It does not replace an older MSI already cached on an installed machine; see the
 [0.5.8 release notes](docs/RELEASE-0.5.8.md) for the migration and verification limits.
 
 Release **0.5.7** fixes lost tabs after closing multiple windows by saving the closing window's
 own session before an update applies. It passed 171 service tests (one skipped), 67 desktop checks,
-two restart checks, and four isolated updater scenarios. Older-MSI repair can still leave a mixed
-payload after an automatic update, and per-user uninstall can remove settings; read the
+two restart checks, and four isolated updater scenarios. Installations made with its older MSI
+retain mixed-payload repair and settings-removal risks; read the
 [installer findings](docs/RELEASE-0.5.7.md#verification-and-limits) before repair or uninstall.
 
 Release **0.5.6** adds **System / Light / Dark** under **Edit > Preferences > Display > Theme**.

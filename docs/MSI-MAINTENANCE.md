@@ -28,9 +28,11 @@ An unexpected template or a repeated patch fails without committing database cha
   are blocked because they can also restore older payload files.
 
 This is a refusal to perform an unsafe older repair, not a repair of the updated payload.
-Use a current corrected MSI, or uninstall and reinstall. An automatic application update
-does not replace the original Windows Installer cache. Existing installations need a
-corrected MSI installation before they gain this policy; their old MSI limitations remain.
+An automatic application update does not replace the original Windows Installer cache.
+Existing installations need a corrected MSI installation before they gain this policy;
+their old MSI limitations remain. Direct migration can invoke the old uninstall cleanup
+and delete user state even when installing the new MSI succeeds. Preserve the complete
+state directory before older-MSI maintenance; see the [migration findings](MSI-MIGRATION.md).
 The original MSI product registration can still report the version originally installed.
 
 ## Verification
@@ -98,8 +100,13 @@ state hashes and results. The guest case ID is `1d3e59f1c8a94e76a4c835cbccf001a3
 The passing guest is preserved in snapshot `guarded-msi-maintenance-passed-20261022` and
 left Saved to free host memory. The clean and earlier failure snapshots remain available.
 
-Interactive maintenance, a corrected-MSI upgrade/migration from an already installed old
-MSI, all-users UAC/uninstall, actual recovery replay and live Undo preservation remain open.
+The subsequent [legacy-MSI migration case](MSI-MIGRATION.md) found successful 0.5.8 payload
+and cache replacement but deletion of all five seeded user-state files during old-MSI
+removal. Interactive maintenance, automatic migration retention, all-users UAC/uninstall,
+actual recovery replay and live Undo preservation remain open.
+An independent external backup/restore branch passed migration, both repair modes and
+uninstall retention/positive Shell cleanup; that workaround is implemented by the guest
+test helper, not the published MSI. See [migration verification](MSI-MIGRATION.md).
 The policy regression did not change release assets/feed or the installed host app;
 the subsequent [0.5.8 publication](RELEASE-0.5.8.md) was verified separately.
 Read-only host inspection now finds 0.5.7.0; its updater log records a 07:43–07:44 local

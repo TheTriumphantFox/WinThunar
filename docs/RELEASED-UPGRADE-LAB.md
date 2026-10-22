@@ -123,6 +123,23 @@ after startup/resource delays; the original clean baseline still records 4 GiB. 
 security settings changed. This follow-on case does not complete the interactive released-app,
 all-users/UAC or legacy-MSI migration matrix below.
 
+## Legacy-MSI migration case (22 October 2026)
+
+A subsequent [migration test](MSI-MIGRATION.md) installed the original published per-user
+0.5.5 MSI, applied the native 0.5.7 full package and installed the published 0.5.8 MSI.
+All 524 target files, product/cache replacement and the corrected cached policy passed,
+but the old MSI's cleanup deleted all five seeded settings/plugin/opaque-recovery files.
+The direct migration is **Failed**, despite MSI exit 0. Its evidence and a failure snapshot
+are retained independently of the earlier maintenance-policy regression.
+
+Restoring the pre-migration checkpoint and explicitly backing up/restoring user state
+passed migration, standard/forced repair and uninstall retention with enabled Shell cleanup.
+This verifies a guest-helper workaround, not automatic migration retention in the release.
+Interactive and all-users/UAC coverage, recovery replay and live Undo remain open.
+Both evidence archives were exported with matching byte counts/SHA-256 digests. The VM is
+left **Saved** in `legacy-msi-058-backup-restore-maintenance-passed-20261022`; the clean,
+pre-migration and direct-migration failure snapshots remain available.
+
 ## Bundle contents
 
 - `installers/0.5.5/`: published generic MSI and Setup executable.

@@ -2,11 +2,17 @@
 
 ## Release and source status
 
-Checked 21 October 2026. The latest published application is
-[0.5.6](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.6), published 21 October 2026.
-The application changes are merged into `main` through PR #17 (source `7ed9574`), and the GitHub updater feed
-offers 0.5.6. Documentation-only commits do not distribute an application version.
-See [release notes](RELEASE-0.5.6.md) for package verification and remaining limits.
+Checked 22 October 2026. The latest published application is
+[0.5.7](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.7), published 22 October 2026.
+The application changes are merged into `main` through PR #19 (source `24042d5`), and the GitHub updater feed
+offers 0.5.7. Documentation-only commits do not distribute an application version.
+See [release notes](RELEASE-0.5.7.md) for package verification and remaining limits.
+
+Release **0.5.7** saves the closing window's own session before final-window update scheduling.
+Verification passed 171 service tests with one skip, 67 desktop checks, two restart checks and
+four isolated updater scenarios. All five public binary hashes, the updater feed, source tag,
+and all 528 entries reconstructed from the 520,657-byte 0.5.6-to-0.5.7 delta were verified.
+Older-MSI repair mixed payloads and per-user uninstall settings deletion remain open.
 
 Release **0.5.6** adds persistent **System / Light / Dark** selection in Preferences, shared by
 windows, native title bars, and application dialogs. Verification passed 171 service tests with
@@ -48,7 +54,7 @@ below are now in published 0.5.3; test harnesses are source tools excluded from 
 - [x] Storage-error/process-termination stress harness and recovery fixes for overlapping history records and concurrent restart recovery.
 - [x] Disposable NTFS VHD verification of cross-volume history and actual disk-full allocation failures; native long-path copy/stream/history fixes.
 
-Installed copies can discover 0.5.6 through GitHub Releases. See [release publishing](RELEASES.md)
+Installed copies can discover 0.5.7 through GitHub Releases. See [release publishing](RELEASES.md)
 and [accessibility status](ACCESSIBILITY.md) for package behavior and remaining checks.
 
 ## 1. Browser foundation
@@ -121,11 +127,12 @@ and [accessibility status](ACCESSIBILITY.md) for package behavior and remaining 
 - [x] Publish the application additions as 0.5.3 with the verified GitHub update feed.
 - [x] Publish 0.5.5 with the complete updater/recovery/search/preview changes, verified assets/feed, and a reconstructed 0.5.3-to-0.5.5 delta.
 - [x] Publish 0.5.6 with persistent theme selection, window/dialog propagation, verified assets/feed, and a reconstructed 0.5.5-to-0.5.6 delta.
+- [x] Publish 0.5.7 with closing-window session persistence, isolated updater/guest tools, verified assets/feed, and a reconstructed 0.5.6-to-0.5.7 delta.
 - [x] Confirm the existing all-users 0.5.0 to 0.5.3 full-package upgrade from updater logs and all 524 deployed file hashes; see [updater verification](UPDATER-VERIFICATION.md).
 - [ ] Repeat the installed upgrade under controlled UI conditions; verify per-user apply-on-close, installed delta updates, and Windows Installer repair/uninstall metadata. The logged all-users full-package upgrade succeeded; the original MSI product entry still reports 0.5.0.0.
   - Read-only post-publication inspection still finds installed 0.5.3 with no later update check. A disposable unique-identity console probe now verifies production-backend delta/full apply-on-exit, corrupt-delta fallback, corrupt-full rejection/retry, pending-package rediscovery, and updated-process startup; see [updater verification](UPDATER-VERIFICATION.md). Released-app UI, Setup/MSI, and UAC coverage remain open.
   - A [released-app guest bundle and test matrix](RELEASED-UPGRADE-LAB.md) are prepared, with seven public binary digests verified and the originating host rejected by every guest action. The user-approved Windows 11 evaluation VM is activated, with an unelevated test user, UAC enabled, and a clean snapshot with all NICs disabled. The seeded per-user released 0.5.5-to-0.5.6 delta path passed first/last-window close behavior and all 524 deployed file hashes. The complete persistence case failed because the secondary window overwrote the original two-tab session; remaining matrix cases are pending.
-- [x] Save a closing window's own tabs, active folder and view before scheduling apply-on-exit. The unpublished fix reproduced and corrected the guest finding; 67 desktop checks plus 2 restart checks and a normal x64 build passed. See the [controlled upgrade observations](UPDATER-VERIFICATION.md#controlled-released-app-delta-observations-22-october-2026).
+- [x] Save a closing window's own tabs, active folder and view before scheduling apply-on-exit. Published in 0.5.7; the source regression reproduced and corrected the guest finding, and 67 desktop checks plus 2 restart checks and a normal x64 build passed. See the [controlled upgrade observations](UPDATER-VERIFICATION.md#controlled-released-app-delta-observations-22-october-2026).
 - [ ] Prevent an older MSI repair from producing a mixed payload after a Velopack update. Controlled per-user `/fomus` repair returned 0 and kept the DLL/manifest at 0.5.6, but reverted `WinThunar.deps.json` and `WinThunar.pri` to public 0.5.5 contents. The failure and all payload evidence are preserved; see [repair observations](UPDATER-VERIFICATION.md#msi-repair-produces-a-mixed-payload).
 - [ ] Review uninstall settings/recovery retention. Controlled silent per-user `/x` removed the app, both registrations and both shortcuts, preserved the generated document, and left Explorer working, but also deleted the session/update settings directory. Recovery/Undo data and positive Shell cleanup were not exercised.
 - [ ] Complete the manual accessibility checks documented in [ACCESSIBILITY.md](ACCESSIBILITY.md).

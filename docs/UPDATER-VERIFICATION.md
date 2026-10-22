@@ -1,5 +1,22 @@
 # Installed updater verification
 
+## 0.5.7 publication and host adoption check
+
+Published 22 October 2026 from source `24042d5` (PR #19). The public tag, latest stable release,
+all five binary sizes/SHA-256 digests, and the 0.5.7 full/delta feed were verified. The
+520,657-byte 0.5.6-to-0.5.7 delta reconstructed all 528 package entries. The closing-window
+session fix passed 67 desktop checks and two restart checks; 171 service tests passed with one
+skip, and all four isolated production-updater probe cases passed with 194 matching files each.
+
+The read-only host captures before and after publication still find installed **0.5.3.0**,
+no WinThunar process, and unchanged hashes for the five observed installation/state files.
+The release workflow did not launch, close or upgrade that installation. An installed 0.5.7
+guest upgrade remains unverified. The mixed-payload MSI repair and uninstall settings deletion
+recorded below remain unfixed in 0.5.7. See [release notes](RELEASE-0.5.7.md) and evidence at
+`artifacts/verification-0.5.7/verification.json` and `host-after-publication/` beneath that directory.
+
+## Historical installed-upgrade inspection
+
 Checked 21 October 2026 without launching, closing, replacing, or downgrading the installed app.
 This is retrospective evidence of the existing upgrade, not a controlled repeat of the UI workflow.
 
@@ -208,7 +225,7 @@ The session check exposed a separate failure: the original window had two tabs, 
 window's single tab remained in `session.json` after both closed. The remaining window did not
 save its session on close. This means the complete persistence case is **Failed**, despite the
 successful updater path. A source regression with two distinct folder tabs reproduced the bug;
-the unpublished source fix saves on `Window.Closed`, before App's handler schedules an update.
+the fix published in 0.5.7 saves on `Window.Closed`, before App's handler schedules an update.
 The regression now passes with **67 desktop checks and 2 restart checks**; the normal x64 build
 has zero warnings/errors. Both failing source-test runs remain preserved.
 The published 0.5.6 binaries in the guest remain unchanged by that source work.

@@ -277,6 +277,33 @@ directories and the failing source regression are preserved. The read-only captu
 uses shared-read streams so it can inspect an active Velopack log; a held-writer fixture and
 the running guest app both verified that behavior.
 
+## Unpublished corrected-MSI regression (22 October 2026)
+
+The [maintenance postprocessor](MSI-MAINTENANCE.md) fixes the cleanup ID in newly built MSIs
+and rejects older-MSI maintenance before file changes when an updated payload is installed.
+It does not retrofit the original cached MSI in an existing installation.
+
+A separate clean per-user guest case installed a corrected copy of the 0.5.5 MSI. Both
+same-version `/fomus` and `/fa` repairs returned 0 without changing payload bytes. The
+native updater applied the verified 0.5.7 full package with no restart; all **524 deployed
+files** matched. Older `/fomus`, `/fa`, and `/fomus` with the DLL temporarily held outside
+the install root each returned 1603 with the intended diagnostic and no payload mutation.
+Native AppSearch found both the newer DLL and per-user `DisplayVersion=0.5.7`.
+
+After enabling default-folder Shell integration, native uninstall returned 0 and removed
+the app directory, both product registrations, both shortcuts and owned Shell/default
+integration. Five seeded settings/plugin/opaque-recovery files and the generated document
+retained identical hashes. This tests byte retention, not journal replay or live Undo.
+An initial runner exit-code check failed before uninstall; the corrected runner waits for
+the registration process and was source-hash verified before the successful case.
+
+The 657,834-byte guest archive was exported with matching SHA-256; see
+`artifacts/windows-upgrade-vm-20261021-212229-9192ed86/maintenance-evidence-transfer.json`
+and the extracted `maintenance-evidence-20261022/` case. Snapshot
+`guarded-msi-maintenance-passed-20261022` preserves the passing guest. These are silent
+MSI/native updater checks, not an interactive released-app upgrade or an all-users/UAC test.
+The policy is unpublished; the historical public-installer failures above remain valid.
+
 ## Still unverified
 
 - A controlled UI repeat of installing 0.5.0, checking/downloading, choosing Install Now,

@@ -1,7 +1,7 @@
 param(
     [Parameter()]
     [ValidatePattern('^\d+\.\d+(?:\.\d+)?(?:[-+][0-9A-Za-z.-]+)?$')]
-    [string]$Version = '0.5.7',
+    [string]$Version = '0.5.8',
 
     [Parameter()]
     [switch]$PackageExistingPublish,
@@ -147,6 +147,7 @@ if (-not $SkipInstaller) {
 
     # Edited in place so the MSI that `vpk upload` publishes offers the same choices.
     & (Join-Path $PSScriptRoot 'Set-MsiShortcutChoices.ps1') -MsiPath $builtMsi
+    & (Join-Path $PSScriptRoot 'Set-MsiMaintenancePolicy.ps1') -MsiPath $builtMsi
     Copy-Item -LiteralPath $builtMsi -Destination $msiPath
     $msiHash = (Get-FileHash -LiteralPath $msiPath -Algorithm SHA256).Hash.ToLowerInvariant()
     Set-Content -LiteralPath $msiChecksumPath -Value "$msiHash  $releaseName.msi" -Encoding ascii

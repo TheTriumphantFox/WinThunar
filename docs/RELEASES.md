@@ -56,7 +56,9 @@ running `dotnet publish`; it still refuses pre-existing final ZIP/MSI/checksum o
 Use it only when that folder already contains the intended application version and files.
 
 The script validates `WinThunar.exe` and at least four bundled JSON plugin manifests. It
-also adds shortcut choices to the Velopack MSI before copying it to the versioned local name.
+also adds shortcut choices and the [MSI maintenance policy](MSI-MAINTENANCE.md) before copying
+the MSI to the versioned local name. That policy is source work after 0.5.7; the published
+0.5.7 MSI and earlier cached installers do not contain it.
 
 ## GitHub filenames and installation
 

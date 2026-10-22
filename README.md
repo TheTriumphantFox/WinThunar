@@ -57,6 +57,10 @@ portable copies are updated manually. Documentation and website updates alone do
 See the [0.5.7 release notes](docs/RELEASE-0.5.7.md) for verification and remaining limits.
 The version string alone does not establish that a local build matches published binaries.
 
+The **0.5.8 release candidate** adds safer MSI repair and uninstall retention for newly built
+installers. It does not replace an older MSI already cached on an installed machine; see the
+[0.5.8 release notes](docs/RELEASE-0.5.8.md) for the migration and verification limits.
+
 Release **0.5.7** fixes lost tabs after closing multiple windows by saving the closing window's
 own session before an update applies. It passed 171 service tests (one skipped), 67 desktop checks,
 two restart checks, and four isolated updater scenarios. Older-MSI repair can still leave a mixed
@@ -278,10 +282,10 @@ Install the Velopack packaging tool once:
 dotnet tool install -g vpk --version 1.2.161
 ```
 
-Build a release from the main checkout; this example uses 0.5.7:
+Build a release from the main checkout; this example uses 0.5.8:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.5.7
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.5.8
 ```
 
 For a new release, choose an unused version and update all four version locations before

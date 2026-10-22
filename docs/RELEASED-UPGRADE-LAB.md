@@ -111,6 +111,18 @@ name **before any writes or process launches**. It verifies all seven binary ass
 invocation. The bundle is intended for this specific originating host and guest; these guards
 are accident prevention, not a security boundary against an altered bundle.
 
+## Follow-on MSI maintenance case (22 October 2026)
+
+The later [unpublished maintenance-policy regression](MSI-MAINTENANCE.md) uses a corrected
+MSI copy and the verified 0.5.7 full package in a separate clean per-user case. Same-version
+repairs, three rejected older-repair cases, all 524 deployed target hashes, and uninstall
+retention/positive Shell cleanup passed. Its archive was exported with matching length and
+SHA-256. Snapshot `guarded-msi-maintenance-passed-20261022` is the current **Saved** state;
+the earlier clean and failure snapshots are retained. This run reduced guest RAM to 3 GiB
+after startup/resource delays; the original clean baseline still records 4 GiB. No host
+security settings changed. This follow-on case does not complete the interactive released-app,
+all-users/UAC or legacy-MSI migration matrix below.
+
 ## Bundle contents
 
 - `installers/0.5.5/`: published generic MSI and Setup executable.

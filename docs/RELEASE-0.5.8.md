@@ -1,7 +1,8 @@
 # WinThunar 0.5.8
 
-Release candidate prepared 22 October 2026 for Windows 11 x64. Publication and release-package
-verification are pending; 0.5.7 remains the latest published application until that completes.
+Published [22 October 2026](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.8)
+for Windows 11 x64 from source `b8cf52a83550d6cc486ad14241beb238203ef0e5` (PRs #21 and #22).
+This is the latest stable release; the public updater feed offers 0.5.8 full/delta packages.
 
 ## Changes since 0.5.7
 
@@ -17,18 +18,33 @@ Fresh installation, same-version repair and full uninstall remain allowed.
 
 The release pipeline applies this policy after adding shortcut choices. Native condition
 checks and a guarded disposable-guest regression runner are included as source tools.
+The shortcut editor releases its MSI query records and views before the maintenance editor
+opens the same database, allowing both steps to complete in the release build.
 Application behavior otherwise retains 0.5.7's window-session fix and 0.5.6's theme preference.
 
 ## Verification and limits
 
-The candidate passed **171 service tests, one skipped, zero failed**, and a normal x64
+The release passed **171 service tests, one skipped, zero failed**, and a normal x64
 Release build with zero warnings/errors. The skip requires Windows symbolic-link privilege.
 The restricted test runner initially timed out connecting to testhost; the normal-access
 retry passed. Test output retained NU1900 because NuGet vulnerability metadata was unavailable.
 Evidence is retained in `artifacts/verification-0.5.8/`. Desktop checks were not repeated for
 this packaging-only change; the preceding application release's UI coverage is historical.
 
-Before this candidate, corrected copies of the published 0.5.5 and 0.5.7 MSIs each passed
+Both MSI copies report **0.5.8.0** and contain the corrected cleanup identity, repair guard,
+newer-DLL signature, scope-specific version searches and shortcut choices. Application
+assemblies match across the versioned ZIP, public portable ZIP and full package, retain the
+window-close session fix and exclude smoke/fault hooks. Local checksum sidecars passed.
+
+All **five public binary sizes and SHA-256 digests** match the verified upload files. The
+public feed contains exactly the 0.5.8 full/delta entries, latest stable resolves to 0.5.8,
+and the source tag points to the built commit. The **202,337-byte 0.5.7-to-0.5.8 delta**
+reconstructed all **528 package entries** with matching names, lengths and content hashes.
+All **nine historical update packages** retain their original hashes. The restricted delta
+check was denied a move in temporary staging; normal-access reconstruction passed. The
+initial MSI-lock build failure and rebuilt packages are preserved in the verification directory.
+
+Before packaging this release, corrected copies of the published 0.5.5 and 0.5.7 MSIs each passed
 eleven native Windows Installer condition cases under Windows PowerShell 5.1. Repeat patching
 was rejected without mutation and original release files retained their hashes.
 
@@ -65,3 +81,5 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Releas
 
 Keep all historical packages in `artifacts/installer`, retained recovery/stress data and the
 guest snapshots/evidence. Release verification does not launch or change the host installation.
+Read-only captures around publication found installed **0.5.7.0**, no app process, and
+unchanged hashes for the DLL, updater, manifest, update settings and updater log.

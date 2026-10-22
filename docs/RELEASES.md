@@ -1,12 +1,13 @@
 # Building and publishing releases
 
 Checked 22 October 2026 against the release script, project/manifest versions, and GitHub
-Releases. The latest published application is **[0.5.7](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.7)**,
-released 22 October 2026 from source commit `24042d5` (PR #19). Its public MSI, portable ZIP,
+Releases. The latest published application is **[0.5.8](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.8)**,
+released 22 October 2026 from source commit `b8cf52a` (PRs #21 and #22). Its public MSI, portable ZIP,
 setup executable, full/delta packages, and update feed were verified. See the
-[release notes](RELEASE-0.5.7.md) and [updater verification](UPDATER-VERIFICATION.md) for the
-controlled per-user 0.5.5-to-0.5.6 delta, confirmed older-MSI repair and uninstall settings
-failures, and remaining guest/UAC checks. An installed 0.5.7 guest upgrade remains unverified.
+[release notes](RELEASE-0.5.8.md), [MSI policy evidence](MSI-MAINTENANCE.md) and
+[updater verification](UPDATER-VERIFICATION.md) for corrected-MSI native checks and historical
+public-installer failures. Existing cached MSIs retain their old behavior. An installed 0.5.8
+upgrade, migration from an old MSI and the remaining interactive/all-users matrix remain unverified.
 
 ## Prerequisites and version checklist
 
@@ -24,17 +25,17 @@ Before a new release, select an unused three-part version and update all of thes
 3. The default `$Version` in `scripts/Publish-Release.ps1`.
 4. The README release example and the current release/status references in these docs.
 
-The current published version is **0.5.7**; see its
-[release notes](RELEASE-0.5.7.md). For example, a release `X.Y.Z` uses assembly/file/manifest version `X.Y.Z.0`.
+The current published version is **0.5.8**; see its
+[release notes](RELEASE-0.5.8.md). For example, a release `X.Y.Z` uses assembly/file/manifest version `X.Y.Z.0`.
 Documentation-only changes do not require a new application version.
 
 ## Build and local outputs
 
-Run from the main checkout. This example uses 0.5.7;
+Run from the main checkout. This example uses 0.5.8;
 existing output paths are deliberately not overwritten:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.5.7
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.5.8
 ```
 
 For version `X.Y.Z`, the script writes:
@@ -57,8 +58,8 @@ Use it only when that folder already contains the intended application version a
 
 The script validates `WinThunar.exe` and at least four bundled JSON plugin manifests. It
 also adds shortcut choices and the [MSI maintenance policy](MSI-MAINTENANCE.md) before copying
-the MSI to the versioned local name. That policy is source work after 0.5.7; the published
-0.5.7 MSI and earlier cached installers do not contain it.
+the MSI to the versioned local name. The published 0.5.8 MSI contains this policy; the
+0.5.7 MSI and earlier cached installers do not. An app update does not replace a cached MSI.
 
 ## GitHub filenames and installation
 
@@ -87,7 +88,7 @@ releases and upload assets for this repository. Keep it out of source, command h
 and logs. With the token already supplied, run:
 
 ```powershell
-$releaseVersion = '0.5.7' # Replace with the version just built.
+$releaseVersion = '0.5.8' # Replace with the version just built.
 try {
     vpk upload github --outputDir .\artifacts\installer --repoUrl https://github.com/TheTriumphantFox/WinThunar --token $env:GITHUB_TOKEN --publish --releaseName "WinThunar $releaseVersion" --tag "v$releaseVersion"
     if ($LASTEXITCODE -ne 0) { throw 'GitHub release upload failed.' }

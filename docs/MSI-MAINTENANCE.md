@@ -1,8 +1,8 @@
 # MSI maintenance policy
 
-Source work on 22 October 2026; **not published**. The published 0.5.7 installers retain
-the earlier repair and settings-removal limitations. This policy applies to MSIs generated
-by the updated release script, not to MSIs already cached on installed machines.
+Included in the MSI published with **[0.5.8](RELEASE-0.5.8.md)** on 22 October 2026.
+The 0.5.7 and earlier installers retain the repair and settings-removal limitations. This
+policy applies to corrected MSIs, not to older MSIs already cached on installed machines.
 
 ## Corrected packaging
 
@@ -100,6 +100,7 @@ left Saved to free host memory. The clean and earlier failure snapshots remain a
 
 Interactive maintenance, a corrected-MSI upgrade/migration from an already installed old
 MSI, all-users UAC/uninstall, actual recovery replay and live Undo preservation remain open.
-No release assets/feed or installed host app were changed by this packaging workflow.
+The policy regression did not change release assets/feed or the installed host app;
+the subsequent [0.5.8 publication](RELEASE-0.5.8.md) was verified separately.
 Read-only host inspection now finds 0.5.7.0; its updater log records a 07:43–07:44 local
 upgrade before this work, so the previous session's 0.5.3 host baseline is historical.

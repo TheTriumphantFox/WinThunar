@@ -113,7 +113,7 @@ are accident prevention, not a security boundary against an altered bundle.
 
 ## Follow-on MSI maintenance case (22 October 2026)
 
-The later [unpublished maintenance-policy regression](MSI-MAINTENANCE.md) uses a corrected
+The later [maintenance-policy regression](MSI-MAINTENANCE.md), included as tooling with 0.5.8, uses a corrected
 MSI copy and the verified 0.5.7 full package in a separate clean per-user case. Same-version
 repairs, three rejected older-repair cases, all 524 deployed target hashes, and uninstall
 retention/positive Shell cleanup passed. Its archive was exported with matching length and

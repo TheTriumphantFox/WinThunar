@@ -1,7 +1,9 @@
 # WinThunar 0.5.10
 
-Prepared 23 October 2026 for Windows 11 x64. Publication and final public-binary verification
-are pending. Project, assembly/file, manifest and release-script versions are aligned at
+Published [23 October 2026](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.10)
+for Windows 11 x64 from source `d35876e94af9b1691498b848875d711048777a0f` (PR #27).
+All five public binary digests, both update feeds and the source tag match the verified build.
+Project, assembly/file, manifest and release-script versions are aligned at
 0.5.10 (four-part version 0.5.10.0).
 
 ## Changes since 0.5.9
@@ -67,6 +69,27 @@ checks. Native symbolic-link fixtures also skip without privilege. The initial s
 service run aborted on testhost connection timeout before tests ran; the unrestricted retry
 passed. NuGet reported NU1900 while vulnerability metadata was unavailable.
 
-The final clean-main release build, both MSI copies and embedded guard binary, retained
-historical packages, 0.5.9-to-0.5.10 delta reconstruction, public binary digests, feeds and
-source tag are verified separately during shipping. Results will be recorded after publication.
+The release was rebuilt from clean merged `main` using `Publish-Release.ps1 -Version 0.5.10`.
+Both MSI copies have the expected version, maintenance/migration policy, native action types,
+transaction sequence and shortcut choices, with no deliberate failure action. The embedded
+native DLL hash matches the freshly compiled source output, and its actual-token guard is present.
+
+All thirteen historical update packages remain hash-identical. Applying the **316,787-byte**
+0.5.9-to-0.5.10 delta to the retained public 0.5.9 base reconstructs all **528 archive entries**
+with matching names, lengths and SHA-256 digests. The packaged assemblies match across the
+versioned ZIP, public portable ZIP and full package; test hooks and source/guest tools are absent.
+
+All five published binary sizes/SHA-256 digests match the verified local build. The modern
+public feed offers matching 0.5.10 full/delta entries, the compatibility `RELEASES` feed offers
+the matching full package, latest stable resolves to 0.5.10, and the tag points to the source
+commit above. Public notes disclose same-account elevation and cached-MSI limits. Shipping
+evidence is retained in `artifacts/verification-0.5.10/`; the installed fixture evidence remains
+in the [rollback investigation](MSI-ROLLBACK.md).
+
+| GitHub binary | Bytes | SHA-256 |
+| --- | ---: | --- |
+| `WinThunar.App-win.msi` | 93,401,088 | `52494de5986abce44e7654697f2c058d54b31b5b28c039bb809ac8212ff3e427` |
+| `WinThunar.App-win-Setup.exe` | 119,478,562 | `428d8e8d91d48265d74e3e4a4bcd346b29109f92d2a75512b274df42c92e5a08` |
+| `WinThunar.App-win-Portable.zip` | 111,930,436 | `8cba058f5a3556b19b3c687f9451c64f93a6cd3cc1186de5ad21020a88e72c68` |
+| `WinThunar.App-0.5.10-delta.nupkg` | 316,787 | `74fb007c07ad08098fc6277c03996b9d8baecbc58038a41d2ec2b9340304c467` |
+| `WinThunar.App-0.5.10-full.nupkg` | 111,947,042 | `7dc29e961a176592118c06d2900d10f8b47c0374fb83c9ed8f17ab9dfc16dd1f` |

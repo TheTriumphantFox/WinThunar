@@ -9,10 +9,11 @@ migration protection and rollback. See [migration protection](MSI-MIGRATION.md#a
 for its scope, fail-safe behavior and private-candidate verification. The 0.5.8 public MSI
 does not contain that protection.
 
-An unpublished [23 October source remedy](MSI-ROLLBACK.md) additionally requires actual
+Published **[0.5.10](RELEASE-0.5.10.md)** includes the [23 October remedy](MSI-ROLLBACK.md) requiring actual
 same-account elevation before legacy per-user migration. Unelevated refusal and elevated
 early/late rollback, subsequent migration, both repairs and uninstall pass in the disposable
-guest. This requirement is not in the published 0.5.9 MSI or any existing cached installer.
+guest. This requirement is absent from 0.5.9 and earlier cached installers; application updates
+do not replace them. Both release 0.5.10 MSI copies contain the verified guard binary and policy.
 
 ## Corrected packaging
 

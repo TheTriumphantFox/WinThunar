@@ -157,6 +157,25 @@ void RequireClosedApplication() {
     if (GetLastError() != ERROR_NO_MORE_FILES) throw std::runtime_error("Incomplete application process check");
 }
 
+void RequireElevatedMigration() {
+    // The unelevated MSI engine can restore files yet fail to restore its own product
+    // registration during rollback. Check the effective token, not caller-settable MSI
+    // properties such as Privileged or MsiRunningElevated. Never change MSI registry ACLs.
+    HANDLE value = nullptr;
+    if (!OpenThreadToken(GetCurrentThread(), TOKEN_QUERY, TRUE, &value)) {
+        if (GetLastError() != ERROR_NO_TOKEN ||
+            !OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &value))
+            throw std::runtime_error("Cannot verify migration privileges; installation stopped before removal");
+    }
+    Handle token{value};
+    TOKEN_ELEVATION elevation{};
+    DWORD bytes = 0;
+    if (!GetTokenInformation(token.value, TokenElevation, &elevation, sizeof(elevation), &bytes))
+        throw std::runtime_error("Cannot verify migration privileges; installation stopped before removal");
+    if (!elevation.TokenIsElevated)
+        throw std::runtime_error("Migrating this older Just me MSI requires administrator approval for safe installer rollback. Close this installer, run it as administrator using the same Windows account, and select Just me. Do not switch to another administrator account");
+}
+
 UINT Failure(MSIHANDLE session, const std::exception& exception) {
     std::string detail(exception.what());
     Log(session, std::wstring(detail.begin(), detail.end()) +
@@ -187,6 +206,7 @@ extern "C" __declspec(dllexport) UINT __stdcall PrepareMigration(MSIHANDLE sessi
             throw std::runtime_error("Automatic legacy-MSI migration currently supports Just me only; all-users migration requires a verified external state backup");
         if (Property(session, L"RollbackDisabled") == L"1" || Property(session, L"DISABLEROLLBACK") == L"1")
             throw std::runtime_error("Legacy migration requires Windows Installer rollback enabled");
+        RequireElevatedMigration();
         RequireClosedApplication();
         PWSTR folder = nullptr;
         if (FAILED(SHGetKnownFolderPath(FOLDERID_LocalAppData, KF_FLAG_DONT_VERIFY, nullptr, &folder)))

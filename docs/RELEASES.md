@@ -12,8 +12,8 @@ but old-MSI removal deleted seeded user state. The external backup/restore worka
 passed migration, both repairs and uninstall retention. Published 0.5.9 adds
 automatic per-user protection; the remaining interactive/all-users matrix remains open.
 
-Source versions, the current public release and updater feed are aligned at
-**[0.5.9](RELEASE-0.5.9.md)**. Release notes
+Source versions prepare **[0.5.10](RELEASE-0.5.10.md)**; the current public release and
+updater feed remain at **[0.5.9](RELEASE-0.5.9.md)** until publication. The 0.5.9 release notes
 retain the [forced-rollback MSI registration failure](MSI-MIGRATION.md#forced-rollback-finding--known-limitation)
 as a known issue; passing state retention does not establish complete installer rollback.
 
@@ -44,11 +44,11 @@ Documentation-only changes do not require a new application version.
 
 ## Build and local outputs
 
-Run from the main checkout. This example uses 0.5.9;
+Run from the main checkout. This example uses 0.5.10;
 existing output paths are deliberately not overwritten:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.5.9
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.5.10
 ```
 
 For version `X.Y.Z`, the script writes:
@@ -101,7 +101,7 @@ releases and upload assets for this repository. Keep it out of source, command h
 and logs. With the token already supplied, run:
 
 ```powershell
-$releaseVersion = '0.5.9' # Published-release example; choose an unused version for the next release.
+$releaseVersion = '0.5.10' # Prepared release; confirm the version is unused before publishing.
 try {
     vpk upload github --outputDir .\artifacts\installer --repoUrl https://github.com/TheTriumphantFox/WinThunar --token $env:GITHUB_TOKEN --publish --releaseName "WinThunar $releaseVersion" --tag "v$releaseVersion"
     if ($LASTEXITCODE -ne 0) { throw 'GitHub release upload failed.' }

@@ -9,6 +9,11 @@ migration protection and rollback. See [migration protection](MSI-MIGRATION.md#a
 for its scope, fail-safe behavior and private-candidate verification. The 0.5.8 public MSI
 does not contain that protection.
 
+An unpublished [23 October source remedy](MSI-ROLLBACK.md) additionally requires actual
+same-account elevation before legacy per-user migration. Unelevated refusal and elevated
+early/late rollback, subsequent migration, both repairs and uninstall pass in the disposable
+guest. This requirement is not in the published 0.5.9 MSI or any existing cached installer.
+
 ## Corrected packaging
 
 `scripts/Publish-Release.ps1` now runs `Set-MsiMaintenancePolicy.ps1` after adding shortcut

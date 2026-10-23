@@ -40,6 +40,13 @@ int wmain(int argc, wchar_t** argv) {
             MsiSetPropertyW(session, L"DISABLEROLLBACK", L"1");
             Check(PrepareMigration(session) == ERROR_INSTALL_FAILURE && Property(session, L"WinThunarMigrationNeeded").empty(),
                 "Rollback-disabled legacy migration refused before scheduling changes");
+            MsiSetPropertyW(session, L"DISABLEROLLBACK", L"");
+            // The guest regression runs this probe unelevated. Forged MSI properties must
+            // not let the unsafe legacy removal begin or schedule a state-directory rename.
+            MsiSetPropertyW(session, L"Privileged", L"1");
+            MsiSetPropertyW(session, L"MsiRunningElevated", L"1");
+            Check(PrepareMigration(session) == ERROR_INSTALL_FAILURE && Property(session, L"WinThunarMigrationNeeded").empty(),
+                "Unelevated legacy migration refused despite caller-supplied privilege properties");
             MsiCloseHandle(session);
             return 0;
         }

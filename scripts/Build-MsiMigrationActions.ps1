@@ -14,7 +14,7 @@ if ($Test) {
     $testSource = Join-Path (Split-Path -Parent $source) 'MigrationStateTests.cpp'
     $testBuild = @"
 if errorlevel 1 exit /b %errorlevel%
-cl.exe /nologo /std:c++17 /EHsc /W4 /WX /O2 /MT /DUNICODE /D_UNICODE "$testSource" /Fo"$output\MigrationStateTests.obj" /Fe"$output\MigrationStateTests.exe" /link /INCREMENTAL:NO /DYNAMICBASE /NXCOMPAT msi.lib shell32.lib ole32.lib
+cl.exe /nologo /std:c++17 /EHsc /W4 /WX /O2 /MT /DUNICODE /D_UNICODE "$testSource" /Fo"$output\MigrationStateTests.obj" /Fe"$output\MigrationStateTests.exe" /link /INCREMENTAL:NO /DYNAMICBASE /NXCOMPAT msi.lib shell32.lib ole32.lib advapi32.lib
 "@
 }
 # This batch file contains only quoted, resolved build paths; it performs no file deletion.
@@ -23,7 +23,7 @@ $batch = Join-Path $output 'build.cmd'
 @echo off
 call "$tools" -no_logo -arch=x64 -host_arch=x64
 if errorlevel 1 exit /b %errorlevel%
-cl.exe /nologo /std:c++17 /EHsc /W4 /WX /O2 /MT /DUNICODE /D_UNICODE /LD "$source" /Fo"$output\MigrationState.obj" /Fe"$dll" /link /INCREMENTAL:NO /DYNAMICBASE /NXCOMPAT msi.lib shell32.lib ole32.lib
+cl.exe /nologo /std:c++17 /EHsc /W4 /WX /O2 /MT /DUNICODE /D_UNICODE /LD "$source" /Fo"$output\MigrationState.obj" /Fe"$dll" /link /INCREMENTAL:NO /DYNAMICBASE /NXCOMPAT msi.lib shell32.lib ole32.lib advapi32.lib
 $testBuild
 "@ | Set-Content -LiteralPath $batch -Encoding ascii
 & $env:ComSpec /d /c $batch

@@ -57,6 +57,11 @@ portable copies are updated manually. Documentation and website updates alone do
 See the [0.5.9 release notes](docs/RELEASE-0.5.9.md) for verification and remaining limits.
 The version string alone does not establish that a local build matches published binaries.
 
+Source version **[0.5.10](docs/RELEASE-0.5.10.md)** prepares a guarded legacy-MSI migration
+path: the installer requires actual administrator elevation in the same Windows account
+before old-product removal. Unelevated refusal and elevated early/late rollback, migration,
+both repair modes and uninstall pass in the disposable guest. Publication remains pending.
+
 Release **[0.5.9](docs/RELEASE-0.5.9.md)** adds
 automatic state protection during per-user legacy-MSI migration and an interrupted-migration
 startup guard. All-users legacy migration is refused before removal; see the
@@ -293,10 +298,10 @@ Install the Velopack packaging tool once:
 dotnet tool install -g vpk --version 1.2.161
 ```
 
-Build a release from the main checkout; this example uses 0.5.9:
+Build a release from the main checkout; this example uses 0.5.10:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.5.9
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.5.10
 ```
 
 For a new release, choose an unused version and update all four version locations before

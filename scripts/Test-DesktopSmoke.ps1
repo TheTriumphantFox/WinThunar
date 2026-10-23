@@ -1,5 +1,10 @@
-param([string]$OutputDirectory = (Join-Path $env:TEMP ('WinThunar-desktop-smoke-' + [guid]::NewGuid().ToString('N'))))
+param(
+    [string]$OutputDirectory = (Join-Path $env:TEMP ('WinThunar-desktop-smoke-' + [guid]::NewGuid().ToString('N'))),
+    [ValidateRange(0,3600)][int]$EnduranceSeconds = 0,
+    [ValidateRange(0,600)][int]$DiagnosticHoldSeconds = 0
+)
 $ErrorActionPreference = 'Stop'
+if ($DiagnosticHoldSeconds -gt 0 -and $EnduranceSeconds -eq 0) { throw 'DiagnosticHoldSeconds requires an endurance run.' }
 $projectRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $runRoot = [IO.Path]::GetFullPath($OutputDirectory)
 if (Test-Path -LiteralPath $runRoot) { throw "Choose a new smoke-test output directory: $runRoot" }
@@ -9,12 +14,17 @@ $publish = Join-Path $runRoot 'app'
 if ($LASTEXITCODE -ne 0) { throw 'Desktop smoke build failed.' }
 $previousDirectory = $env:WINTHUNAR_SMOKE_DIRECTORY
 $previousRestartTheme = $env:WINTHUNAR_SMOKE_RESTART_THEME
+$previousEndurance = $env:WINTHUNAR_SMOKE_ENDURANCE_SECONDS
+$previousDiagnosticHold = $env:WINTHUNAR_SMOKE_DIAGNOSTIC_HOLD_SECONDS
 try {
     Remove-Item Env:WINTHUNAR_SMOKE_RESTART_THEME -ErrorAction SilentlyContinue
+    $env:WINTHUNAR_SMOKE_ENDURANCE_SECONDS = $EnduranceSeconds.ToString([Globalization.CultureInfo]::InvariantCulture)
+    $env:WINTHUNAR_SMOKE_DIAGNOSTIC_HOLD_SECONDS = $DiagnosticHoldSeconds.ToString([Globalization.CultureInfo]::InvariantCulture)
     $env:WINTHUNAR_SMOKE_DIRECTORY = Join-Path $runRoot 'results'
     New-Item -ItemType Directory -Path $env:WINTHUNAR_SMOKE_DIRECTORY | Out-Null
     $process = Start-Process -FilePath (Join-Path $publish 'WinThunar.exe') -WindowStyle Hidden -PassThru
-    if (-not $process.WaitForExit(45000)) {
+    $timeoutSeconds = if ($EnduranceSeconds -gt 0) { 120 + $EnduranceSeconds + $DiagnosticHoldSeconds } else { 45 }
+    if (-not $process.WaitForExit($timeoutSeconds * 1000)) {
         # Stop only the test process started above, never an installed or portable user instance.
         Stop-Process -Id $process.Id -ErrorAction SilentlyContinue
         throw "Desktop smoke test timed out. Outputs: $runRoot"
@@ -43,4 +53,8 @@ finally {
     else { $env:WINTHUNAR_SMOKE_DIRECTORY = $previousDirectory }
     if ($null -eq $previousRestartTheme) { Remove-Item Env:WINTHUNAR_SMOKE_RESTART_THEME -ErrorAction SilentlyContinue }
     else { $env:WINTHUNAR_SMOKE_RESTART_THEME = $previousRestartTheme }
+    if ($null -eq $previousEndurance) { Remove-Item Env:WINTHUNAR_SMOKE_ENDURANCE_SECONDS -ErrorAction SilentlyContinue }
+    else { $env:WINTHUNAR_SMOKE_ENDURANCE_SECONDS = $previousEndurance }
+    if ($null -eq $previousDiagnosticHold) { Remove-Item Env:WINTHUNAR_SMOKE_DIAGNOSTIC_HOLD_SECONDS -ErrorAction SilentlyContinue }
+    else { $env:WINTHUNAR_SMOKE_DIAGNOSTIC_HOLD_SECONDS = $previousDiagnosticHold }
 }

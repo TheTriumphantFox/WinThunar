@@ -2,7 +2,7 @@
 
 Reviewed against the source checkout on 21 October 2026. This is a source and smoke-check
 status document, not a claim of full screen-reader compatibility or accessibility conformance.
-The latest published application is 0.5.8; the support below is included in the release unless
+The latest recorded published application is 0.5.10; the support below is included in the release unless
 marked unreleased, subject to the verification limits here.
 See the [release/source status](ROADMAP.md#release-and-source-status).
 
@@ -82,6 +82,12 @@ run. A passing smoke result must not be presented as a complete notification or 
 check.
 
 ## Manual checks still required
+
+The [23 October priority pass](PRIORITY-VERIFICATION.md) passes 70 source desktop checks and two
+theme-restart checks, including a regression for saving the invoking window before Restart Now.
+A separate five-minute generated UI/thumbnail/search/preview workload also passes. The pass reproduces
+the notification resource-DLL registration failure. These checks leave the manual review below
+open; the endurance harness does not run a screen reader or establish contrast conformance.
 
 - Narrator and another Windows screen reader: reading order, announcements, multi-selection,
   menus, tabs, search results, transfer state, and modal dialogs.

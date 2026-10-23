@@ -2297,6 +2297,57 @@ public sealed partial class MainPage : Page
         }
     }
 
+    private async void WhatsNew_Click(object sender, RoutedEventArgs e)
+    {
+        await CreateWhatsNewDialog().ShowAsync();
+    }
+
+    private ThemedContentDialog CreateWhatsNewDialog()
+    {
+        var content = new StackPanel { Spacing = 12, MaxWidth = 480 };
+        void AddHeading(string text) => content.Children.Add(new TextBlock
+        {
+            Text = text,
+            FontSize = 18,
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            TextWrapping = TextWrapping.Wrap
+        });
+        void AddParagraph(string text) => content.Children.Add(new TextBlock
+        {
+            Text = text,
+            TextWrapping = TextWrapping.Wrap,
+            IsTextSelectionEnabled = true
+        });
+
+        AddHeading("Version 0.5.11 — keep your tabs");
+        AddParagraph("Keep your tabs when restarting to update. With tab restoration enabled, Restart Now brings back the tabs and active folder from the window where you clicked the button, even after opening and closing another WinThunar window. Your selected view is saved too.");
+        AddParagraph("Restart Now continues to wait until file transfers and Undo or Redo operations finish in every window.");
+        AddHeading("Version 0.5.10 — safer installer migration");
+        AddParagraph("When replacing an older per-user MSI installation, the installer asks you to run it as administrator in the same Windows account before removing the old version. This helps setup recover the previous installation and settings if migration fails.");
+        AddParagraph("Automatic app updates do not replace the MSI that Windows keeps for repair and uninstall. Use the latest MSI to get the updated installer safeguards.");
+        content.Children.Add(new HyperlinkButton
+        {
+            Content = "Release notes and downloads",
+            NavigateUri = new Uri(UpdateService.ReleasesUrl),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Padding = new Thickness(0)
+        });
+        return new ThemedContentDialog
+        {
+            Title = "What's New in WinThunar",
+            Content = new ScrollViewer
+            {
+                Content = content,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+                MaxHeight = 440
+            },
+            CloseButtonText = "Close",
+            DefaultButton = ContentDialogButton.Close,
+            XamlRoot = XamlRoot
+        };
+    }
+
     private async void About_Click(object sender, RoutedEventArgs e)
     {
         var content = new StackPanel { Spacing = 8, MinWidth = 390 };
@@ -2412,6 +2463,9 @@ public sealed partial class MainPage : Page
             return;
         }
 
+        // The updater exits directly, so Window.Closed cannot save this window's session.
+        // Prefer the window whose Restart Now button was used over another window's last save.
+        SaveSession();
         if (!App.Updates.ApplyAndRestart())
         {
             ViewModel.StatusText = "Could not start the update installer.";

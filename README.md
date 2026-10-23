@@ -48,6 +48,28 @@ while operations handed to Windows are outside its Undo history. History is wind
 not crash-atomic across multiple items. See the installation and Windows
 integration notes below before choosing it as your default file manager.
 
+## What's new
+
+### 0.5.11 — prepared for release
+
+**Keep your tabs when you restart to update.** After opening and closing another WinThunar
+window, **Restart Now** restores the tabs, active folder and view from the window where you
+clicked the button when tab restoration is enabled. Restart still waits for file transfers and
+Undo/Redo operations in every window. This fix is in the 0.5.11 source; publication is pending.
+
+Use the new **Help > What's New...** section to read the update summary inside the app.
+See the [0.5.11 release notes](docs/RELEASE-0.5.11.md) for changes and release status.
+See the [verification report](docs/PRIORITY-VERIFICATION.md#installed-delta-and-restart-now-session-fix)
+for the reproduced issue, passing regression and remaining checks.
+
+### Published in 0.5.10
+
+**Safer migration from an older per-user MSI.** The installer requires administrator elevation
+in the same Windows account before removing the old product, protecting the tested recovery
+path if installation fails. Automatic app updates do not replace Windows' cached repair/uninstall
+installer; use the latest MSI to get these safeguards. See the
+[0.5.10 release notes](docs/RELEASE-0.5.10.md) for details.
+
 ## Release and source status
 
 The latest published application release is **[0.5.10](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.10)**
@@ -300,10 +322,10 @@ Install the Velopack packaging tool once:
 dotnet tool install -g vpk --version 1.2.161
 ```
 
-Build a release from the main checkout; this example uses 0.5.10:
+Build a release from the main checkout; this example uses 0.5.11:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.5.10
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.5.11
 ```
 
 For a new release, choose an unused version and update all four version locations before

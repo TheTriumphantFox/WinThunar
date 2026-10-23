@@ -239,6 +239,8 @@ public sealed partial class MainPage
             Require(ViewModel.IsComputerView && !ViewModel.IsSearchMode, "Closing This PC search restores the drive listing", checks);
             await ViewModel.NavigateAsync(fixture);
 
+            await RunOptionalEnduranceAsync(directory, checks);
+            await CheckRestartSessionAsync(directory, checks);
             await CheckWindowCloseSessionAsync(directory, checks);
             Require(TaskbarService.LastError is null, "Windows accepted the jump-list tasks", checks);
             checks.Add(NotificationService.LastError is null ? "Windows notification registration succeeded" : "Notification registration unavailable: " + NotificationService.LastError);
@@ -356,7 +358,16 @@ public sealed partial class MainPage
                 }
                 Require(otherWindow.Page?.ActualTheme == expected && otherWindow.AppWindow.TitleBar.PreferredTheme == titleTheme,
                     $"{theme} applies to both new and existing additional windows", checks);
-                if (theme != AppThemePreference.System) await CaptureSmokeImageAsync(directory, theme.ToString());
+                if (theme != AppThemePreference.System)
+                {
+                    await CaptureSmokeImageAsync(directory, theme.ToString());
+                    var whatsNew = CreateWhatsNewDialog();
+                    var showingWhatsNew = whatsNew.ShowAsync();
+                    await Task.Delay(150);
+                    await CaptureSmokeImageAsync(directory, "WhatsNew" + theme, whatsNew);
+                    whatsNew.Hide();
+                    await showingWhatsNew;
+                }
             }
             // A second window changes the theme while an older Preferences dialog remains open.
             var stalePreferences = ShowPreferencesAsync();

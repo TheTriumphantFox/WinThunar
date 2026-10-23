@@ -1,5 +1,16 @@
 # Installed updater verification
 
+## 0.5.11 publication and Restart Now fix
+
+Published 23 October 2026 from clean merged source `c87dd99` (PR #29). The invoking window's
+session is saved before native Restart Now exit; Help > What's New explains the update.
+181 service tests passed with one privilege skip, plus 70 desktop and two theme-restart checks.
+All five public binary digests, both MSI copies/embedded policy, source tag and downloaded
+modern/compatibility feeds match. The 683,926-byte 0.5.10-to-0.5.11 delta reconstructs all
+528 entries, with 15 historical packages unchanged. See [release notes](RELEASE-0.5.11.md).
+An installed future update initiated by the public 0.5.11 handler remains pending; updating
+from an older app still uses its old handler. No new hardware or interactive UAC cases were run.
+
 ## Public per-user lifecycle verification, 23 October 2026
 
 The [priority verification](PRIORITY-VERIFICATION.md) adds installed evidence using actual public
@@ -15,7 +26,7 @@ all 524 deployed hashes and actual Restart Now relaunch. Its explicitly seeded b
 Session retention **fails**: a closed secondary window's single tab replaces the invoking window's
 two tabs after restart. A local `SaveSession()` before native restart fixes the source regression;
 70 desktop checks, two theme-restart checks and a normal x64 publish pass. This remedy is
-unreleased. See the [finding and evidence](PRIORITY-VERIFICATION.md#installed-delta-and-restart-now-session-fix).
+published in 0.5.11. See the [finding and evidence](PRIORITY-VERIFICATION.md#installed-delta-and-restart-now-session-fix).
 
 ## 0.5.10 publication and guarded MSI migration
 

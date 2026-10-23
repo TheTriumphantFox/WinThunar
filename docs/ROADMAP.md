@@ -3,10 +3,17 @@
 ## Release and source status
 
 Checked 23 October 2026. The latest published application is
-[0.5.10](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.10), published 23 October 2026.
-The changes are merged into `main` through PR #27 (source `d35876e`), and the GitHub updater feed
-offers 0.5.10. Documentation-only commits do not distribute an application version.
-See [release notes](RELEASE-0.5.10.md) for package verification and remaining limits.
+[0.5.11](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.11), published 23 October 2026.
+The changes are merged into `main` through PR #29 (source `c87dd99`), and the GitHub updater feed
+offers 0.5.11. Documentation-only commits do not distribute an application version.
+See [release notes](RELEASE-0.5.11.md) for package verification and remaining limits.
+
+Release **[0.5.11](RELEASE-0.5.11.md)** saves the invoking window's session before Restart Now
+and adds Help > What's New. Verification passed 181 service tests with one skip, 70 desktop
+checks, two theme-restart checks and a clean x64 release build. Five public binary digests,
+both MSI copies/embedded policy, source tag/feeds, all 528 reconstructed delta entries and
+15 historical packages are verified. A future installed update initiated by the public
+0.5.11 handler remains to be tested; earlier handlers cannot acquire this fix before exiting.
 
 Release **[0.5.10](RELEASE-0.5.10.md)** requires actual same-account elevation before legacy
 per-user MSI migration. Unelevated refusal, elevated early/late rollback with restored old
@@ -78,7 +85,7 @@ below are now in published 0.5.3; test harnesses are source tools excluded from 
 - [x] Storage-error/process-termination stress harness and recovery fixes for overlapping history records and concurrent restart recovery.
 - [x] Disposable NTFS VHD verification of cross-volume history and actual disk-full allocation failures; native long-path copy/stream/history fixes.
 
-Installed copies can discover 0.5.9 through GitHub Releases. See [release publishing](RELEASES.md)
+Installed copies can discover 0.5.11 through GitHub Releases. See [release publishing](RELEASES.md)
 and [accessibility status](ACCESSIBILITY.md) for package behavior and remaining checks.
 
 ## 1. Browser foundation
@@ -166,7 +173,8 @@ open where their full coverage is not established.
   - [x] Verify the public 0.5.8 per-user MSI's interactive scope/shortcut controls and no-base full update to public 0.5.10, first/last-window close behavior, all 524 deployed hashes, tabs/bookmark/view/theme/plugin/document retention, old-repair refusal, current-MSI refresh/both repairs and uninstall with positive Shell cleanup. See the [priority evidence](PRIORITY-VERIFICATION.md).
   - [x] Verify the explicitly seeded public 0.5.9-to-0.5.10 installed delta: all 528 reconstructed entries, all 524 deployed files and actual Restart Now relaunch pass. The original two-tab session is lost after a secondary window's save; preserve this as a public-package failure.
   - [x] Fix Restart Now session loss locally by saving the invoking window before native updater exit. The regression fails before the fix and passes after it, including another window's busy-history guard; 70 desktop checks, two theme-restart checks and a normal x64 publish pass.
-  - [ ] Publish the Restart Now fix and repeat the installed two-window restart case against that public package.
+  - [x] Publish the Restart Now fix and Help > What's New in 0.5.11, verifying the five public assets, source tag/feeds, all 528 delta entries and 15 unchanged historical packages.
+  - [ ] Repeat an installed two-window Restart Now update initiated by the public 0.5.11 handler when a newer target is available. Updating from an earlier app uses its old handler; the passing source regression is recorded separately.
   - Earlier read-only post-publication inspection found installed 0.5.3 with no later update check. The subsequent migration-lab captures found installed 0.5.8.0 before/after with unchanged observed hashes; these captures do not establish its UI upgrade path. A disposable unique-identity console probe verifies production-backend delta/full apply-on-exit, corrupt-delta fallback, corrupt-full rejection/retry, pending-package rediscovery, and updated-process startup; see [updater verification](UPDATER-VERIFICATION.md). Released-app UI, Setup/MSI, and UAC coverage remain open.
   - A [released-app guest bundle and test matrix](RELEASED-UPGRADE-LAB.md) are prepared, with seven public binary digests verified and the originating host rejected by every guest action. The user-approved Windows 11 evaluation VM is activated, with an unelevated test user, UAC enabled, and a clean snapshot with all NICs disabled. The seeded per-user released 0.5.5-to-0.5.6 delta path passed first/last-window close behavior and all 524 deployed file hashes. The complete persistence case failed because the secondary window overwrote the original two-tab session; remaining matrix cases are pending.
 - [x] Save a closing window's own tabs, active folder and view before scheduling apply-on-exit. Published in 0.5.7; the source regression reproduced and corrected the guest finding, and 67 desktop checks plus 2 restart checks and a normal x64 build passed. See the [controlled upgrade observations](UPDATER-VERIFICATION.md#controlled-released-app-delta-observations-22-october-2026).

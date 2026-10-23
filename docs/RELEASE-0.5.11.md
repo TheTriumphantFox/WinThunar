@@ -1,6 +1,10 @@
 # WinThunar 0.5.11
 
-Prepared for Windows 11 x64. Publication and public-package verification are pending.
+Published [23 October 2026](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.11)
+for Windows 11 x64 from source `c87dd99947ed3fbaca75a20f2fa6bf52c5395435` (PR #29).
+All five public binary digests, both update feeds and the source tag match the verified build.
+Project, assembly/file, manifest and release-script versions are aligned at 0.5.11
+(four-part version 0.5.11.0).
 
 ## What's new
 
@@ -32,8 +36,32 @@ passes afterward, including the global busy-history guard.
 The [priority verification report](PRIORITY-VERIFICATION.md) preserves the original public-package
 failure and the passing source regression. The pre-release source suite passed 181 service tests
 with one symbolic-link privilege skip, 70 desktop checks and two theme-restart checks. Light/dark
-What's New renders were inspected. Final release build, package, delta and public-feed checks
-will be recorded after completion.
+What's New renders were inspected. The release was rebuilt from clean merged `main` using
+`Publish-Release.ps1 -Version 0.5.11`. The normal build excludes all smoke, endurance, updater
+replacement and fault-injection hooks. Builds/tests reported NU1900 when NuGet vulnerability
+metadata was unavailable; the release publish and package checks passed.
+
+Both MSI copies have matching hashes, version 0.5.11.0, scope/shortcut choices and the existing
+maintenance/migration guards. The embedded native DLL matches the freshly compiled source build;
+no deliberate failure action is present. All **15 historical update packages** remain unchanged.
+Applying the **683,926-byte** 0.5.10-to-0.5.11 delta reconstructs all **528 archive entries** with
+matching names, lengths and SHA-256 digests. Assemblies match across the versioned ZIP, public
+portable ZIP and full package.
+
+All five public binary sizes/SHA-256 digests match the verified build. The downloaded modern
+feed offers matching 0.5.11 full/delta entries, the compatibility feed offers the matching full
+package, latest stable resolves to 0.5.11 and its tag points to the source commit above.
+Evidence is retained in `artifacts/verification-0.5.11/`. The installed test of a future update
+initiated by the public 0.5.11 Restart Now handler remains pending; the source regression and
+earlier installed full/delta cases are recorded separately.
+
+| GitHub binary | Bytes | SHA-256 |
+| --- | ---: | --- |
+| `WinThunar.App-win.msi` | 93,446,144 | `4665b8cbf37f10718d6f5527358c5916c362e4d332b27a30c1919a375b48c7e0` |
+| `WinThunar.App-win-Portable.zip` | 111,932,585 | `8dbe7f1bb5c0889503437f99a351c4b91975909a0875bfe008e370cd1055eaec` |
+| `WinThunar.App-win-Setup.exe` | 119,480,711 | `212dbf218d5212adb3fdf498eb816eab2c4d6c62cc233ba0799e07a82519cb74` |
+| `WinThunar.App-0.5.11-full.nupkg` | 111,949,191 | `de7b3aac79cc8b7ef3cb6fc93340e91715c3ffe97a78b21be150b8d733d34dac` |
+| `WinThunar.App-0.5.11-delta.nupkg` | 683,926 | `351aa4eac56dce7ecb205932666ee8900c4b09c15e8306b4d1ecd8093676db7b` |
 
 ## Scope and remaining limits
 

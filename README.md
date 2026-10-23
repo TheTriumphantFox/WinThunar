@@ -50,12 +50,12 @@ integration notes below before choosing it as your default file manager.
 
 ## What's new
 
-### 0.5.11 — prepared for release
+### Published in 0.5.11
 
 **Keep your tabs when you restart to update.** After opening and closing another WinThunar
 window, **Restart Now** restores the tabs, active folder and view from the window where you
 clicked the button when tab restoration is enabled. Restart still waits for file transfers and
-Undo/Redo operations in every window. This fix is in the 0.5.11 source; publication is pending.
+Undo/Redo operations in every window. The fix is included in the published 0.5.11 downloads.
 
 Use the new **Help > What's New...** section to read the update summary inside the app.
 See the [0.5.11 release notes](docs/RELEASE-0.5.11.md) for changes and release status.
@@ -72,11 +72,11 @@ installer; use the latest MSI to get these safeguards. See the
 
 ## Release and source status
 
-The latest published application release is **[0.5.10](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.10)**
-(23 October 2026), from source `d35876e` (PR #27). Its changes are merged into `main`, and the GitHub updater feed
-offers 0.5.10 to installed copies. Use **Help > Check for Updates...** to check immediately;
+The latest published application release is **[0.5.11](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.11)**
+(23 October 2026), from source `c87dd99` (PR #29). Its changes are merged into `main`, and the GitHub updater feed
+offers 0.5.11 to installed copies. Use **Help > Check for Updates...** to check immediately;
 portable copies are updated manually. Documentation and website updates alone do not update the app.
-See the [0.5.10 release notes](docs/RELEASE-0.5.10.md) for verification and remaining limits.
+See the [0.5.11 release notes](docs/RELEASE-0.5.11.md) for verification and remaining limits.
 The version string alone does not establish that a local build matches published binaries.
 
 Release **[0.5.10](docs/RELEASE-0.5.10.md)** provides a guarded legacy-MSI migration

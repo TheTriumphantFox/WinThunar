@@ -1,5 +1,132 @@
 # Migrating an older MSI installation
 
+## Candidate automatic protection
+
+The **unpublished 0.5.9 source** adds native protection for **Just me** migrations from
+legacy MSIs. Published 0.5.8 and earlier installers retain the failure described below.
+An application update alone still does not replace an old cached MSI.
+
+**Known installer limitation:** normal migration/maintenance retention passes, but a deliberately failed
+unelevated migration restores state/files while failing to restore the old Windows Installer
+registration. The 0.5.9 release retains this failure as an open issue. Do not treat state
+retention as proof of complete transactional rollback. Keep an external state backup before
+legacy-MSI maintenance; see the rollback findings below.
+
+The new MSI inspects related products' cached cleanup IDs before any removal. For a legacy
+per-user product, it requires a closed application/updater and rollback enabled, then
+renames the complete `%LOCALAPPDATA%\WinThunar` directory to the sibling
+`%LOCALAPPDATA%\WinThunar.MsiMigrationState`. This same-volume rename preserves the original
+directory and files, including streams, ACLs and nested links, without traversing their
+contents. Reparse points at the state or holding root are rejected.
+
+The installer registers a rollback restore before protection and flushes protection with
+`InstallExecute` inside the transaction. `RemoveExistingProducts` then removes the old app
+before the new payload is installed. A deferred action restores state before finalization;
+rollback also restores it if installation fails. This uses Microsoft's supported
+[placement after InstallExecute and before InstallFinalize](https://learn.microsoft.com/en-us/windows/win32/msi/removeexistingproducts-action).
+All state actions impersonate the installing user. Legacy **all-users** migration is refused
+before mutation because protection of other users' profiles has not been established.
+
+The native actions never overwrite or recursively delete competing state. An empty recreated
+state directory may be removed to restore the original; a nonempty competing directory causes
+failure with the held original retained. A previous holding directory also stops a new
+migration. The new application refuses normal startup while any holding entry exists, so
+an interrupted migration cannot silently create replacement settings. Installer hooks and
+explicit Shell-registration recovery switches still work.
+
+### Interrupted-migration recovery
+
+Wait for Windows Installer to finish, and close every WinThunar window and updater before
+manual recovery. Keep both `%LOCALAPPDATA%\WinThunar.MsiMigrationState` and any newly created
+`%LOCALAPPDATA%\WinThunar` directory. Make independently verified external backups of both
+before changing them. If `WinThunar` does not exist, restore the complete held directory by
+renaming it to `WinThunar` in the same parent directory. If both exist, preserve both and
+resolve their contents deliberately; never delete the held original or overwrite competing
+files just to clear the startup guard. Then retry maintenance with the corrected MSI.
+
+Abrupt power loss may leave the holding directory for this manual recovery. Old application
+versions do not have the startup guard. The implementation does not retrofit the old MSI's
+standalone repair/uninstall behavior. Interactive UI, all-users migration, other legacy
+versions/custom paths, actual recovery replay and live Undo require independent coverage.
+
+### Source checks
+
+`scripts/Build-MsiMigrationActions.ps1 -OutputDirectory <new-output> -Test` builds the native
+actions and exercises real directory/file identity, alternate streams, empty directories,
+absent state, restoration conflicts, stale holds, sharing locks and rollback restoration.
+The symbolic-link root check skips when Windows does not permit link creation.
+`Test-MsiMaintenancePolicy.ps1` additionally verifies the embedded action types, transaction
+sequence and native migration conditions without executing installation actions.
+The native test executable's `--preflight <candidate.msi> <installed-legacy-product-code>`
+mode opens a read-only MSI session and calls the real preflight implementation directly.
+In the disposable guest it verified recognition of the installed legacy cache, refusal of
+all-users migration, and refusal with rollback disabled, without scheduling state changes.
+
+### Private 0.5.9 installed verification
+
+From the preserved original-0.5.5-MSI/native-0.5.7 checkpoint, the private 0.5.9 MSI passed
+direct migration **without `PreserveUserState` or any helper backup/restore**. All five
+seeded settings/plugin/opaque-recovery files retained their hashes and all **524 deployed
+files** matched the candidate package. The cached corrected MSI/registration replaced the
+old product. Native logs confirm protection before old cleanup and restoration afterward.
+
+Both `/fomus` and `/fa` repairs retained all five state hashes and matched all 524 deployed
+files. Uninstall retained the state and generated document while removing the app, both
+registrations, both shortcuts and explicitly enabled Shell/default-folder integration.
+This is silent per-user installer evidence; opaque recovery-file retention does not establish
+actual recovery replay or live Undo.
+
+The exported success archive is **921,688 bytes**, SHA-256
+`668cbb57a1061ddc877ebe3231aa1eae68e5ade2c4a3b3b4a1e1d37d94e176ba`.
+Its guest size/hash were verified on the host before restoring the VM. Evidence and the
+private input ISO are under
+`artifacts/windows-upgrade-vm-20261021-212229-9192ed86/migration-protection/`.
+Snapshot `automatic-msi-059-migration-maintenance-passed-20261022` preserves the result.
+
+### Forced rollback finding — known limitation
+
+A private MSI variant deliberately fails with a type-19 action immediately after
+`RemoveExistingProducts`. The protection action executed before removal, and rollback
+restored all five original state hashes and all 524 updated application files, with no
+holding directory left. The overall rollback case is nevertheless **Failed**: the old MSI's
+standard product registration is missing, `ProductState` is Advertised (1), and its
+`LocalPackage` lookup fails. The native updater registration still points at that old product.
+
+The rollback log contains skipped registry restoration errors 1401/1402, system error 5,
+under the old product's Installer UserData/InstallProperties keys. This resembles the
+[reported per-user MSI rollback registration problem](https://github.com/wixtoolset/issues/issues/8574);
+that comparison is not proof of the underlying cause in WinThunar. No MSI-owned registry
+permissions were changed and the failure has not been relabeled as a passing rollback.
+
+The first failure archive is **421,423 bytes**, SHA-256
+`269ae581d059db079c0bc128986d7aac138f4a77f9817d298e93f4f367b2c119`,
+exported and host-hash-verified as `rollback-early-initial-evidence.zip` alongside the success
+evidence. An OpenPackage automation preflight attempt returned action-not-executed; it is
+preserved as a harness limitation and does not establish a native guard result.
+
+An isolated experiment flushed `ProcessComponents` before old-product removal. It retained
+state but did not restore all application files during rollback, so it was rejected and is
+**not** the source/candidate sequence. Its failed evidence archive is **420,519 bytes**,
+SHA-256 `e624d12af596050471e36119e0797017563aebd0907d5641e337ba8d93faf42b`,
+also exported and hash-verified. The source retains the sequence with verified normal
+migration and file/state rollback. All-user migration and complete registration rollback
+remain open issues, separate from the implemented automatic state preservation.
+
+The retained sequence was also tested with a deliberate failure after
+`InstallExecuteAgain` executed the new payload and normal state restoration. All five
+original state hashes and all 524 original updated application files were restored; the
+holding directory was absent. The overall case again **Failed** the old-product registration
+check. Its archive is **544,246 bytes**, SHA-256
+`916bbf3e8d90166dc855d2399f3e49f0b8b1def778f19be25f6ed4a060f37530`,
+exported and hash-verified as `rollback-late-evidence.zip`. It includes passing native
+all-users/rollback-disabled preflight results. A zero-byte guestcontrol probe transfer was
+rejected by SHA-256 before execution; the verified read-only ISO replacement was used.
+
+Snapshot `automatic-msi-059-late-rollback-registration-failed-20261022` retains this failure.
+The VM is restored to `automatic-msi-059-migration-maintenance-passed-20261022` and left
+Saved, with all NICs disabled. The normal success, both failure branches and rejected
+sequence experiment remain separate evidence; no host app or public release was changed.
+
 ## Direct migration loses user state
 
 Checked 22 October 2026 in the existing disposable Windows 11 x64 guest, using an

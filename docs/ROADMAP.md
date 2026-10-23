@@ -8,9 +8,12 @@ The changes are merged into `main` through PRs #21 and #22 (source `b8cf52a`), a
 offers 0.5.8. Documentation-only commits do not distribute an application version.
 See [release notes](RELEASE-0.5.8.md) for package verification and remaining limits.
 
-Source is prepared for **[0.5.9](RELEASE-0.5.9.md)**, an unpublished candidate with migration
-regression tooling and documented backup/restore evidence. Automatic migration retention
-is still open; preparing this source does not change the published updater feed.
+Source is prepared for **[0.5.9](RELEASE-0.5.9.md)**, an unpublished candidate with automatic
+per-user legacy-MSI migration protection, rollback restoration and an interrupted-migration
+startup guard. Legacy all-users migration is refused before removal; preparing this source
+does not change the published updater feed.
+Incomplete old-MSI registration restoration during forced unelevated rollback remains a
+known issue in 0.5.9; the state-retention fix does not establish complete installer rollback.
 
 Release **0.5.8** corrects uninstall cleanup and guards older repair in newly built MSIs.
 Verification passed 171 service tests with one skip, eleven native condition cases per base
@@ -150,6 +153,8 @@ and [accessibility status](ACCESSIBILITY.md) for package behavior and remaining 
 - [ ] Review uninstall settings/recovery retention. Controlled silent per-user `/x` removed the app, both registrations and both shortcuts, preserved the generated document, and left Explorer working, but also deleted the session/update settings directory. Recovery/Undo data and positive Shell cleanup were not exercised.
   - The [MSI maintenance policy](MSI-MAINTENANCE.md), published in 0.5.8 installers, corrects the cleanup ID and adds a repair guard for an updated installation, including a missing DLL. Both base/current MSIs pass eleven native condition cases. A corrected-MSI per-user guest run passed same-version repair, native 0.5.7 apply with all 524 deployed files matching, three rejected older-repair cases without mutation, and uninstall retention plus enabled Shell cleanup. Existing cached MSIs are not changed by application updates.
 - [ ] Preserve user state automatically during legacy-MSI migration. The [original 0.5.5 MSI -> native 0.5.7 update -> published 0.5.8 MSI test](MSI-MIGRATION.md) returned 0, matched all 524 target files and replaced the cached MSI/registration, but old-MSI cleanup deleted all five seeded settings/plugin/recovery files. Interactive/all-users coverage and real recovery/Undo retention remain open.
+  - [x] Implement automatic per-user protection in unpublished 0.5.9. Private-candidate migration retains all five seeded state files without helper restoration; all 524 deployed files match after migration and both repairs. Uninstall retains state/document and removes app/registrations/shortcuts/enabled Shell integration. Native filesystem checks cover locks, stale holds and competing-state refusal. All-users legacy migration is refused before removal.
+  - [ ] Resolve the forced-rollback MSI registration failure retained as a known issue in 0.5.9. The retained sequence restores state and all 524 application files, but Windows Installer cannot restore the old product registration in the unelevated guest; see [rollback evidence](MSI-MIGRATION.md#forced-rollback-finding--known-limitation). A component-sequencing experiment failed payload rollback and was rejected.
   - [x] Verify an explicit external backup/restore workaround from the pre-migration checkpoint. All five state files and 524 deployed files match after restoration and both repair modes. Uninstall removes the app, registrations, shortcuts and explicitly enabled Shell integration while retaining state and the generated document. This is test-helper behavior; direct MSI migration still loses state.
 - [ ] Complete the manual accessibility checks documented in [ACCESSIBILITY.md](ACCESSIBILITY.md).
 - [x] Verify real disk-full after main-stream writes on a disposable NTFS VHD, including Copy/Move and new/Replace recovery, retry, and Undo.

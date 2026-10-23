@@ -1,13 +1,15 @@
 <#
 .SYNOPSIS
-    Preserves user state on uninstall and rejects repair of a newer Velopack payload.
+    Protects per-user legacy migration, preserves uninstall state, and rejects older repair.
 .DESCRIPTION
     Edits a newly generated Velopack 1.2.161 MSI before distribution. This does not
     modify an installed/cached MSI, and cannot retrofit already distributed installers.
+    Adds original native transaction/rollback actions compiled with Visual C++ x64.
 #>
 param(
     [Parameter(Mandatory)]
-    [string]$MsiPath
+    [string]$MsiPath,
+    [string]$MigrationActionsPath
 )
 
 $ErrorActionPreference = 'Stop'
@@ -130,6 +132,13 @@ try {
         'WinThunarRejectOlderRepair',
         'Installed AND NOT (REMOVE~="ALL") AND (WINTHUNAR_NEWER_PAYLOAD OR ((NOT ALLUSERS=1) AND WINTHUNAR_USER_VERSION AND WINTHUNAR_USER_VERSION <> RustAppVersion) OR (ALLUSERS=1 AND WINTHUNAR_MACHINE_VERSION AND WINTHUNAR_MACHINE_VERSION <> RustAppVersion))',
         ([int]$cost[0][1] + 1)) | Out-Null
+    if (-not $MigrationActionsPath) {
+        $nativeOutput = Join-Path (Join-Path $PSScriptRoot '..\artifacts\msi-native') ([guid]::NewGuid().ToString('N'))
+        & (Join-Path $PSScriptRoot 'Build-MsiMigrationActions.ps1') -OutputDirectory $nativeOutput | Out-Host
+        $MigrationActionsPath = Join-Path $nativeOutput 'WinThunar.MigrationState.dll'
+    }
+    . (Join-Path $PSScriptRoot 'Add-MsiMigrationPolicy.ps1')
+    Add-MsiMigrationPolicy $database $installer $MigrationActionsPath
     Invoke-Member $database 'Commit' 'InvokeMethod' $null | Out-Null
 }
 finally {

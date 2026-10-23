@@ -5,12 +5,13 @@
     Requires migration-input.json with OriginMachineGuid, GuestMachineGuid, RunId, BaseProductCode,
     TargetProductCode, BaseVersion, UpdatedVersion, TargetVersion and Assets (Role, Name, Bytes, Sha256).
     Roles: BaseMsi, UpdatedPackage, TargetMsi, TargetPackage. Use a clean guest snapshot per case.
+    Rollback uses a private TargetMsi with a deliberate type-19 failure; never publish that MSI.
     Silent native checks only. Evidence, including failed stages, is retained. No recovery replay or live Undo.
     PreserveUserState explicitly tests an external backup/restore workaround; it is not installer behavior.
 #>
 param(
     [Parameter(Mandatory)][string]$InputDirectory,
-    [Parameter(Mandatory)][ValidateSet('Install','Update','VerifyUpdate','Migrate','Repair','Uninstall','Export')][string]$Stage,
+    [Parameter(Mandatory)][ValidateSet('Install','Update','VerifyUpdate','Migrate','Rollback','Repair','Uninstall','Export')][string]$Stage,
     [switch]$PreserveUserState
 )
 $ErrorActionPreference = 'Stop'
@@ -231,6 +232,30 @@ try {
             @($registration | Where-Object PSChildName -eq $manifest.TargetProductCode).Count -eq 1
         Write-Json @{PayloadMatches=$files; StateRetained=$retained; ExternalBackupRestoreUsed=[bool]$PreserveUserState; OldProductRemoved=$registered; CachedPolicyCorrect=($policy.CleanupId -eq 'WinThunar.App' -and $policy.RepairGuard)} 'migration-observations.json'
         Assert-Condition ($files -and $retained -and $registered -and $policy.CleanupId -eq 'WinThunar.App' -and $policy.RepairGuard) 'Migration failed payload/state/registration/cache verification; preserve all evidence.'
+        Assert-Condition (-not (Test-Path -LiteralPath (Join-Path $env:LOCALAPPDATA 'WinThunar.MsiMigrationState'))) 'Migration left state in holding.'
+    }
+    if ($Stage -eq 'Rollback') {
+        # TargetMsi must be an isolated candidate with a deliberate type-19 failure after
+        # old-product removal, or after InstallExecuteAgain flushes the restored state.
+        $log = Join-Path $case 'rollback-install.log'
+        $arguments = '/i "' + $assets.TargetMsi + '" ALLUSERS=2 MSIINSTALLPERUSER=1 /qn /norestart /l*v "' + $log + '"'
+        $process = Start-Process "$env:SystemRoot\System32\msiexec.exe" -ArgumentList $arguments -WindowStyle Hidden -PassThru
+        $null = $process.Handle
+        Assert-Condition ($process.WaitForExit(120000)) 'Rollback installer timed out.'
+        $process.Refresh()
+        Write-Json @{ExitCode=$process.ExitCode; Arguments=$arguments} 'rollback-install.json'
+        Assert-Condition ($process.ExitCode -eq 1603) 'Expected deliberate MSI failure.'
+        $text = Get-Content -LiteralPath $log -Raw
+        Assert-Condition ($text.Contains('WinThunar deliberate migration rollback test')) 'Expected injected failure diagnostic missing.'
+        Assert-Condition ($text.Contains('State directory held outside legacy cleanup.') -and $text.Contains('State directory restored (success or rollback).')) 'Protection/rollback did not execute.'
+        $files = Compare-Package 'UpdatedPackage' 'rolled-back'
+        $retained = Compare-State 'rolled-back'
+        $registration = @(Get-Registration)
+        Write-Json $registration 'rolled-back-registration.json'
+        Assert-Condition ($files -and $retained) 'Rollback changed original updated payload or state.'
+        Assert-Condition (@($registration | Where-Object PSChildName -eq $manifest.BaseProductCode).Count -eq 1 -and
+            @($registration | Where-Object PSChildName -eq $manifest.TargetProductCode).Count -eq 0) 'Rollback product registration mismatch.'
+        Assert-Condition (-not (Test-Path -LiteralPath (Join-Path $env:LOCALAPPDATA 'WinThunar.MsiMigrationState'))) 'Rollback left state in holding.'
     }
     if ($Stage -eq 'Repair') {
         Assert-Condition ((Get-Content (Join-Path $case 'migrate-result.json') -Raw | ConvertFrom-Json).Result -eq 'Passed') 'Migration must pass first.'

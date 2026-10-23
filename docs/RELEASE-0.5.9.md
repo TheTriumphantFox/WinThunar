@@ -4,6 +4,13 @@ Prepared 22 October 2026 for review. **0.5.9 has not been published to GitHub Re
 the latest published application and updater feed remain 0.5.8. Version, assembly/file,
 manifest and release-script defaults are aligned at 0.5.9 (four-part version 0.5.9.0).
 
+**Known installer limitation:** normal per-user migration, both repairs and uninstall retain state,
+but a forced migration failure exposes broken old-product registration during Windows
+Installer rollback. State and application files are restored in the retained sequence;
+complete MSI registration rollback is not verified. This failure remains open in 0.5.9;
+keep an external state backup before legacy-MSI maintenance. See
+[the failure evidence](MSI-MIGRATION.md#forced-rollback-finding--known-limitation).
+
 ## Changes since 0.5.8
 
 - Adds a source-only, disposable-guest regression tool for original MSI installation,
@@ -14,10 +21,17 @@ manifest and release-script defaults are aligned at 0.5.9 (four-part version 0.5
 - Documents an independently verified external backup/restore workaround, preserving the
   direct failure separately from the workaround's success. README, roadmap, maintenance
   and upgrade-lab notes now distinguish these results.
+- Adds native automatic protection for per-user legacy-MSI migration. The whole state
+  directory is held outside old cleanup and restored before transaction completion or on
+  rollback. Locks, unexpected roots, competing state and stale holds fail without overwriting
+  the original. Legacy all-users migration is refused before removal.
+- Stops normal application startup while a migration holding entry remains, with the
+  preserved-state location and recovery guidance. Installer hooks and Shell recovery
+  switches remain available.
 
-The tool is excluded from application packages. Application and installer behavior retain
-0.5.8's policy; **automatic protection during legacy-MSI migration is not implemented**.
-An application update still does not replace an older cached MSI.
+The guest tool and native test executable are excluded from application packages. The
+native custom-action DLL is embedded in the MSI, with no extra target-machine runtime
+requirement. An application update still does not replace an older cached MSI.
 
 ## Migration evidence and limits
 
@@ -33,20 +47,22 @@ shortcuts and explicitly enabled Shell/default-folder integration. Both evidence
 match their guest lengths and SHA-256 digests; failure and passing-workaround snapshots
 are retained and the VM is Saved.
 
-These checks used older published binaries, not an installed 0.5.9 candidate. Interactive
+Those historical checks used older published binaries. The private candidate verification
+is recorded separately in the [migration lab](MSI-MIGRATION.md). Interactive
 maintenance, all-users/UAC, other legacy versions/custom paths, actual recovery replay and
 live Undo remain open. Preserve the complete user-state directory outside the app/state
 directories before legacy-MSI maintenance or migration; see the lab instructions.
 
 ## Candidate validation
 
-The candidate passed **171 service tests, one skipped, zero failed**, and a normal x64
-Release build with **zero warnings/errors**. The skip requires Windows symbolic-link
+The updated candidate passed **173 service tests, one skipped, zero failed**, a normal x64
+self-contained Release publish, native custom-action compilation with warnings treated as
+errors, and real filesystem/native MSI policy checks. The skip requires Windows symbolic-link
 privilege. The test project reported NU1900 because NuGet vulnerability metadata was
 unavailable. Script parsing, version alignment and whitespace checks passed. Evidence is
-retained in `artifacts/verification-0.5.9/`.
+retained in `artifacts/migration-protection/`; the earlier candidate checks remain in
+`artifacts/verification-0.5.9/`.
 
-The guest checks above are retained evidence from the preceding migration investigation;
-they were not rerun against this candidate. No 0.5.9 release packages, GitHub tag or public
-feed are created by this PR preparation. Packaging, public asset/delta verification and
-publication require a separate approved release step.
+Private 0.5.9 packages were built under `artifacts/migration-protection/packages-final/`
+for installed-guest checks. They have not been published. No GitHub tag or public feed was
+changed; public asset/delta verification and publication remain separate release work.

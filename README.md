@@ -57,9 +57,13 @@ portable copies are updated manually. Documentation and website updates alone do
 See the [0.5.8 release notes](docs/RELEASE-0.5.8.md) for verification and remaining limits.
 The version string alone does not establish that a local build matches published binaries.
 
-Source is prepared for **[0.5.9](docs/RELEASE-0.5.9.md)**, an unpublished candidate containing
-the migration regression tool and documented external backup/restore workaround. It does
-not add automatic MSI migration retention. Installed copies continue to receive published 0.5.8.
+Source is prepared for **[0.5.9](docs/RELEASE-0.5.9.md)**, an unpublished candidate adding
+automatic state protection during per-user legacy-MSI migration and an interrupted-migration
+startup guard. All-users legacy migration is refused before removal. Installed copies
+continue to receive published 0.5.8; see the [migration scope and recovery instructions](docs/MSI-MIGRATION.md).
+The release retains a known forced-rollback MSI registration failure: normal migration
+preserves state, but full installer failure recovery is not verified. Read the migration
+findings before legacy-MSI maintenance and keep an external state backup.
 
 Release **0.5.8** adds safer MSI repair and uninstall retention for newly built
 installers. It does not replace an older MSI already cached on an installed machine; see the

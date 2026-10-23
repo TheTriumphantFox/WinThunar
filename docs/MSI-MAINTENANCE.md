@@ -4,6 +4,11 @@ Included in the MSI published with **[0.5.8](RELEASE-0.5.8.md)** on 22 October 2
 The 0.5.7 and earlier installers retain the repair and settings-removal limitations. This
 policy applies to corrected MSIs, not to older MSIs already cached on installed machines.
 
+The **unpublished 0.5.9 candidate** extends this policy with native automatic per-user
+migration protection and rollback. See [migration protection](MSI-MIGRATION.md#candidate-automatic-protection)
+for its scope, fail-safe behavior and private-candidate verification. The 0.5.8 public MSI
+does not contain that protection.
+
 ## Corrected packaging
 
 `scripts/Publish-Release.ps1` now runs `Set-MsiMaintenancePolicy.ps1` after adding shortcut

@@ -35,6 +35,14 @@ public static class Program
             return exitCode;
         }
 
+#if !ROADMAP_SMOKE_TEST
+        if (MsiMigrationStateGuard.GetStartupBlockReason() is { } migrationMessage)
+        {
+            _ = MigrationMessageBox(IntPtr.Zero, migrationMessage, "WinThunar installation", 0x10);
+            return 1;
+        }
+#endif
+
         NotificationService.Initialize();
         if (TryRedirectToRunningInstance())
         {
@@ -77,6 +85,9 @@ public static class Program
         NotificationService.Shutdown();
         return 0;
     }
+
+    [DllImport("user32.dll", EntryPoint = "MessageBoxW", CharSet = CharSet.Unicode)]
+    private static extern int MigrationMessageBox(IntPtr owner, string message, string caption, uint type);
 
     /// <summary>
     /// Scriptable registration, including the recovery path that works even when the UI cannot start.

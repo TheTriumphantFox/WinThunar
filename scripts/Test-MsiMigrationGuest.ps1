@@ -7,12 +7,15 @@
     Roles: BaseMsi, UpdatedPackage, TargetMsi, TargetPackage. Use a clean guest snapshot per case.
     Rollback uses a private TargetMsi with a deliberate type-19 failure; never publish that MSI.
     Silent native checks only. Evidence, including failed stages, is retained. No recovery replay or live Undo.
+    ElevatedMigration explicitly tests migration/maintenance under the same elevated guest account.
+    RejectMigration verifies unelevated refusal before removal and compares the original cache/state.
     PreserveUserState explicitly tests an external backup/restore workaround; it is not installer behavior.
 #>
 param(
     [Parameter(Mandatory)][string]$InputDirectory,
-    [Parameter(Mandatory)][ValidateSet('Install','Update','VerifyUpdate','Migrate','Rollback','Repair','Uninstall','Export')][string]$Stage,
-    [switch]$PreserveUserState
+    [Parameter(Mandatory)][ValidateSet('Install','Update','VerifyUpdate','Migrate','RejectMigration','Rollback','Repair','Uninstall','Export')][string]$Stage,
+    [switch]$PreserveUserState,
+    [switch]$ElevatedMigration
 )
 $ErrorActionPreference = 'Stop'
 $inputRoot = [IO.Path]::GetFullPath($InputDirectory)
@@ -28,7 +31,9 @@ foreach ($code in @($manifest.BaseProductCode, $manifest.TargetProductCode)) {
     Assert-Condition ($code -match '^\{[A-Fa-f0-9-]{36}\}$') 'Invalid MSI identity.'
 }
 $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
-Assert-Condition (-not ([Security.Principal.WindowsPrincipal]$identity).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) 'Requires an unelevated guest user.'
+$elevated = ([Security.Principal.WindowsPrincipal]$identity).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+Assert-Condition ($elevated -eq [bool]$ElevatedMigration) 'Elevation must match the explicitly requested test context.'
+Assert-Condition (-not $ElevatedMigration -or $Stage -in @('Migrate','Rollback','Repair','Uninstall','Export')) 'Only migration/maintenance and evidence export may run elevated.'
 $assets = @{}
 foreach ($role in @('BaseMsi','UpdatedPackage','TargetMsi','TargetPackage')) {
     $entry = @($manifest.Assets | Where-Object Role -eq $role)
@@ -104,6 +109,19 @@ function Get-Registration {
             Where-Object { $_.DisplayName -like '*WinThunar*' } |
             Select-Object PSPath,PSChildName,DisplayVersion,InstallLocation,UninstallString,WindowsInstaller
     })
+}
+function Get-ProductHealth([string]$code) {
+    $installer = New-Object -ComObject WindowsInstaller.Installer
+    try {
+        $health = [ordered]@{ProductCode=$code; State=$installer.GetType().InvokeMember('ProductState',[Reflection.BindingFlags]::GetProperty,$null,$installer,@($code))}
+        try {
+            $cache = $installer.GetType().InvokeMember('ProductInfo',[Reflection.BindingFlags]::GetProperty,$null,$installer,@($code,'LocalPackage'))
+            $health.LocalPackage = $cache
+            $health.CacheSha256 = (Get-FileHash -LiteralPath $cache).Hash
+        } catch { $health.CacheError = $_.ToString() }
+        [pscustomobject]$health
+    }
+    finally { [Runtime.InteropServices.Marshal]::ReleaseComObject($installer) | Out-Null }
 }
 function Get-CachedPolicy {
     function Invoke-Member($target, [string]$name, [Reflection.BindingFlags]$kind, [object[]]$arguments) {
@@ -234,27 +252,46 @@ try {
         Assert-Condition ($files -and $retained -and $registered -and $policy.CleanupId -eq 'WinThunar.App' -and $policy.RepairGuard) 'Migration failed payload/state/registration/cache verification; preserve all evidence.'
         Assert-Condition (-not (Test-Path -LiteralPath (Join-Path $env:LOCALAPPDATA 'WinThunar.MsiMigrationState'))) 'Migration left state in holding.'
     }
-    if ($Stage -eq 'Rollback') {
-        # TargetMsi must be an isolated candidate with a deliberate type-19 failure after
+    if ($Stage -in @('Rollback','RejectMigration')) {
+        # Rollback requires an isolated candidate with a deliberate type-19 failure after
         # old-product removal, or after InstallExecuteAgain flushes the restored state.
-        $log = Join-Path $case 'rollback-install.log'
+        # RejectMigration instead uses an ordinary candidate without injected failure.
+        $label = $Stage.ToLowerInvariant()
+        $beforeHealth = Get-ProductHealth $manifest.BaseProductCode
+        Write-Json $beforeHealth ($label + '-before-product.json')
+        Assert-Condition ($beforeHealth.State -eq 5 -and $beforeHealth.CacheSha256) 'Original MSI must be fully registered with a readable cache before the test.'
+        $beforeRegistration = @(Get-Registration)
+        Write-Json $beforeRegistration ($label + '-before-registration.json')
+        $log = Join-Path $case ($label + '-install.log')
         $arguments = '/i "' + $assets.TargetMsi + '" ALLUSERS=2 MSIINSTALLPERUSER=1 /qn /norestart /l*v "' + $log + '"'
         $process = Start-Process "$env:SystemRoot\System32\msiexec.exe" -ArgumentList $arguments -WindowStyle Hidden -PassThru
         $null = $process.Handle
         Assert-Condition ($process.WaitForExit(120000)) 'Rollback installer timed out.'
         $process.Refresh()
-        Write-Json @{ExitCode=$process.ExitCode; Arguments=$arguments} 'rollback-install.json'
-        Assert-Condition ($process.ExitCode -eq 1603) 'Expected deliberate MSI failure.'
+        Write-Json @{ExitCode=$process.ExitCode; Arguments=$arguments; Elevated=$elevated} ($label + '-install.json')
+        Assert-Condition ($process.ExitCode -eq 1603) 'Expected MSI failure.'
         $text = Get-Content -LiteralPath $log -Raw
-        Assert-Condition ($text.Contains('WinThunar deliberate migration rollback test')) 'Expected injected failure diagnostic missing.'
-        Assert-Condition ($text.Contains('State directory held outside legacy cleanup.') -and $text.Contains('State directory restored (success or rollback).')) 'Protection/rollback did not execute.'
+        if ($Stage -eq 'Rollback') {
+            Assert-Condition ($text.Contains('WinThunar deliberate migration rollback test')) 'Expected injected failure diagnostic missing.'
+            Assert-Condition ($text.Contains('State directory held outside legacy cleanup.') -and $text.Contains('State directory restored (success or rollback).')) 'Protection/rollback did not execute.'
+        } else {
+            Assert-Condition ($text.Contains('requires administrator approval for safe installer rollback')) 'Expected unelevated migration refusal missing.'
+            Assert-Condition (-not ($text -match '(?m)(Doing action: RemoveExistingProducts|^Action start [^\r\n]*: RemoveExistingProducts\.)')) 'Rejected migration began old-product removal.'
+            Assert-Condition (-not $text.Contains('State directory held outside legacy cleanup.')) 'Rejected migration moved user state.'
+        }
         $files = Compare-Package 'UpdatedPackage' 'rolled-back'
         $retained = Compare-State 'rolled-back'
         $registration = @(Get-Registration)
         Write-Json $registration 'rolled-back-registration.json'
+        $afterHealth = Get-ProductHealth $manifest.BaseProductCode
+        Write-Json $afterHealth ($label + '-after-product.json')
         Assert-Condition ($files -and $retained) 'Rollback changed original updated payload or state.'
         Assert-Condition (@($registration | Where-Object PSChildName -eq $manifest.BaseProductCode).Count -eq 1 -and
             @($registration | Where-Object PSChildName -eq $manifest.TargetProductCode).Count -eq 0) 'Rollback product registration mismatch.'
+        Assert-Condition (($registration | ConvertTo-Json -Depth 5 -Compress) -eq
+            ($beforeRegistration | ConvertTo-Json -Depth 5 -Compress)) 'Original uninstall metadata changed.'
+        Assert-Condition ($afterHealth.State -eq 5 -and $afterHealth.LocalPackage -eq $beforeHealth.LocalPackage -and
+            $afterHealth.CacheSha256 -eq $beforeHealth.CacheSha256) 'Rollback did not restore installed product state and the original MSI cache.'
         Assert-Condition (-not (Test-Path -LiteralPath (Join-Path $env:LOCALAPPDATA 'WinThunar.MsiMigrationState'))) 'Rollback left state in holding.'
     }
     if ($Stage -eq 'Repair') {
@@ -288,10 +325,10 @@ try {
         Write-Json $checks 'uninstall-observations.json'
         Assert-Condition (@($checks.Values | Where-Object { -not $_ }).Count -eq 0) 'Uninstall verification failed.'
     }
-    Write-Json @{Result='Passed'; Stage=$Stage; InteractiveUiTested=$false; RecoveryReplayTested=$false; LiveUndoTested=$false; At=[DateTimeOffset]::Now.ToString('O')} ($Stage.ToLowerInvariant() + '-result.json')
+    Write-Json @{Result='Passed'; Stage=$Stage; Elevated=$elevated; InteractiveUiTested=$false; RecoveryReplayTested=$false; LiveUndoTested=$false; At=[DateTimeOffset]::Now.ToString('O')} ($Stage.ToLowerInvariant() + '-result.json')
     'Passed: ' + $Stage
 }
 catch {
-    Write-Json @{Result='Failed'; Stage=$Stage; Error=$_.ToString(); At=[DateTimeOffset]::Now.ToString('O')} ($Stage.ToLowerInvariant() + '-result.json')
+    Write-Json @{Result='Failed'; Stage=$Stage; Elevated=$elevated; Error=$_.ToString(); At=[DateTimeOffset]::Now.ToString('O')} ($Stage.ToLowerInvariant() + '-result.json')
     throw
 }

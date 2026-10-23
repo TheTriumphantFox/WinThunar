@@ -125,9 +125,9 @@ all-users/UAC or legacy-MSI migration matrix below.
 
 ## Legacy-MSI migration case (22 October 2026)
 
-The unpublished 0.5.9 candidate now contains automatic per-user migration protection.
+Published 0.5.9 now contains automatic per-user migration protection.
 Its private-candidate checks and interrupted-migration recovery instructions are recorded
-separately in [MSI migration](MSI-MIGRATION.md#candidate-automatic-protection).
+separately in [MSI migration](MSI-MIGRATION.md#automatic-protection-in-059).
 The published 0.5.8 failure and helper-assisted branch below remain historical results.
 
 A subsequent [migration test](MSI-MIGRATION.md) installed the original published per-user

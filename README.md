@@ -50,17 +50,17 @@ integration notes below before choosing it as your default file manager.
 
 ## Release and source status
 
-The latest published application release is **[0.5.8](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.8)**
-(22 October 2026), from source `b8cf52a` (PRs #21 and #22). Its changes are merged into `main`, and the GitHub updater feed
-offers 0.5.8 to installed copies. Use **Help > Check for Updates...** to check immediately;
+The latest published application release is **[0.5.9](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.9)**
+(22 October 2026), from source `44d13d6` (PR #25). Its changes are merged into `main`, and the GitHub updater feed
+offers 0.5.9 to installed copies. Use **Help > Check for Updates...** to check immediately;
 portable copies are updated manually. Documentation and website updates alone do not update the app.
-See the [0.5.8 release notes](docs/RELEASE-0.5.8.md) for verification and remaining limits.
+See the [0.5.9 release notes](docs/RELEASE-0.5.9.md) for verification and remaining limits.
 The version string alone does not establish that a local build matches published binaries.
 
-Source is prepared for **[0.5.9](docs/RELEASE-0.5.9.md)**, an unpublished candidate adding
+Release **[0.5.9](docs/RELEASE-0.5.9.md)** adds
 automatic state protection during per-user legacy-MSI migration and an interrupted-migration
-startup guard. All-users legacy migration is refused before removal. Installed copies
-continue to receive published 0.5.8; see the [migration scope and recovery instructions](docs/MSI-MIGRATION.md).
+startup guard. All-users legacy migration is refused before removal; see the
+[migration scope and recovery instructions](docs/MSI-MIGRATION.md).
 The release retains a known forced-rollback MSI registration failure: normal migration
 preserves state, but full installer failure recovery is not verified. Read the migration
 findings before legacy-MSI maintenance and keep an external state backup.
@@ -293,7 +293,7 @@ Install the Velopack packaging tool once:
 dotnet tool install -g vpk --version 1.2.161
 ```
 
-Build a release from the main checkout; this example uses the unpublished 0.5.9 candidate:
+Build a release from the main checkout; this example uses 0.5.9:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.5.9

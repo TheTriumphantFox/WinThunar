@@ -3,7 +3,8 @@
 This pass verifies current public packages in the offline Windows 11 guest, fixes a reproduced
 Restart Now session-loss bug and adds reusable verification tooling. That remedy and the original
 tooling are published in 0.5.11; see the [release notes](RELEASE-0.5.11.md) for package status.
-The later thumbnail-resource and DOCX follow-ups below are unreleased source additions.
+The later thumbnail-resource and DOCX follow-ups below are published in 0.5.12; its five public
+binary digests, source tag, updater feeds and reconstructed delta are verified separately below.
 
 ## Disposition of the priority list
 
@@ -11,10 +12,10 @@ The later thumbnail-resource and DOCX follow-ups below are unreleased source add
 | --- | --- | --- |
 | Installer/updater | Interactive public 0.5.8 per-user installation; full update to public 0.5.10; first/last-window close behavior; seeded public 0.5.9 delta and actual Restart Now payload/relaunch; all 524 deployed hashes; session fix published in 0.5.11 with verified packages/feed | Installed update initiated by the fixed public handler; unseeded delta/cache behavior, Setup, all-users and UAC matrix |
 | User-state protection | Public MSI refresh, both repair modes, startup recovery and uninstall retention; positive Shell cleanup | Legacy public-MSI migration under elevation, live Undo workflows and other installation contexts |
-| Accessibility | Latest source: 83 desktop checks and two restart checks, including DOCX naming and existing focus/preview coverage | Manual screen-reader, contrast, scaling, pointer and full keyboard review |
+| Accessibility | Final 0.5.12 source: 85 desktop checks and two restart checks, including DOCX naming and existing focus/preview coverage | Manual screen-reader, contrast, scaling, pointer and full keyboard review |
 | Hardware/network failures | Existing VHD/loopback evidence retained | Separate SMB server, physical removal and separate physical devices deferred at the maintainer's request |
 | Notifications | Source desktop harness reproduces registration error `0x8007007E` for the missing Insights resource DLL | Installed/portable delivery and activation; upstream runtime issue remains pending release |
-| Document discovery | Generated TXT, RTF and PDF index matches; unreleased DOCX body-text preview and fresh filesystem content search | DOCX/other Office index filters, representative editor/format coverage, layout and broader previews |
+| Document discovery | Generated TXT, RTF and PDF index matches; published 0.5.12 DOCX body-text preview and fresh filesystem content search | DOCX/other Office index filters, representative editor/format coverage, layout and broader previews |
 | Endurance and reparse types | Repeated UI/search/thumbnail/preview workload; cleanup/heap diagnostics; eight native unsupported-link refusal cases | Long-session memory behavior, slow network, broader browsing/cloud features and preservation of additional reparse types |
 
 Interactive UAC cases are also deferred at the maintainer's request. These boundaries apply to
@@ -128,7 +129,9 @@ earlier workload, shorter drain run and owned-process heap graph in the adjacent
 `priority-desktop-endurance-20261023/`, `priority-desktop-drain-20261023/` and
 `priority-desktop-heap-20261023/` directories. These are local workloads with warmed caches.
 
-## Thumbnail resource follow-up (unreleased)
+## Thumbnail resource follow-up
+
+Published in 0.5.12; the earlier source measurements below retain their original test counts.
 
 The source image loader now starts at most six workers per batch instead of creating a task
 and semaphore waiter for every directory entry. The existing six-call gate still applies across
@@ -171,10 +174,12 @@ failures. The final desktop pass, with endurance disabled, passes **76 checks an
 checks**, including the additional superseded-request regression. Its reports and inspected renders
 are in `artifacts/priority-thumbnail-final-20261023/`. A normal x64 publish also passes and excludes
 the smoke, endurance, thumbnail and restart test entry points; it is in
-`artifacts/priority-thumbnail-release-build-20261023/`. These changes are local source work; the
-published application remains 0.5.11.
+`artifacts/priority-thumbnail-release-build-20261023/`. These changes are now published in 0.5.12;
+the release pass uses 211 service tests, 85 desktop checks and two theme-restart checks.
 
-## DOCX body preview and fresh content search (unreleased)
+## DOCX body preview and fresh content search
+
+Published in 0.5.12; source-stage evidence is preserved separately from release package verification.
 
 The source now reads a DOCX's stored main-body text for the read-only preview and filesystem
 `content:` search. A generated document with text split across formatting runs matches
@@ -203,8 +208,27 @@ points and the generated-package fixture helper; output is in `artifacts/priorit
 This is fresh main-body text coverage, rather than Word page layout or general Office preview
 support. It does not add Windows Search filters: the earlier guest's absent DOCX handler and
 Office index-coverage gap remain open. Other Office formats, separate document stories,
-representative files from more editors and manual screen-reader review remain open. The source
-addition is unreleased; public 0.5.11 is unchanged.
+representative files from more editors and manual screen-reader review remain open. These additions
+are published in 0.5.12; the final desktop release pass also checks What's New in Light and Dark.
+
+## 0.5.12 publication verification
+
+Published 23 October 2026 from clean merged `main`, source `1629c72935ea1faf6075b36a36a660f834faca80`
+(PR #31), using `Publish-Release.ps1 -Version 0.5.12`. Both MSI copies have matching hashes, version
+0.5.12.0, shortcut/scope choices and the existing repair/migration safeguards. The embedded native
+guard matches the final source build, and deliberate failure hooks are absent. Normal packages
+contain the DOCX reader and exclude smoke/thumbnail/DOCX/restart entry points and test fixtures.
+
+All five public binary sizes and SHA-256 digests match the verified build. The modern full/delta
+feed, compatibility feed, latest stable release and source tag are verified. Applying the
+711,758-byte 0.5.11-to-0.5.12 delta reconstructs all 528 archive entries with matching names,
+lengths and SHA-256 digests. All 17 historical packages remain unchanged. The release service suite
+passes 211 tests with one existing permission skip; 85 desktop and two theme-restart checks pass.
+Evidence is in `artifacts/verification-0.5.12/`; see the [release notes](RELEASE-0.5.12.md).
+
+This does not establish the installed 0.5.11 Restart Now handler's update to 0.5.12. That UI path,
+manual accessibility, notifications, broader Office/filter coverage and longer/slow-network
+endurance remain open; hardware/network and interactive UAC cases remain deferred.
 
 ## Document filters and unsupported links
 

@@ -1,6 +1,6 @@
 # DOCX text previews and search
 
-This is **unreleased source work**. The published 0.5.11 downloads do not include it.
+Included in published **[0.5.12](RELEASE-0.5.12.md)**. See the release notes for package verification.
 
 Enable **View > Preview Pane**, then select a downloaded `.docx` file to read its body text.
 The preview supports selection and copying and labels the result **DOCX body text**. It reads

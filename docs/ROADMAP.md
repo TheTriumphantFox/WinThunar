@@ -3,10 +3,17 @@
 ## Release and source status
 
 Checked 23 October 2026. The latest published application is
-[0.5.11](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.11), published 23 October 2026.
-The changes are merged into `main` through PR #29 (source `c87dd99`), and the GitHub updater feed
-offers 0.5.11. Documentation-only commits do not distribute an application version.
-See [release notes](RELEASE-0.5.11.md) for package verification and remaining limits.
+[0.5.12](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.12), published 23 October 2026.
+The changes are merged into `main` through PR #31 (source `1629c72`), and the GitHub updater feed
+offers 0.5.12. Documentation-only commits do not distribute an application version.
+See [release notes](RELEASE-0.5.12.md) for package verification and remaining limits.
+
+Release **[0.5.12](RELEASE-0.5.12.md)** adds bounded DOCX body-text preview and fresh filesystem
+content search, thumbnail worker bounds/reuse and an updated Help > What's New. Verification
+passes 211 service tests with one skip, 85 desktop checks and two theme-restart checks. Five
+public binary digests, both MSI policies/embedded guard, source tag/feeds, all 528 reconstructed
+delta entries and 17 unchanged historical packages are verified. Other Office formats/layout,
+index-filter coverage and slow-network/day-long stability remain open.
 
 Release **[0.5.11](RELEASE-0.5.11.md)** saves the invoking window's session before Restart Now
 and adds Help > What's New. Verification passed 181 service tests with one skip, 70 desktop
@@ -85,7 +92,7 @@ below are now in published 0.5.3; test harnesses are source tools excluded from 
 - [x] Storage-error/process-termination stress harness and recovery fixes for overlapping history records and concurrent restart recovery.
 - [x] Disposable NTFS VHD verification of cross-volume history and actual disk-full allocation failures; native long-path copy/stream/history fixes.
 
-Installed copies can discover 0.5.11 through GitHub Releases. See [release publishing](RELEASES.md)
+Installed copies can discover 0.5.12 through GitHub Releases. See [release publishing](RELEASES.md)
 and [accessibility status](ACCESSIBILITY.md) for package behavior and remaining checks.
 
 ## 1. Browser foundation
@@ -168,6 +175,7 @@ open where their full coverage is not established.
 - [x] Publish 0.5.8 with corrected new-MSI cleanup/repair policy, native guest evidence, verified assets/feed and a reconstructed 0.5.7-to-0.5.8 delta; existing cached MSIs are not retrofitted.
 - [x] Publish 0.5.9 with per-user migration state protection, interrupted-migration startup guard, verified assets/feed/tag and all 528 reconstructed 0.5.8-to-0.5.9 delta entries. Forced-rollback MSI registration failure remains disclosed.
 - [x] Publish 0.5.10 with guarded same-account elevated legacy migration, verified public assets/feed/tag and embedded native policy, all 528 reconstructed 0.5.9-to-0.5.10 delta entries, and thirteen unchanged historical packages. Installed guest evidence remains distinguished from public-package verification.
+- [x] Publish 0.5.12 with bounded DOCX body-text preview/search, thumbnail workers/reuse, verified public assets/feed/tag and MSI policies, all 528 reconstructed 0.5.11-to-0.5.12 delta entries and 17 unchanged historical packages.
 - [x] Confirm the existing all-users 0.5.0 to 0.5.3 full-package upgrade from updater logs and all 524 deployed file hashes; see [updater verification](UPDATER-VERIFICATION.md).
 - [ ] Repeat the installed upgrade under controlled UI conditions; verify per-user apply-on-close, installed delta updates, and Windows Installer repair/uninstall metadata. The logged all-users full-package upgrade succeeded; the original MSI product entry still reports 0.5.0.0.
   - [x] Verify the public 0.5.8 per-user MSI's interactive scope/shortcut controls and no-base full update to public 0.5.10, first/last-window close behavior, all 524 deployed hashes, tabs/bookmark/view/theme/plugin/document retention, old-repair refusal, current-MSI refresh/both repairs and uninstall with positive Shell cleanup. See the [priority evidence](PRIORITY-VERIFICATION.md).
@@ -199,10 +207,10 @@ open where their full coverage is not established.
 - [ ] Verify generated PDF/Office content-indexing matches and representative document/filter coverage; index inclusion and freshness are controlled by Windows.
   - [x] Observe generated TXT, RTF and PDF content matches through the guest's read-only native Windows Search provider. DOCX did not match and its direct filter registration was absent; Office and representative-format coverage remain open.
 - [ ] Broader Shell/device browsing, cloud status, Office/general document previews, and fresh document-content extraction.
-  - [x] Add bounded, read-only DOCX main-body text preview and fresh filesystem `content:` search, with generated service/desktop regressions. See [DOCX support and limits](DOCUMENT-TEXT.md). This source addition is unreleased; Word layout, other Office formats and Windows indexing-filter coverage remain open.
+  - [x] Publish bounded, read-only DOCX main-body text preview and fresh filesystem `content:` search in 0.5.12, with generated service/desktop regressions. See [DOCX support and limits](DOCUMENT-TEXT.md). Word layout, other Office formats and Windows indexing-filter coverage remain open.
 - [ ] Extend local search performance measurements to sustained UI/thumbnail and slow-network endurance checks.
   - [x] Add and run a five-minute isolated UI/search/thumbnail/preview workload with count assertions, dispatcher/memory/handle sampling and post-work cleanup diagnostics. Memory growth during active churn remains under investigation; slow-network and day-long stability are unverified.
-  - [x] Bound thumbnail batch workers and reuse an unchanged entry's image for equivalent layout/zoom requests. Verify image replacement on size/content-mode/metadata changes, cancellation, and a five-minute workload; see [thumbnail resource follow-up](PRIORITY-VERIFICATION.md#thumbnail-resource-follow-up-unreleased). This source improvement is not yet published; longer and slow-network workloads remain open.
+  - [x] Publish bounded thumbnail batch workers and reuse of unchanged images for equivalent layout/zoom requests in 0.5.12. Verify replacement on size/content-mode/metadata changes, cancellation, and a five-minute workload; see [thumbnail resource follow-up](PRIORITY-VERIFICATION.md#thumbnail-resource-follow-up). Longer and slow-network workloads remain open.
 - [ ] Add and verify native handling of unsupported reparse-point types before claiming support.
   - [x] Verify safe refusal of a real synthetic third-party name-surrogate tag in eight native file/directory Copy/Move new/Replace cases. Additional types are not claimed as preservable.
 

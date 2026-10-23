@@ -1,14 +1,14 @@
 # Priority verification, 23 October 2026
 
 This pass verifies current public packages in the offline Windows 11 guest, fixes a reproduced
-Restart Now session-loss bug and adds reusable verification tooling. These changes are prepared
-for 0.5.11; see the [release notes](RELEASE-0.5.11.md) for publication and package-verification status.
+Restart Now session-loss bug and adds reusable verification tooling. These changes are published
+in 0.5.11; see the [release notes](RELEASE-0.5.11.md) for publication and package-verification status.
 
 ## Disposition of the priority list
 
 | Area | Verified in this pass | Remaining work |
 | --- | --- | --- |
-| Installer/updater | Interactive public 0.5.8 per-user installation; full update to public 0.5.10; first/last-window close behavior; seeded public 0.5.9 delta and actual Restart Now payload/relaunch; all 524 deployed hashes | Ship the local Restart Now session fix; unseeded delta/cache behavior, Setup, all-users and UAC matrix |
+| Installer/updater | Interactive public 0.5.8 per-user installation; full update to public 0.5.10; first/last-window close behavior; seeded public 0.5.9 delta and actual Restart Now payload/relaunch; all 524 deployed hashes; session fix published in 0.5.11 with verified packages/feed | Installed update initiated by the fixed public handler; unseeded delta/cache behavior, Setup, all-users and UAC matrix |
 | User-state protection | Public MSI refresh, both repair modes, startup recovery and uninstall retention; positive Shell cleanup | Legacy public-MSI migration under elevation, live Undo workflows and other installation contexts |
 | Accessibility | 70 desktop checks and two restart checks, including existing names/focus/preview coverage | Manual screen-reader, contrast, scaling, pointer and full keyboard review |
 | Hardware/network failures | Existing VHD/loopback evidence retained | Separate SMB server, physical removal and separate physical devices deferred at the maintainer's request |
@@ -89,7 +89,9 @@ Evidence is in `artifacts/priority-restart-before-fix-20261023/`,
 `priorities-delta-20261023/` directory. The fixed source suite passes **70 desktop checks and two
 theme-restart checks**. A normal x64 publish also passes and excludes the updater replacement,
 restart regression and endurance entry points. The public 0.5.10 packages are unchanged; the
-remedy is prepared for 0.5.11 and requires an installed-package retest.
+remedy is published in 0.5.11 and requires an installed update initiated by that version for
+the remaining public-handler retest. An update initiated by an earlier version still uses
+its old handler.
 
 The exported `priorities-delta-20261023/delta-case-evidence.zip` is **172,195 bytes**, SHA-256
 `0c29bdafaecd6e8c27789e59def5d492029e8975a34588fc8ac9ca56b6b7f823`.

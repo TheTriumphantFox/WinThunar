@@ -50,17 +50,19 @@ integration notes below before choosing it as your default file manager.
 
 ## Release and source status
 
-The latest published application release is **[0.5.9](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.9)**
-(22 October 2026), from source `44d13d6` (PR #25). Its changes are merged into `main`, and the GitHub updater feed
-offers 0.5.9 to installed copies. Use **Help > Check for Updates...** to check immediately;
+The latest published application release is **[0.5.10](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.10)**
+(23 October 2026), from source `d35876e` (PR #27). Its changes are merged into `main`, and the GitHub updater feed
+offers 0.5.10 to installed copies. Use **Help > Check for Updates...** to check immediately;
 portable copies are updated manually. Documentation and website updates alone do not update the app.
-See the [0.5.9 release notes](docs/RELEASE-0.5.9.md) for verification and remaining limits.
+See the [0.5.10 release notes](docs/RELEASE-0.5.10.md) for verification and remaining limits.
 The version string alone does not establish that a local build matches published binaries.
 
-Source version **[0.5.10](docs/RELEASE-0.5.10.md)** prepares a guarded legacy-MSI migration
+Release **[0.5.10](docs/RELEASE-0.5.10.md)** provides a guarded legacy-MSI migration
 path: the installer requires actual administrator elevation in the same Windows account
 before old-product removal. Unelevated refusal and elevated early/late rollback, migration,
-both repair modes and uninstall pass in the disposable guest. Publication remains pending.
+both repair modes and uninstall pass in the disposable guest. All five public binary digests,
+the source tag/feed and all 528 reconstructed delta entries match the verified release build.
+Application updates do not replace an older cached MSI; use the corrected installer for this policy.
 
 Release **[0.5.9](docs/RELEASE-0.5.9.md)** adds
 automatic state protection during per-user legacy-MSI migration and an interrupted-migration

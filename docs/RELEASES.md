@@ -1,10 +1,10 @@
 # Building and publishing releases
 
-Checked 22 October 2026 against the release script, project/manifest versions, and GitHub
-Releases. The latest published application is **[0.5.9](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.9)**,
-released 22 October 2026 from source commit `44d13d6` (PR #25). Its public MSI, portable ZIP,
+Checked 23 October 2026 against the release script, project/manifest versions, and GitHub
+Releases. The latest published application is **[0.5.10](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.10)**,
+released 23 October 2026 from source commit `d35876e` (PR #27). Its public MSI, portable ZIP,
 setup executable, full/delta packages, and update feed were verified. See the
-[release notes](RELEASE-0.5.9.md), [MSI policy evidence](MSI-MAINTENANCE.md) and
+[release notes](RELEASE-0.5.10.md), [MSI policy evidence](MSI-MAINTENANCE.md) and
 [updater verification](UPDATER-VERIFICATION.md) for corrected-MSI native checks and historical
 public-installer failures. Existing cached MSIs retain their old behavior. A subsequent
 [legacy-MSI migration test](MSI-MIGRATION.md) installed 0.5.8 with matching payload/cache,
@@ -12,10 +12,13 @@ but old-MSI removal deleted seeded user state. The external backup/restore worka
 passed migration, both repairs and uninstall retention. Published 0.5.9 adds
 automatic per-user protection; the remaining interactive/all-users matrix remains open.
 
-Source versions prepare **[0.5.10](RELEASE-0.5.10.md)**; the current public release and
-updater feed remain at **[0.5.9](RELEASE-0.5.9.md)** until publication. The 0.5.9 release notes
-retain the [forced-rollback MSI registration failure](MSI-MIGRATION.md#forced-rollback-finding--known-limitation)
-as a known issue; passing state retention does not establish complete installer rollback.
+Source versions, the public release and updater feed are aligned at **[0.5.10](RELEASE-0.5.10.md)**.
+The MSI now requires actual same-account elevation before legacy per-user migration. Installed
+unelevated refusal, elevated early/late rollback, subsequent migration, both repairs and uninstall
+pass in the private guest suite; public package verification is recorded separately. The
+[0.5.9 forced-rollback failure](MSI-MIGRATION.md#forced-rollback-finding--known-limitation)
+remains in existing cached installers until replaced with a corrected MSI. Non-legacy major-upgrade
+rollback and legacy all-users migration remain outside the verified path.
 
 ## Prerequisites and version checklist
 
@@ -38,8 +41,8 @@ Before a new release, select an unused three-part version and update all of thes
 3. The default `$Version` in `scripts/Publish-Release.ps1`.
 4. The README release example and the current release/status references in these docs.
 
-The current published version is **0.5.9**; see its
-[release notes](RELEASE-0.5.9.md). For example, a release `X.Y.Z` uses assembly/file/manifest version `X.Y.Z.0`.
+The current published version is **0.5.10**; see its
+[release notes](RELEASE-0.5.10.md). For example, a release `X.Y.Z` uses assembly/file/manifest version `X.Y.Z.0`.
 Documentation-only changes do not require a new application version.
 
 ## Build and local outputs
@@ -101,7 +104,7 @@ releases and upload assets for this repository. Keep it out of source, command h
 and logs. With the token already supplied, run:
 
 ```powershell
-$releaseVersion = '0.5.10' # Prepared release; confirm the version is unused before publishing.
+$releaseVersion = '0.5.10' # Published-release example; choose an unused version for the next release.
 try {
     vpk upload github --outputDir .\artifacts\installer --repoUrl https://github.com/TheTriumphantFox/WinThunar --token $env:GITHUB_TOKEN --publish --releaseName "WinThunar $releaseVersion" --tag "v$releaseVersion"
     if ($LASTEXITCODE -ne 0) { throw 'GitHub release upload failed.' }

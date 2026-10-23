@@ -12,11 +12,12 @@ registration. The 0.5.9 release retains this failure as an open issue. Do not tr
 retention as proof of complete transactional rollback. Keep an external state backup before
 legacy-MSI maintenance; see the rollback findings below.
 
-An unpublished [23 October rollback candidate](MSI-ROLLBACK.md) requires elevation in the
+Published **[0.5.10](RELEASE-0.5.10.md)** includes the [23 October rollback remedy](MSI-ROLLBACK.md), requiring elevation in the
 same account before legacy per-user migration. Installed unelevated refusal, elevated early
 and late rollback, subsequent migration, both repairs and uninstall pass in the disposable
-guest. The published 0.5.9 behavior and limitation below are unchanged; publication of the
-candidate and verification of its public binaries remain outstanding.
+guest. The public 0.5.10 packages, both MSI copies, update feed and source tag are verified
+separately. Existing 0.5.9 and earlier cached MSIs retain the behavior and limits below until
+replaced with the corrected MSI; an application update does not retrofit them.
 
 The new MSI inspects related products' cached cleanup IDs before any removal. For a legacy
 per-user product, it requires a closed application/updater and rollback enabled, then

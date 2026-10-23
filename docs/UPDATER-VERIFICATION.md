@@ -1,5 +1,25 @@
 # Installed updater verification
 
+## 0.5.10 publication and guarded MSI migration
+
+Published 23 October 2026 from source `d35876e` (PR #27). All five public binary sizes and
+SHA-256 digests, source tag, latest stable pointer, modern full/delta feed and compatibility
+feed match the clean-main release build. Both MSI copies contain the freshly compiled
+actual-token guard and expected policy/shortcut choices, with no deliberate failure action.
+The 316,787-byte 0.5.9-to-0.5.10 delta reconstructs all 528 entries; thirteen retained historical
+packages keep their hashes. Verification passed 173 service tests with one privilege skip,
+the normal x64 build, native compilation/filesystem checks and package/policy checks.
+
+The [private guest suite](MSI-ROLLBACK.md) passes unelevated refusal, same-account elevated
+early/late rollback with restored old registration/cache, subsequent migration, both repairs
+and uninstall retention with enabled Shell cleanup. Its application packages were private
+0.5.9 builds carrying the final guard source; these are not installed tests of public 0.5.10.
+An app update does not replace the cached MSI. Legacy all-users migration, non-legacy major
+rollback, other-account elevation, interactive maintenance/UAC cancellation and actual
+recovery replay/live Undo remain outside these checks. See [release notes](RELEASE-0.5.10.md)
+and `artifacts/verification-0.5.10/verification.json`. Shipping did not launch or update the
+host's installed application; no before/after host-state hash comparison is claimed here.
+
 ## 0.5.8 publication and host check
 
 Published 22 October 2026 from source `b8cf52a` (PRs #21 and #22). Five public binary

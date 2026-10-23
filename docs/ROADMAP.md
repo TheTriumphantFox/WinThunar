@@ -2,11 +2,19 @@
 
 ## Release and source status
 
-Checked 22 October 2026. The latest published application is
-[0.5.9](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.9), published 22 October 2026.
-The changes are merged into `main` through PR #25 (source `44d13d6`), and the GitHub updater feed
-offers 0.5.9. Documentation-only commits do not distribute an application version.
-See [release notes](RELEASE-0.5.9.md) for package verification and remaining limits.
+Checked 23 October 2026. The latest published application is
+[0.5.10](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.10), published 23 October 2026.
+The changes are merged into `main` through PR #27 (source `d35876e`), and the GitHub updater feed
+offers 0.5.10. Documentation-only commits do not distribute an application version.
+See [release notes](RELEASE-0.5.10.md) for package verification and remaining limits.
+
+Release **[0.5.10](RELEASE-0.5.10.md)** requires actual same-account elevation before legacy
+per-user MSI migration. Unelevated refusal, elevated early/late rollback with restored old
+registration/cache, subsequent migration, both repairs and uninstall pass in the private
+guest suite. All five public binary digests, both MSI copies/embedded guard, source tag/feed,
+all 528 reconstructed delta entries and thirteen retained historical packages are verified.
+Service verification passed 173 tests with one skip. Existing cached MSIs are not retrofitted;
+legacy all-users migration and non-legacy major-upgrade rollback remain outside this path.
 
 Release **[0.5.9](RELEASE-0.5.9.md)** includes automatic
 per-user legacy-MSI migration protection, rollback restoration and an interrupted-migration
@@ -146,6 +154,7 @@ and [accessibility status](ACCESSIBILITY.md) for package behavior and remaining 
 - [x] Publish 0.5.7 with closing-window session persistence, isolated updater/guest tools, verified assets/feed, and a reconstructed 0.5.6-to-0.5.7 delta.
 - [x] Publish 0.5.8 with corrected new-MSI cleanup/repair policy, native guest evidence, verified assets/feed and a reconstructed 0.5.7-to-0.5.8 delta; existing cached MSIs are not retrofitted.
 - [x] Publish 0.5.9 with per-user migration state protection, interrupted-migration startup guard, verified assets/feed/tag and all 528 reconstructed 0.5.8-to-0.5.9 delta entries. Forced-rollback MSI registration failure remains disclosed.
+- [x] Publish 0.5.10 with guarded same-account elevated legacy migration, verified public assets/feed/tag and embedded native policy, all 528 reconstructed 0.5.9-to-0.5.10 delta entries, and thirteen unchanged historical packages. Installed guest evidence remains distinguished from public-package verification.
 - [x] Confirm the existing all-users 0.5.0 to 0.5.3 full-package upgrade from updater logs and all 524 deployed file hashes; see [updater verification](UPDATER-VERIFICATION.md).
 - [ ] Repeat the installed upgrade under controlled UI conditions; verify per-user apply-on-close, installed delta updates, and Windows Installer repair/uninstall metadata. The logged all-users full-package upgrade succeeded; the original MSI product entry still reports 0.5.0.0.
   - Earlier read-only post-publication inspection found installed 0.5.3 with no later update check. The subsequent migration-lab captures found installed 0.5.8.0 before/after with unchanged observed hashes; these captures do not establish its UI upgrade path. A disposable unique-identity console probe verifies production-backend delta/full apply-on-exit, corrupt-delta fallback, corrupt-full rejection/retry, pending-package rediscovery, and updated-process startup; see [updater verification](UPDATER-VERIFICATION.md). Released-app UI, Setup/MSI, and UAC coverage remain open.
@@ -156,9 +165,9 @@ and [accessibility status](ACCESSIBILITY.md) for package behavior and remaining 
   - The [MSI maintenance policy](MSI-MAINTENANCE.md), published in 0.5.8 installers, corrects the cleanup ID and adds a repair guard for an updated installation, including a missing DLL. Both base/current MSIs pass eleven native condition cases. A corrected-MSI per-user guest run passed same-version repair, native 0.5.7 apply with all 524 deployed files matching, three rejected older-repair cases without mutation, and uninstall retention plus enabled Shell cleanup. Existing cached MSIs are not changed by application updates.
 - [ ] Preserve user state automatically during legacy-MSI migration. The [original 0.5.5 MSI -> native 0.5.7 update -> published 0.5.8 MSI test](MSI-MIGRATION.md) returned 0, matched all 524 target files and replaced the cached MSI/registration, but old-MSI cleanup deleted all five seeded settings/plugin/recovery files. Interactive/all-users coverage and real recovery/Undo retention remain open.
   - [x] Implement and publish automatic per-user protection in 0.5.9. Private-candidate migration retains all five seeded state files without helper restoration; all 524 deployed files match after migration and both repairs. Uninstall retains state/document and removes app/registrations/shortcuts/enabled Shell integration. Native filesystem checks cover locks, stale holds and competing-state refusal. All-users legacy migration is refused before removal.
-  - [ ] Resolve the forced-rollback MSI registration failure retained as a known issue in 0.5.9. The retained sequence restores state and all 524 application files, but Windows Installer cannot restore the old product registration in the unelevated guest; see [rollback evidence](MSI-MIGRATION.md#forced-rollback-finding--known-limitation). A component-sequencing experiment failed payload rollback and was rejected.
+  - [x] Guard the reproduced legacy per-user forced-rollback registration failure in 0.5.10. Same-account elevation is required before old removal; both elevated rollback cases restore state, all 524 original application files, product state/cache and uninstall metadata. The original unelevated failure remains in 0.5.9 and earlier cached installers; see [rollback evidence](MSI-MIGRATION.md#forced-rollback-finding--known-limitation). This is not a general MSI-engine fix.
     - [x] Implement and verify a [23 October source remedy](MSI-ROLLBACK.md) requiring actual elevation in the same account before legacy per-user removal. The original failure is freshly reproduced and preserved. Native/MSI policy checks, installed unelevated refusal, elevated early/late rollback, subsequent migration, both repairs and uninstall pass; all evidence archives are hash-verified. This is not included in published 0.5.9.
-    - [ ] Publish the guarded migration policy and verify the public installer. The same-account elevated path does not establish non-legacy MSI rollback, all-users migration or standard-user elevation through another account.
+    - [x] Publish the guarded migration policy in 0.5.10 and verify both release MSI copies and the embedded guard. The same-account elevated path does not establish non-legacy MSI rollback, all-users migration or standard-user elevation through another account.
   - [x] Verify an explicit external backup/restore workaround from the pre-migration checkpoint. All five state files and 524 deployed files match after restoration and both repair modes. Uninstall removes the app, registrations, shortcuts and explicitly enabled Shell integration while retaining state and the generated document. This is test-helper behavior; direct MSI migration still loses state.
 - [ ] Complete the manual accessibility checks documented in [ACCESSIBILITY.md](ACCESSIBILITY.md).
 - [x] Verify real disk-full after main-stream writes on a disposable NTFS VHD, including Copy/Move and new/Replace recovery, retry, and Undo.

@@ -1,8 +1,11 @@
 # Legacy MSI rollback investigation
 
-Verified private source candidate, 23 October 2026. Published **0.5.9 remains unchanged** and retains the
-[known rollback limitation](MSI-MIGRATION.md#forced-rollback-finding--known-limitation).
-The source change below is a private candidate, not a published installer fix.
+The guarded migration policy was published in **[0.5.10](RELEASE-0.5.10.md)** on 23 October
+2026 from source `d35876e` (PR #27). Both release MSI copies contain the verified native guard.
+The installed suite below used private packages carrying that final guard source; public
+0.5.10 package verification is recorded separately in the release notes. Existing 0.5.9 and
+earlier cached installers retain the [known rollback limitation](MSI-MIGRATION.md#forced-rollback-finding--known-limitation)
+until replaced; automatic application updates do not replace cached MSIs.
 
 ## Reproduction
 
@@ -29,7 +32,7 @@ This is a comparison, not proof of an engine or compiler root cause. Moving the 
 removal would not exercise rollback. Changing Windows Installer registry permissions or
 disabling rollback is not part of this candidate.
 
-## Candidate behavior
+## Guarded migration behavior
 
 The native preflight requires an elevated effective Windows token for legacy per-user
 migration, before registering state actions or entering `InstallInitialize`. An unelevated
@@ -107,7 +110,8 @@ An oversized encoded correction timed out before applying changes, and a subsequ
 copy failed its digest check before execution. The final corrected worker ran from a small
 read-only ISO with a verified digest. These are harness failures, not passing application tests.
 
-Publication and public-binary verification remain outstanding. Standard Windows accounts that
+Publication, all five public binary digests, both update feeds and source tag are verified;
+the 316,787-byte 0.5.9-to-0.5.10 delta reconstructs all 528 package entries. Standard Windows accounts that
 can elevate only by supplying a different administrator account cannot use this same-account
 migration path. Interactive maintenance/UAC cancellation, other legacy versions/custom paths,
 actual recovery replay and live Undo remain separate verification work.

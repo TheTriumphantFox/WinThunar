@@ -361,7 +361,7 @@
                 x:Name="SearchBox" AutomationProperties.Name="Search files"
                 Grid.Column="1"
                 PlaceholderText="Search names or use content:&quot;a phrase&quot; type:txt"
-                ToolTipService.ToolTip="Combine name:&quot;annual report&quot; type:pdf modified:last7days size:&gt;1MB. content:&quot;a phrase&quot; reads supported text files up to 16 MiB. Add index:true to query the Windows index, including indexed document contents; unindexed items are omitted. Wildcards: *.txt."
+                ToolTipService.ToolTip="Combine name:&quot;annual report&quot; type:pdf modified:last7days size:&gt;1MB. content:&quot;a phrase&quot; reads supported text files and DOCX body text from files up to 16 MiB. Add index:true to query the Windows index, including indexed document contents; unindexed items are omitted. Wildcards: *.txt."
                 AutomationProperties.HelpText="Search names or combine name, type, modified date, size, and content filters. Add index:true to use Windows indexing; unindexed items are omitted."
                 TextChanged="SearchBox_TextChanged"
                 KeyDown="SearchBox_KeyDown"
@@ -824,6 +824,7 @@
                         <TextBlock Text="PREVIEW" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" />
                         <TextBlock x:Name="PreviewTitle" FontWeight="SemiBold" TextWrapping="Wrap" />
                         <TextBlock x:Name="PreviewMetadata" FontSize="12" Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" TextWrapping="Wrap" />
+                        <TextBlock x:Name="PreviewStatus" TextWrapping="Wrap" FontSize="12" />
                         <Grid x:Name="PdfPageControls" ColumnSpacing="8" Visibility="Collapsed">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
@@ -840,7 +841,6 @@
                         <Image x:Name="PreviewImage" AutomationProperties.Name="Selected image preview" Height="220" Stretch="Uniform" Visibility="Collapsed" />
                         <TextBox x:Name="PreviewText" AutomationProperties.Name="Selected text file preview" IsReadOnly="True"
                             AcceptsReturn="True" TextWrapping="Wrap" FontFamily="Consolas" Height="260" Visibility="Collapsed" />
-                        <TextBlock x:Name="PreviewStatus" TextWrapping="Wrap" FontSize="12" />
                         <TextBlock x:Name="PreviewPath" FontSize="11" Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" TextWrapping="Wrap" />
                     </StackPanel>
                     </ScrollViewer>

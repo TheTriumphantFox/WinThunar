@@ -50,6 +50,16 @@ integration notes below before choosing it as your default file manager.
 
 ## What's new
 
+### Prepared for 0.5.12
+
+DOCX files gain a read-only body-text preview and direct `content:` search without an Office
+installation or Windows indexing filter. For example, `type:docx content:"annual report"` reads
+the current document body. See [DOCX support and limits](docs/DOCUMENT-TEXT.md).
+Thumbnail loading also uses bounded workers and reuses unchanged images for equivalent
+layout/zoom requests; see the [resource verification](docs/PRIORITY-VERIFICATION.md#thumbnail-resource-follow-up-unreleased).
+These additions are not in the published 0.5.11 downloads.
+See the [0.5.12 release notes](docs/RELEASE-0.5.12.md) for verification and publication status.
+
 ### Published in 0.5.11
 
 **Keep your tabs when you restart to update.** After opening and closing another WinThunar
@@ -322,10 +332,10 @@ Install the Velopack packaging tool once:
 dotnet tool install -g vpk --version 1.2.161
 ```
 
-Build a release from the main checkout; this example uses 0.5.11:
+Build a release from the main checkout; this example uses 0.5.12:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.5.11
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.5.12
 ```
 
 For a new release, choose an unused version and update all four version locations before

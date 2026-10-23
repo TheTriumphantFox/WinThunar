@@ -1,8 +1,9 @@
 # Priority verification, 23 October 2026
 
 This pass verifies current public packages in the offline Windows 11 guest, fixes a reproduced
-Restart Now session-loss bug and adds reusable verification tooling. These changes are published
-in 0.5.11; see the [release notes](RELEASE-0.5.11.md) for publication and package-verification status.
+Restart Now session-loss bug and adds reusable verification tooling. That remedy and the original
+tooling are published in 0.5.11; see the [release notes](RELEASE-0.5.11.md) for package status.
+The later thumbnail-resource and DOCX follow-ups below are unreleased source additions.
 
 ## Disposition of the priority list
 
@@ -10,10 +11,10 @@ in 0.5.11; see the [release notes](RELEASE-0.5.11.md) for publication and packag
 | --- | --- | --- |
 | Installer/updater | Interactive public 0.5.8 per-user installation; full update to public 0.5.10; first/last-window close behavior; seeded public 0.5.9 delta and actual Restart Now payload/relaunch; all 524 deployed hashes; session fix published in 0.5.11 with verified packages/feed | Installed update initiated by the fixed public handler; unseeded delta/cache behavior, Setup, all-users and UAC matrix |
 | User-state protection | Public MSI refresh, both repair modes, startup recovery and uninstall retention; positive Shell cleanup | Legacy public-MSI migration under elevation, live Undo workflows and other installation contexts |
-| Accessibility | 70 desktop checks and two restart checks, including existing names/focus/preview coverage | Manual screen-reader, contrast, scaling, pointer and full keyboard review |
+| Accessibility | Latest source: 83 desktop checks and two restart checks, including DOCX naming and existing focus/preview coverage | Manual screen-reader, contrast, scaling, pointer and full keyboard review |
 | Hardware/network failures | Existing VHD/loopback evidence retained | Separate SMB server, physical removal and separate physical devices deferred at the maintainer's request |
 | Notifications | Source desktop harness reproduces registration error `0x8007007E` for the missing Insights resource DLL | Installed/portable delivery and activation; upstream runtime issue remains pending release |
-| Document discovery | Generated TXT, RTF and PDF content matches from the guest's native Windows Search provider | DOCX/other Office filters, representative format coverage, fresh extraction and broader previews |
+| Document discovery | Generated TXT, RTF and PDF index matches; unreleased DOCX body-text preview and fresh filesystem content search | DOCX/other Office index filters, representative editor/format coverage, layout and broader previews |
 | Endurance and reparse types | Repeated UI/search/thumbnail/preview workload; cleanup/heap diagnostics; eight native unsupported-link refusal cases | Long-session memory behavior, slow network, broader browsing/cloud features and preservation of additional reparse types |
 
 Interactive UAC cases are also deferred at the maintainer's request. These boundaries apply to
@@ -126,6 +127,84 @@ Reports and inspected renders are in `artifacts/priority-desktop-long-drain-2026
 earlier workload, shorter drain run and owned-process heap graph in the adjacent
 `priority-desktop-endurance-20261023/`, `priority-desktop-drain-20261023/` and
 `priority-desktop-heap-20261023/` directories. These are local workloads with warmed caches.
+
+## Thumbnail resource follow-up (unreleased)
+
+The source image loader now starts at most six workers per batch instead of creating a task
+and semaphore waiter for every directory entry. The existing six-call gate still applies across
+superseded batches, and cancellation stops workers from starting the remaining entries. Workers
+retain the UI context required by the shell images. A 10,000-item service regression covers
+bounded concurrency and exactly-once processing; separate regressions cover cancellation and
+waiting for other workers before reporting a failure.
+
+Each entry records the size and effective content-thumbnail mode of its successful shell image.
+Switching between Details and Compact, or changing text zoom in those layouts, reuses that image.
+Icon-size/content-mode changes still load a new image, and changed file metadata replaces the
+entry and loads afresh. This retains only the entry's existing bitmap; it adds no global image
+cache. The desktop regressions use real shell images to check these paths and superseded requests.
+
+The five-minute follow-up completed **501 cycles**, **1,503 searches** and **1,002 previews**;
+its largest observed dispatcher gap was **296 ms**. It passed **78 desktop checks and two
+theme-restart checks**. Private memory was about **265 MiB** initially, **347 MiB** at the end of
+the workload and **339 MiB** after cleanup. Managed memory after cleanup was about **22 MiB**;
+handles were 3,613 initially and 3,696 after cleanup. The first through third diagnostic collection
+rounds retained five sampled weak entries and similar managed totals. Collection remains confined
+to the test build.
+
+The earlier five-minute run above completed 311 cycles and retained about 553 MiB of private
+memory after its first cleanup collection. These are generated local workloads, not a controlled
+benchmark or proof of flat/day-long memory use. The new measurements narrow the resource issue
+and support the bounded-work/reuse improvement; slow-network endurance and longer sessions remain
+open. Evidence is in `artifacts/priority-memory-workers-desktop-20261023/`.
+
+A fresh **60-second original-build** run completed **97 cycles**, passing 73 desktop checks.
+It allocated about **19.81 MiB per cycle**, versus **15.76 MiB per cycle** in the updated five-minute
+run (workload allocation deltas divided by completed cycles). That is about **20% less allocation
+per cycle**, with different run durations. The short original run ended near 311 MiB private memory
+and did not reproduce the earlier large retained heap, so the historical memory difference cannot
+be attributed solely to this change. Its unchanged original test binary excludes the new worker
+pool and thumbnail regressions. Evidence is in `artifacts/priority-memory-baseline-desktop-20261023/`;
+the initial restricted-shell attempts were unable to capture a render and are not counted as passes.
+
+The service suite passes **184 tests**, with the existing symbolic-link permission skip and no
+failures. The final desktop pass, with endurance disabled, passes **76 checks and two theme-restart
+checks**, including the additional superseded-request regression. Its reports and inspected renders
+are in `artifacts/priority-thumbnail-final-20261023/`. A normal x64 publish also passes and excludes
+the smoke, endurance, thumbnail and restart test entry points; it is in
+`artifacts/priority-thumbnail-release-build-20261023/`. These changes are local source work; the
+published application remains 0.5.11.
+
+## DOCX body preview and fresh content search (unreleased)
+
+The source now reads a DOCX's stored main-body text for the read-only preview and filesystem
+`content:` search. A generated document with text split across formatting runs matches
+`type:docx content:"annual report" content:José` without Windows indexing. Replacing its bytes
+and querying again finds the replacement text. The preview exposes Unicode text through a
+read-only control named **Selected DOCX body text preview**, and the body-text/truncation status
+appears above the content. The source handle closes before parsing. Malformed input and selection
+cancellation clear the old content.
+
+The bounded reader resolves the internal main-document relationship, checks the DOCX main content
+type, and handles Transitional/Strict namespaces and relocated/root-relative main parts. It caps
+the package, decompressed markup, metadata, part count, nesting and extracted text. Generated tests
+cover those limits, missing/duplicate/malformed parts, DTD and external-target refusal, escaping
+paths, renamed macro-enabled content, cancellation, file locks, source-byte preservation, split
+runs, table text and tracked-deletion/instruction exclusion. It neither launches Office nor
+resolves external resources. See [DOCX support and explicit limits](DOCUMENT-TEXT.md).
+
+The final service suite passes **211 tests**, with the existing symbolic-link permission skip
+and no failures. The desktop suite passes **83 checks and two theme-restart checks**, including
+seven DOCX checks; the DOCX and existing PDF renders were inspected after moving the status label.
+Evidence is in `artifacts/priority-docx-desktop-20261023/` and
+`artifacts/priority-docx-final-20261023/`. The search/stress project also builds successfully. A normal
+x64 publish passes and includes the DOCX reader while excluding smoke/thumbnail/DOCX/restart entry
+points and the generated-package fixture helper; output is in `artifacts/priority-docx-release-build-20261023/`.
+
+This is fresh main-body text coverage, rather than Word page layout or general Office preview
+support. It does not add Windows Search filters: the earlier guest's absent DOCX handler and
+Office index-coverage gap remain open. Other Office formats, separate document stories,
+representative files from more editors and manual screen-reader review remain open. The source
+addition is unreleased; public 0.5.11 is unchanged.
 
 ## Document filters and unsupported links
 

@@ -2319,6 +2319,10 @@ public sealed partial class MainPage : Page
             IsTextSelectionEnabled = true
         });
 
+        AddHeading("Version 0.5.12 — read and find DOCX text");
+        AddParagraph("Select a downloaded DOCX file with the Preview Pane enabled to read and copy its body text. Search with type:docx content:\"annual report\" to find phrases in the current document without Office or Windows indexing.");
+        AddParagraph("DOCX preview shows body text, not Word page layout. Files are limited to 16 MiB, previews to 32,768 characters, and content search to 1,048,576 extracted characters. Other Office formats and password-protected documents are not supported.");
+        AddParagraph("Thumbnail loading uses bounded workers and reuses unchanged images for equivalent layout and zoom requests, reducing allocation during repeated browsing.");
         AddHeading("Version 0.5.11 — keep your tabs");
         AddParagraph("Keep your tabs when restarting to update. With tab restoration enabled, Restart Now brings back the tabs and active folder from the window where you clicked the button, even after opening and closing another WinThunar window. Your selected view is saved too.");
         AddParagraph("Restart Now continues to wait until file transfers and Undo or Redo operations finish in every window.");
@@ -3755,19 +3759,25 @@ public sealed partial class MainPage : Page
                 PreviewStatus.Text = "PDF preview";
                 return;
             }
-            var text = await Task.Run(() => TextFileContent.Supports(entry.FullPath, File.GetAttributes(entry.FullPath))
-                ? TextFileContent.ReadPreview(entry.FullPath, cancellationToken) : null, cancellationToken);
+            var isDocx = DocxFileContent.IsDocument(entry.FullPath);
+            var text = await Task.Run(() => isDocx ? DocxFileContent.ReadPreview(entry.FullPath, cancellationToken)
+                : TextFileContent.Supports(entry.FullPath, File.GetAttributes(entry.FullPath))
+                    ? TextFileContent.ReadPreview(entry.FullPath, cancellationToken) : null, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             if (text is not null)
             {
                 PreviewText.Text = text.Text;
+                Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(PreviewText,
+                    isDocx ? "Selected DOCX body text preview" : "Selected text file preview");
                 PreviewText.Visibility = Visibility.Visible;
-                PreviewStatus.Text = text.Truncated ? "Showing the first 32,768 characters." : "Text preview";
+                PreviewStatus.Text = isDocx
+                    ? (text.Truncated ? "DOCX body text • showing the first 32,768 characters." : "DOCX body text")
+                    : (text.Truncated ? "Showing the first 32,768 characters." : "Text preview");
                 return;
             }
             if (!imageExtensions.Contains(Path.GetExtension(entry.FullPath)))
             {
-                PreviewStatus.Text = "Preview is available for images, PDFs up to 64 MiB, and supported text files stored on this device.";
+                PreviewStatus.Text = "Preview is available for images, PDFs up to 64 MiB, DOCX body text up to 16 MiB, and supported text files stored on this device.";
                 return;
             }
             var image = await _shellImageService.GetPreviewAsync(

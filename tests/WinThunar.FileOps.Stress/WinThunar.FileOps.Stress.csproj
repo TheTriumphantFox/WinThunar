@@ -16,5 +16,6 @@
     <Compile Include="..\..\Services\FileSearchQuery.cs" Link="Services\FileSearchQuery.cs" />
     <Compile Include="..\..\Services\IndexedFileSearchService.cs" Link="Services\IndexedFileSearchService.cs" />
     <Compile Include="..\..\Services\TextFileContent.cs" Link="Services\TextFileContent.cs" />
+    <Compile Include="..\..\Services\DocxFileContent.cs" Link="Services\DocxFileContent.cs" />
   </ItemGroup>
 </Project>

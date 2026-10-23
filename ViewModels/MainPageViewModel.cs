@@ -14,6 +14,9 @@ public partial class MainPageViewModel : ObservableObject, IDisposable
     private readonly object _watcherRefreshLock = new();
     private readonly RequestGeneration _navigationGeneration = new();
     private readonly SemaphoreSlim _imageLoadGate = new(6);
+#if ROADMAP_SMOKE_TEST
+    internal Task ImageLoadingCompletion { get; private set; } = Task.CompletedTask;
+#endif
     private CancellationTokenSource? _searchCancellation;
     private CancellationTokenSource? _imageCancellation;
     private CancellationTokenSource? _navigationCancellation;
@@ -595,7 +598,7 @@ public partial class MainPageViewModel : ObservableObject, IDisposable
                 StatusText += $"; {summary.SkippedDirectories} inaccessible folder{(summary.SkippedDirectories == 1 ? string.Empty : "s")} skipped";
             }
             if (summary.SkippedContentFiles > 0)
-                StatusText += $"; {summary.SkippedContentFiles} unsupported, unavailable, or oversized text files skipped";
+                StatusText += $"; {summary.SkippedContentFiles} unsupported, unavailable, or oversized content files skipped";
             if (summary.UsedWindowsIndex)
             {
                 StatusText = "Windows index: " + StatusText + "; coverage and content depend on Windows indexing. Remove index:true for a filesystem search.";
@@ -992,7 +995,7 @@ public partial class MainPageViewModel : ObservableObject, IDisposable
         _searchCancellation = null;
     }
 
-    private void BeginLoadingImages(IReadOnlyCollection<FileSystemEntry> entries)
+    private void BeginLoadingImages(IReadOnlyList<FileSystemEntry> entries)
     {
         RestartImageLoadingScope();
         QueueLoadingImages(entries);
@@ -1012,7 +1015,7 @@ public partial class MainPageViewModel : ObservableObject, IDisposable
         _imageVersion++;
     }
 
-    private void QueueLoadingImages(IReadOnlyCollection<FileSystemEntry> entries)
+    private void QueueLoadingImages(IReadOnlyList<FileSystemEntry> entries)
     {
         if (_imageCancellation is null || entries.Count == 0 || IsRecycleBinView)
         {
@@ -1025,41 +1028,55 @@ public partial class MainPageViewModel : ObservableObject, IDisposable
             ? (uint)Math.Clamp((int)IconImageSize, 32, 96)
             : 32u;
 
-        _ = LoadImagesAsync(entries, requestedSize, version, cancellationToken);
+        var loading = LoadImagesAsync(entries, requestedSize, ShowThumbnails, version, cancellationToken);
+#if ROADMAP_SMOKE_TEST
+        ImageLoadingCompletion = loading;
+#endif
     }
 
     private async Task LoadImagesAsync(
-        IReadOnlyCollection<FileSystemEntry> entries,
+        IReadOnlyList<FileSystemEntry> entries,
         uint requestedSize,
+        bool showThumbnails,
         int version,
         CancellationToken cancellationToken)
     {
-        var tasks = entries.Select(async entry =>
+        async Task LoadAsync(FileSystemEntry entry)
         {
+            // Details and compact layouts use the same shell request. Reusing an unchanged
+            // entry's bitmap also avoids re-decoding icons when zoom only changes text/layout.
+            var showsContent = showThumbnails && requestedSize >= 48;
+            if (entry.Thumbnail is not null && entry.ThumbnailSize == requestedSize &&
+                entry.ThumbnailShowsContent == showsContent) return;
             await _imageLoadGate.WaitAsync(cancellationToken);
             try
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var image = await _shellImageService.GetImageAsync(
                     entry.FullPath,
                     entry.IsDirectory,
-                    ShowThumbnails,
+                    showThumbnails,
                     requestedSize,
                     cancellationToken);
 
                 if (version == _imageVersion && !cancellationToken.IsCancellationRequested)
                 {
                     entry.Thumbnail = image;
+                    entry.ThumbnailSize = requestedSize;
+                    entry.ThumbnailShowsContent = showsContent;
                 }
             }
             finally
             {
                 _imageLoadGate.Release();
             }
-        });
+        }
 
         try
         {
-            await Task.WhenAll(tasks);
+            // Bound waiting work as well as active native calls: a large folder must not
+            // allocate one task and semaphore waiter per entry on every view change.
+            await AsyncWorkPool.RunAsync(entries, 6, LoadAsync, cancellationToken);
         }
         catch (OperationCanceledException)
         {

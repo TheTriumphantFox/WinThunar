@@ -4,7 +4,7 @@ namespace WinThunar.Services;
 
 public sealed record TextFilePreview(string Text, bool Truncated);
 
-/// <summary>Bounded reads of ordinary local text files. Never hydrates placeholders or follows file links.</summary>
+/// <summary>Bounded local text reads and content search, including DOCX body search. Excludes placeholders and file links.</summary>
 public static class TextFileContent
 {
     public const long MaximumSearchBytes = 16 * 1024 * 1024;
@@ -23,6 +23,7 @@ public static class TextFileContent
     {
         skipped = false;
         if (terms.Count == 0) return true;
+        if (DocxFileContent.IsDocument(path)) return DocxFileContent.Contains(path, terms, cancellationToken, out skipped);
         try
         {
             var attributes = File.GetAttributes(path);

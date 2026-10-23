@@ -151,6 +151,8 @@ public sealed partial class MainPage
             Require(filename is not null && filename.ActualWidth >= 48,
                 "Detailed filenames keep visible space when the preview narrows the pane", checks);
             await CaptureSmokeImageAsync(directory, "TextPreview");
+            await CheckDocxAsync(directory, checks);
+            await ViewModel.NavigateAsync(fixture);
 
             var documents = Directory.CreateDirectory(Path.Combine(directory, "documents")).FullName;
             var pdfPath = Path.Combine(documents, "preview.pdf");
@@ -239,6 +241,7 @@ public sealed partial class MainPage
             Require(ViewModel.IsComputerView && !ViewModel.IsSearchMode, "Closing This PC search restores the drive listing", checks);
             await ViewModel.NavigateAsync(fixture);
 
+            await CheckThumbnailReuseAsync(directory, checks);
             await RunOptionalEnduranceAsync(directory, checks);
             await CheckRestartSessionAsync(directory, checks);
             await CheckWindowCloseSessionAsync(directory, checks);
@@ -364,6 +367,8 @@ public sealed partial class MainPage
                     var whatsNew = CreateWhatsNewDialog();
                     var showingWhatsNew = whatsNew.ShowAsync();
                     await Task.Delay(150);
+                    Require(FindSmokeText(whatsNew.Content as DependencyObject, "Version 0.5.12 — read and find DOCX text") is not null,
+                        $"What's New describes the 0.5.12 DOCX additions in {theme}", checks);
                     await CaptureSmokeImageAsync(directory, "WhatsNew" + theme, whatsNew);
                     whatsNew.Hide();
                     await showingWhatsNew;

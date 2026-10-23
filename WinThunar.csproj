@@ -15,9 +15,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
-    <Version>0.5.11</Version>
-    <AssemblyVersion>0.5.11.0</AssemblyVersion>
-    <FileVersion>0.5.11.0</FileVersion>
+    <Version>0.5.12</Version>
+    <AssemblyVersion>0.5.12.0</AssemblyVersion>
+    <FileVersion>0.5.12.0</FileVersion>
   </PropertyGroup>
 
   <ItemGroup>
@@ -48,6 +48,9 @@
     <Compile Include="tests\WinThunar.DesktopSmoke\SmokeChecks.cs" />
     <Compile Include="tests\WinThunar.DesktopSmoke\EnduranceChecks.cs" />
     <Compile Include="tests\WinThunar.DesktopSmoke\RestartChecks.cs" />
+    <Compile Include="tests\WinThunar.DesktopSmoke\ThumbnailChecks.cs" />
+    <Compile Include="tests\WinThunar.DesktopSmoke\DocxChecks.cs" />
+    <Compile Include="tests\Fixtures\DocxFixture.cs" />
   </ItemGroup>
 
   <!--

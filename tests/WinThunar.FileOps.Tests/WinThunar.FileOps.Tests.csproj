@@ -33,6 +33,7 @@
     <Compile Include="..\..\Services\ShellFileOperation.cs" Link="Services\ShellFileOperation.cs" />
     <Compile Include="..\..\Services\UpdateSettings.cs" Link="Services\UpdateSettings.cs" />
     <Compile Include="..\..\Services\AppearanceSettings.cs" Link="Services\AppearanceSettings.cs" />
+    <Compile Include="..\..\Services\MsiMigrationStateGuard.cs" Link="Services\MsiMigrationStateGuard.cs" />
     <Compile Include="..\..\Services\UpdateService.cs" Link="Services\UpdateService.cs" />
     <Compile Include="..\..\Models\FileTransferJob.cs" Link="Models\FileTransferJob.cs" />
     <Compile Include="..\..\Models\BrowserState.cs" Link="Models\BrowserState.cs" />

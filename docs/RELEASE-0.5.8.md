@@ -61,9 +61,11 @@ Opaque recovery-file retention does not establish journal replay or live Undo pr
 Interactive maintenance, all-users UAC/uninstall and the broader released-app matrix remain open.
 
 **An application update does not replace an older cached MSI.** Existing installations made
-with 0.5.7 or earlier MSIs retain their original repair and uninstall behavior. Migration to
-a corrected MSI is unverified; preserve settings and unresolved recovery data before using
-an older installer's maintenance/uninstall path. Original MSI product metadata can continue
+with 0.5.7 or earlier MSIs retain their original repair and uninstall behavior. A subsequent
+[per-user migration test](MSI-MIGRATION.md) found that installing this MSI over an original
+0.5.5 MSI updated to 0.5.7 replaced the payload/cache correctly but deleted all five seeded
+settings/plugin/recovery files during old-MSI removal. Preserve the complete user-state
+directory before migration or older-MSI maintenance/uninstall. Original MSI product metadata can continue
 to report its originally installed version.
 
 Manual accessibility/Shell/cloud review, positive PDF/Office indexed-content fixtures,

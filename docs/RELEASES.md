@@ -6,13 +6,26 @@ released 22 October 2026 from source commit `b8cf52a` (PRs #21 and #22). Its pub
 setup executable, full/delta packages, and update feed were verified. See the
 [release notes](RELEASE-0.5.8.md), [MSI policy evidence](MSI-MAINTENANCE.md) and
 [updater verification](UPDATER-VERIFICATION.md) for corrected-MSI native checks and historical
-public-installer failures. Existing cached MSIs retain their old behavior. An installed 0.5.8
-upgrade, migration from an old MSI and the remaining interactive/all-users matrix remain unverified.
+public-installer failures. Existing cached MSIs retain their old behavior. A subsequent
+[legacy-MSI migration test](MSI-MIGRATION.md) installed 0.5.8 with matching payload/cache,
+but old-MSI removal deleted seeded user state. The external backup/restore workaround
+passed migration, both repairs and uninstall retention. The unpublished 0.5.9 source adds
+automatic per-user protection; the remaining interactive/all-users matrix remains open.
+
+Source versions are aligned for the **[0.5.9 candidate](RELEASE-0.5.9.md)**. It is unpublished;
+the current public release and update feed remain 0.5.8 until upload. Release notes must
+retain the [forced-rollback MSI registration failure](MSI-MIGRATION.md#forced-rollback-finding--known-limitation)
+as a known issue; passing state retention does not establish complete installer rollback.
 
 ## Prerequisites and version checklist
 
 Use the main checkout on Windows with the [build prerequisites](../README.md#build).
 Public release packaging targets `win-x64` and uses Velopack 1.2.161:
+
+MSI packaging also requires Visual Studio's **Desktop development with C++** x64 tools and
+Windows SDK. `Build-MsiMigrationActions.ps1` locates them using `vswhere` and compiles the
+original native custom-action DLL with a static runtime. `Set-MsiMaintenancePolicy.ps1`
+embeds it in the MSI; target computers need no extra C++ or .NET runtime for these actions.
 
 ```powershell
 dotnet tool install -g vpk --version 1.2.161
@@ -31,11 +44,11 @@ Documentation-only changes do not require a new application version.
 
 ## Build and local outputs
 
-Run from the main checkout. This example uses 0.5.8;
+Run from the main checkout. This example uses the unpublished 0.5.9 candidate;
 existing output paths are deliberately not overwritten:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.5.8
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.5.9
 ```
 
 For version `X.Y.Z`, the script writes:
@@ -88,7 +101,7 @@ releases and upload assets for this repository. Keep it out of source, command h
 and logs. With the token already supplied, run:
 
 ```powershell
-$releaseVersion = '0.5.8' # Replace with the version just built.
+$releaseVersion = '0.5.9' # Publish only after the candidate is approved and built.
 try {
     vpk upload github --outputDir .\artifacts\installer --repoUrl https://github.com/TheTriumphantFox/WinThunar --token $env:GITHUB_TOKEN --publish --releaseName "WinThunar $releaseVersion" --tag "v$releaseVersion"
     if ($LASTEXITCODE -ne 0) { throw 'GitHub release upload failed.' }

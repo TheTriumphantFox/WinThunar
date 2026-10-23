@@ -1,8 +1,10 @@
 # WinThunar 0.5.12
 
-Prepared for Windows 11 x64. Publication is pending; installed users still receive 0.5.11 until
-the GitHub Release and updater feed are published. Project, assembly/file, manifest and
-release-script versions are aligned at 0.5.12 (four-part version 0.5.12.0).
+Published [23 October 2026](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.12)
+for Windows 11 x64 from source `1629c72935ea1faf6075b36a36a660f834faca80` (PR #31).
+All five public binary digests, both updater feeds and the source tag match the verified build.
+Project, assembly/file, manifest and release-script versions are aligned at 0.5.12
+(four-part version 0.5.12.0).
 
 ## What's new
 
@@ -38,8 +40,27 @@ previews**, with a maximum observed dispatcher gap of **296 ms**. Allocation ave
 Different durations and the short baseline do not establish flat memory use or a complete
 long-session memory remedy. See [priority verification](PRIORITY-VERIFICATION.md).
 
-Release package, historical-package retention, MSI policy, delta reconstruction, public asset/feed
-and source-tag checks will be recorded after the clean merged-source build and publication.
+The release was rebuilt from clean merged `main` with `Publish-Release.ps1 -Version 0.5.12`.
+Both MSI copies have matching hashes, version 0.5.12.0, scope/shortcut choices and the existing
+maintenance/migration guards. The embedded native DLL matches the final source build; deliberate
+failure actions are absent. All **17 historical update packages** remain unchanged. Applying the
+**711,758-byte** 0.5.11-to-0.5.12 delta reconstructs all **528 archive entries** with matching
+names, lengths and SHA-256 digests. Application assemblies match across the versioned ZIP,
+public portable ZIP and full package.
+
+All five public binary sizes/SHA-256 digests match. The modern feed offers matching 0.5.12
+full/delta entries, the compatibility feed offers the matching full package, latest stable
+resolves to 0.5.12 and the tag points to the source commit above. Evidence is in
+`artifacts/verification-0.5.12/`. Builds/tests report NU1900 when NuGet vulnerability metadata
+is unavailable; the release publish and package checks passed.
+
+| GitHub binary | Bytes | SHA-256 |
+| --- | ---: | --- |
+| `WinThunar.App-win.msi` | 93,470,720 | `6109c1498e567bb36cf18f8053644f0f3bc482ea91ce28c70b02e7f93b4f7776` |
+| `WinThunar.App-win-Portable.zip` | 111,948,456 | `f9966f31666eb828d93ed22c6e996cf289d4859ed480c5ae03f2d34d4e170a8e` |
+| `WinThunar.App-win-Setup.exe` | 119,496,582 | `90b2cae1c7d9b9cff368ce1f585303baa2e471f56ccc4a28612d4b8e3de1217b` |
+| `WinThunar.App-0.5.12-full.nupkg` | 111,965,062 | `3d3541148160552fc4d5d022962eae3070166b7b2c3b50ff02b7999ad31ae5bd` |
+| `WinThunar.App-0.5.12-delta.nupkg` | 711,758 | `e0017ed258e356c23ecf26745530ed61963d9808eeea880bacb878893da890de` |
 
 ## Scope and remaining limits
 

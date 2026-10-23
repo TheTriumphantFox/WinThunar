@@ -1,8 +1,8 @@
 # Accessibility status
 
-Reviewed against the source checkout on 21 October 2026. This is a source and smoke-check
+Source/smoke status updated on 23 October 2026. This is a source and smoke-check
 status document, not a claim of full screen-reader compatibility or accessibility conformance.
-The latest recorded published application is 0.5.11; the support below is included in the release unless
+The latest recorded published application is 0.5.12; the support below is included in the release unless
 marked unreleased, subject to the verification limits here.
 See the [release/source status](ROADMAP.md#release-and-source-status).
 
@@ -83,8 +83,8 @@ check.
 
 ## Manual checks still required
 
-The [23 October priority pass](PRIORITY-VERIFICATION.md) passes 70 source desktop checks and two
-theme-restart checks, including a regression for saving the invoking window before Restart Now.
+The final [23 October 0.5.12 release pass](PRIORITY-VERIFICATION.md) passes 85 source desktop checks
+and two theme-restart checks, including DOCX previews and saving the invoking window before Restart Now.
 A separate five-minute generated UI/thumbnail/search/preview workload also passes. The pass reproduces
 the notification resource-DLL registration failure. These checks leave the manual review below
 open; the endurance harness does not run a screen reader or establish contrast conformance.
@@ -120,7 +120,7 @@ extracted PDF body text to a screen reader. The native index query is also check
 explicit coverage warning and a separate read-only metadata probe; this does not establish
 document-filter coverage or screen-reader result announcements.
 
-## Unreleased DOCX body text
+## DOCX body text in 0.5.12
 
 The source preview exposes extracted DOCX body text in the existing read-only text control,
 with the accessible name **Selected DOCX body text preview**. The status/truncation label appears

@@ -50,14 +50,14 @@ integration notes below before choosing it as your default file manager.
 
 ## What's new
 
-### Prepared for 0.5.12
+### Published in 0.5.12
 
 DOCX files gain a read-only body-text preview and direct `content:` search without an Office
 installation or Windows indexing filter. For example, `type:docx content:"annual report"` reads
 the current document body. See [DOCX support and limits](docs/DOCUMENT-TEXT.md).
 Thumbnail loading also uses bounded workers and reuses unchanged images for equivalent
-layout/zoom requests; see the [resource verification](docs/PRIORITY-VERIFICATION.md#thumbnail-resource-follow-up-unreleased).
-These additions are not in the published 0.5.11 downloads.
+layout/zoom requests; see the [resource verification](docs/PRIORITY-VERIFICATION.md#thumbnail-resource-follow-up).
+These additions are included in the published 0.5.12 downloads.
 See the [0.5.12 release notes](docs/RELEASE-0.5.12.md) for verification and publication status.
 
 ### Published in 0.5.11
@@ -82,11 +82,11 @@ installer; use the latest MSI to get these safeguards. See the
 
 ## Release and source status
 
-The latest published application release is **[0.5.11](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.11)**
-(23 October 2026), from source `c87dd99` (PR #29). Its changes are merged into `main`, and the GitHub updater feed
-offers 0.5.11 to installed copies. Use **Help > Check for Updates...** to check immediately;
+The latest published application release is **[0.5.12](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.12)**
+(23 October 2026), from source `1629c72` (PR #31). Its changes are merged into `main`, and the GitHub updater feed
+offers 0.5.12 to installed copies. Use **Help > Check for Updates...** to check immediately;
 portable copies are updated manually. Documentation and website updates alone do not update the app.
-See the [0.5.11 release notes](docs/RELEASE-0.5.11.md) for verification and remaining limits.
+See the [0.5.12 release notes](docs/RELEASE-0.5.12.md) for verification and remaining limits.
 The version string alone does not establish that a local build matches published binaries.
 
 Release **[0.5.10](docs/RELEASE-0.5.10.md)** provides a guarded legacy-MSI migration

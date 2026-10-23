@@ -87,6 +87,12 @@ creation; link-preserving file transfers do not add link support to ZIP archives
 
 ## Verification
 
+The [23 October priority pass](PRIORITY-VERIFICATION.md) adds eight native NTFS tests for safe
+refusal of unsupported file/directory name-surrogate reparse points across Copy/Move and
+new/Replace cases. It also verifies actual public-app recovery after MSI refresh and repair:
+a safe displaced original is restored, while an ambiguous destination retains every copy.
+Additional reparse types and live Undo across installer workflows remain separate work.
+
 The discoverable xUnit test project creates unique trees beneath the system temporary directory. It covers
 name validation, case-only rename, native metadata and alternate-stream preservation, rollback-safe Replace,
 partial-operation journaling, state-guarded Undo data, junction-safe atomic archives, null-safe JSON loading,

@@ -136,4 +136,8 @@ Regression tests cover SQL quoting/wildcards, scope boundaries, hidden ancestors
 stale entries, current metadata, duplicate paths, result/candidate limits, and cancellation/disposal.
 The native desktop check queries generated fixtures without changing index configuration and
 separately probes at most one existing indexed file's metadata without logging its path/content.
-No positive generated PDF/Office content-indexing result has been established yet.
+The [23 October guest check](PRIORITY-VERIFICATION.md) establishes generated TXT, RTF and PDF
+content matches through the read-only native provider without changing indexing settings.
+DOCX did not match and its direct `PersistentHandler` registration was absent in that guest;
+Office and representative-format coverage remain open. The same pass adds a five-minute
+isolated desktop search/thumbnail/preview workload with responsiveness and cleanup diagnostics.

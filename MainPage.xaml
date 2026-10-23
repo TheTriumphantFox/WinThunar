@@ -282,6 +282,7 @@
             <MenuBarItem Title="Help" AccessKey="H">
                 <MenuFlyoutItem Text="Interrupted Transfers..." Click="InterruptedTransfers_Click" />
                 <MenuFlyoutItem Text="Check for Updates..." Click="CheckForUpdates_Click" />
+                <MenuFlyoutItem Text="What's New..." Click="WhatsNew_Click" />
                 <MenuFlyoutSeparator />
                 <MenuFlyoutItem Text="About WinThunar" Click="About_Click" />
             </MenuBarItem>

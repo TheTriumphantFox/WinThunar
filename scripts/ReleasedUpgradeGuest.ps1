@@ -12,14 +12,16 @@ $machineGuid = (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Cryptography' -Name M
 if ([string]::IsNullOrWhiteSpace($machineGuid) -or $machineGuid -eq $lab.HostMachineGuid -or $env:COMPUTERNAME -eq $lab.HostComputerName) {
     throw 'This bundle must run in a separate disposable Windows guest. Refusing the originating host before any writes or launches.'
 }
-if ($lab.Schema -ne 1 -or $lab.RunId -notmatch '^[a-f0-9]{32}$' -or $lab.BaseVersion -ne '0.5.5' -or $lab.TargetVersion -ne '0.5.6') { throw 'Unexpected lab identity or versions.' }
+if ($lab.Schema -ne 1 -or $lab.RunId -notmatch '^[a-f0-9]{32}$' -or
+    $lab.BaseVersion -notmatch '^\d+\.\d+\.\d+$' -or $lab.TargetVersion -notmatch '^\d+\.\d+\.\d+$' -or
+    [version]$lab.BaseVersion -ge [version]$lab.TargetVersion) { throw 'Unexpected lab identity or versions.' }
 foreach ($asset in $lab.Assets) {
     $assetPath = [IO.Path]::GetFullPath((Join-Path $bundle $asset.RelativePath))
     if (-not $assetPath.StartsWith($bundle + '\', [StringComparison]::OrdinalIgnoreCase)) { throw 'Asset escaped the lab bundle.' }
     if ((Get-Item -LiteralPath $assetPath).Length -ne $asset.Bytes -or (Get-FileHash -LiteralPath $assetPath -Algorithm SHA256).Hash.ToLowerInvariant() -ne $asset.Sha256) { throw "Asset failed verification: $($asset.RelativePath)" }
 }
 if ($Action -eq 'Preflight') {
-    Write-Output 'Separate Windows machine and all seven release assets verified. No app or installer was launched.'
+    Write-Output "Separate Windows machine and all $($lab.Assets.Count) release assets verified. No app or installer was launched."
     return
 }
 $guestRoot = Join-Path ([Environment]::GetFolderPath('UserProfile')) ('WinThunarUpgradeLab\' + $lab.RunId + '-' + $Scope)
@@ -37,7 +39,7 @@ if ($Action -eq 'Initialize') {
     # Prevent an uncontrolled startup check; the test uses the real explicit Check for Updates UI.
     Write-Json @{ CheckAutomatically = $false; LastCheck = $null } (Join-Path $userState 'updates.json')
     Write-Output "Initialized isolated guest case: $guestRoot"
-    Write-Output "Install the published 0.5.5 MSI manually with scope $Scope; then run Launch."
+    Write-Output "Install the published $($lab.BaseVersion) MSI manually with scope $Scope; then run Launch."
     return
 }
 $owner = Get-Content -LiteralPath $markerPath -Raw | ConvertFrom-Json
@@ -47,7 +49,7 @@ if ($Action -eq 'Launch') {
     if ($isElevated) { throw 'Launch the app from a normal, unelevated PowerShell session to test per-user behavior and UAC.' }
     if (Get-Process WinThunar -ErrorAction SilentlyContinue) { throw 'A WinThunar process is already running in the guest.' }
     $manifest = [xml](Get-Content -LiteralPath (Join-Path $installRoot 'current\sq.version') -Raw)
-    if ($manifest.package.metadata.id -ne 'WinThunar.App' -or $manifest.package.metadata.version -notin @('0.5.5','0.5.6')) { throw 'Expected the released WinThunar installation.' }
+    if ($manifest.package.metadata.id -ne 'WinThunar.App' -or $manifest.package.metadata.version -notin @($lab.BaseVersion,$lab.TargetVersion)) { throw 'Expected the released WinThunar installation.' }
     $previousFeed = $env:WINTHUNAR_UPDATE_FEED
     try {
         $env:WINTHUNAR_UPDATE_FEED = Join-Path $bundle 'feed'
@@ -59,14 +61,14 @@ if ($Action -eq 'Launch') {
     return
 }
 $captureRoot = Join-Path $guestRoot ($Label + '-' + (Get-Date -Format 'yyyyMMdd-HHmmss') + '-' + [guid]::NewGuid().ToString('N').Substring(0, 6))
-& (Join-Path $bundle 'Capture-InstalledUpdaterState.ps1') -InstallRoot $installRoot -ExpectedVersion '0.5.6' -OutputDirectory $captureRoot
+& (Join-Path $bundle 'Capture-InstalledUpdaterState.ps1') -InstallRoot $installRoot -ExpectedVersion $lab.TargetVersion -OutputDirectory $captureRoot
 foreach ($stateFile in @('session.json','appearance.json')) {
     $statePath = Join-Path $userState $stateFile
     if (Test-Path -LiteralPath $statePath) { Copy-Item -LiteralPath $statePath -Destination $captureRoot }
 }
 if ($Action -eq 'Capture') { return }
 Add-Type -AssemblyName System.IO.Compression.FileSystem
-$targetPackage = Join-Path $bundle 'feed\WinThunar.App-0.5.6-full.nupkg'
+$targetPackage = Join-Path $bundle "feed\WinThunar.App-$($lab.TargetVersion)-full.nupkg"
 $archive = [IO.Compression.ZipFile]::OpenRead($targetPackage)
 $files = @()
 try {
@@ -76,6 +78,8 @@ try {
         $target = Join-Path (Join-Path $installRoot 'current') $relative
         if ($relative -eq 'Squirrel.exe') { $target = Join-Path $installRoot 'Update.exe' }
         if ($relative -eq 'WinThunar_ExecutionStub.exe') { $target = Join-Path $installRoot 'WinThunar.exe' }
+        $target = [IO.Path]::GetFullPath($target)
+        if (-not $target.StartsWith($installRoot + '\', [StringComparison]::OrdinalIgnoreCase)) { throw 'Package escaped the install root.' }
         $stream = $entry.Open()
         $hasher = [Security.Cryptography.SHA256]::Create()
         try { $expected = [BitConverter]::ToString($hasher.ComputeHash($stream)).Replace('-', '').ToLowerInvariant() }
@@ -87,7 +91,7 @@ try {
 finally { $archive.Dispose() }
 Write-Json $files (Join-Path $captureRoot 'deployed-files.json')
 $version = (Get-Item -LiteralPath (Join-Path $installRoot 'current\WinThunar.dll')).VersionInfo.FileVersion
-$valid = $version -eq '0.5.6.0' -and $files.Count -gt 500 -and @($files | Where-Object { -not $_.Matches }).Count -eq 0
+$valid = $version -eq ($lab.TargetVersion + '.0') -and $files.Count -gt 500 -and @($files | Where-Object { -not $_.Matches }).Count -eq 0
 Write-Json @{ Passed = $valid; AssemblyFileVersion = $version; ComparedFiles = $files.Count; Scope = $Scope; UiWorkflowVerified = $false; Notes = 'File verification only. Record UI, UAC, close behavior, settings, repair and uninstall observations separately.' } (Join-Path $captureRoot 'target-verification.json')
 if (-not $valid) { throw "Target deployment mismatch; preserve all guest evidence: $captureRoot" }
 Write-Output "All $($files.Count) deployed target files match the published full package."

@@ -1,5 +1,22 @@
 # Installed updater verification
 
+## Public per-user lifecycle verification, 23 October 2026
+
+The [priority verification](PRIORITY-VERIFICATION.md) adds installed evidence using actual public
+0.5.8 and 0.5.10 assets: interactive per-user scope/shortcut controls, a no-base full update
+through the real Help command, first/last-window close behavior, all 524 target hashes and
+session retention. Both older-MSI repair refusals, public 0.5.10 MSI refresh and both repairs,
+real startup recovery from valid generated journals and uninstall retention/positive Shell
+cleanup pass. This is separate from the earlier private legacy-migration suite below.
+Interactive UAC and physical external-storage cases are deferred at the maintainer's request.
+
+A separate public 0.5.9-to-0.5.10 installed delta case passes reconstruction of all 528 entries,
+all 524 deployed hashes and actual Restart Now relaunch. Its explicitly seeded base is recorded.
+Session retention **fails**: a closed secondary window's single tab replaces the invoking window's
+two tabs after restart. A local `SaveSession()` before native restart fixes the source regression;
+70 desktop checks, two theme-restart checks and a normal x64 publish pass. This remedy is
+unreleased. See the [finding and evidence](PRIORITY-VERIFICATION.md#installed-delta-and-restart-now-session-fix).
+
 ## 0.5.10 publication and guarded MSI migration
 
 Published 23 October 2026 from source `d35876e` (PR #27). All five public binary sizes and

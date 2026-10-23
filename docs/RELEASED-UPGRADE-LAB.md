@@ -1,4 +1,18 @@
-# Released-app upgrade lab: 0.5.5 to 0.5.6
+# Released-app upgrade lab
+
+The original default case below is 0.5.5 to 0.5.6. The builder and guest helper now accept other
+recorded public base/target versions. For example:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\New-ReleasedUpgradeLab.ps1 -BaseVersion 0.5.9 -TargetVersion 0.5.10 -MsiOnly
+```
+
+`-MsiOnly` omits Setup executables; `-AssetDirectories` can locate preserved assets by their public
+size/hash even when they have been renamed. Default historical preparation still verifies seven
+binaries. Each invocation creates a new bundle and rejects the originating host before guest
+writes or launches. The [23 October priority verification](PRIORITY-VERIFICATION.md) records the
+new public per-user full-update/maintenance/recovery case, seeded delta/Restart Now session-loss
+finding, local source remedy and remaining limits.
 
 The host preparation script copies published binaries into a new bundle and verifies every
 binary against the SHA-256 digests in the preserved GitHub release metadata. It never runs an

@@ -130,6 +130,14 @@ public sealed partial class MainPage
             await Task.Run(() => { GC.Collect(); GC.WaitForPendingFinalizers(); GC.Collect(); });
             await Task.Delay(1000);
             Sample("after-collection");
+            // WinRT wrapper cleanup can post work back to the dispatcher. Sample later
+            // collection rounds after that work runs instead of treating one GC as a leak test.
+            for (var round = 2; round <= 3; round++)
+            {
+                await Task.Run(() => { GC.Collect(); GC.WaitForPendingFinalizers(); GC.Collect(); });
+                await Task.Delay(1000);
+                Sample($"after-collection-{round}");
+            }
             if (int.TryParse(Environment.GetEnvironmentVariable("WINTHUNAR_SMOKE_DIAGNOSTIC_HOLD_SECONDS"), out var holdSeconds) && holdSeconds is > 0 and <= 600)
             {
                 File.WriteAllText(Path.Combine(directory, "endurance-ready-for-dump.json"),

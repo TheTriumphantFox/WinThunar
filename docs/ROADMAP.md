@@ -199,8 +199,10 @@ open where their full coverage is not established.
 - [ ] Verify generated PDF/Office content-indexing matches and representative document/filter coverage; index inclusion and freshness are controlled by Windows.
   - [x] Observe generated TXT, RTF and PDF content matches through the guest's read-only native Windows Search provider. DOCX did not match and its direct filter registration was absent; Office and representative-format coverage remain open.
 - [ ] Broader Shell/device browsing, cloud status, Office/general document previews, and fresh document-content extraction.
+  - [x] Add bounded, read-only DOCX main-body text preview and fresh filesystem `content:` search, with generated service/desktop regressions. See [DOCX support and limits](DOCUMENT-TEXT.md). This source addition is unreleased; Word layout, other Office formats and Windows indexing-filter coverage remain open.
 - [ ] Extend local search performance measurements to sustained UI/thumbnail and slow-network endurance checks.
   - [x] Add and run a five-minute isolated UI/search/thumbnail/preview workload with count assertions, dispatcher/memory/handle sampling and post-work cleanup diagnostics. Memory growth during active churn remains under investigation; slow-network and day-long stability are unverified.
+  - [x] Bound thumbnail batch workers and reuse an unchanged entry's image for equivalent layout/zoom requests. Verify image replacement on size/content-mode/metadata changes, cancellation, and a five-minute workload; see [thumbnail resource follow-up](PRIORITY-VERIFICATION.md#thumbnail-resource-follow-up-unreleased). This source improvement is not yet published; longer and slow-network workloads remain open.
 - [ ] Add and verify native handling of unsupported reparse-point types before claiming support.
   - [x] Verify safe refusal of a real synthetic third-party name-surrogate tag in eight native file/directory Copy/Move new/Replace cases. Additional types are not claimed as preservable.
 

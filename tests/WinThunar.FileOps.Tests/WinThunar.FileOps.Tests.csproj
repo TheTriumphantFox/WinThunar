@@ -9,6 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="..\Fixtures\DocxFixture.cs" Link="Fixtures\DocxFixture.cs" />
     <Compile Include="..\..\Services\GitStatusService.cs" Link="Services\GitStatusService.cs" />
     <Compile Include="..\..\Services\LinkFileSystem.cs" Link="Services\LinkFileSystem.cs" />
     <Compile Include="..\..\Services\FileOperationService.cs" Link="Services\FileOperationService.cs" />
@@ -22,10 +23,12 @@
     <Compile Include="..\..\Services\FileSearchQuery.cs" Link="Services\FileSearchQuery.cs" />
     <Compile Include="..\..\Services\IndexedFileSearchService.cs" Link="Services\IndexedFileSearchService.cs" />
     <Compile Include="..\..\Services\TextFileContent.cs" Link="Services\TextFileContent.cs" />
+    <Compile Include="..\..\Services\DocxFileContent.cs" Link="Services\DocxFileContent.cs" />
     <Compile Include="..\..\Services\BulkRenameService.cs" Link="Services\BulkRenameService.cs" />
     <Compile Include="..\..\Services\PluginService.cs" Link="Services\PluginService.cs" />
     <Compile Include="..\..\Services\ArchiveService.cs" Link="Services\ArchiveService.cs" />
     <Compile Include="..\..\Services\RequestGeneration.cs" Link="Services\RequestGeneration.cs" />
+    <Compile Include="..\..\Services\AsyncWorkPool.cs" Link="Services\AsyncWorkPool.cs" />
     <Compile Include="..\..\Services\ObservableCollectionReconciler.cs" Link="Services\ObservableCollectionReconciler.cs" />
     <Compile Include="..\..\Services\ShellIntegrationService.cs" Link="Services\ShellIntegrationService.cs" />
     <Compile Include="..\..\Services\LaunchRequest.cs" Link="Services\LaunchRequest.cs" />

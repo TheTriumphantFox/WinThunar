@@ -119,3 +119,12 @@ at this machine's 125% display scale. The preview is an image of the page; it do
 extracted PDF body text to a screen reader. The native index query is also checked, with an
 explicit coverage warning and a separate read-only metadata probe; this does not establish
 document-filter coverage or screen-reader result announcements.
+
+## Unreleased DOCX body text
+
+The source preview exposes extracted DOCX body text in the existing read-only text control,
+with the accessible name **Selected DOCX body text preview**. The status/truncation label appears
+above the content so it remains visible in a short pane. Generated desktop checks cover the name,
+read-only content and selection cancellation, and the rendered preview was inspected. This is
+main-body text rather than Word page layout; see [format coverage](DOCUMENT-TEXT.md). Narrator,
+other screen readers, full reading order and contrast/scaling conformance remain unverified.

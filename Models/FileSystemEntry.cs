@@ -9,6 +9,8 @@ public sealed class FileSystemEntry : ObservableObject
 {
     private ImageSource? _thumbnail;
     private int _zoomLevel = 2;
+    internal uint ThumbnailSize { get; set; }
+    internal bool ThumbnailShowsContent { get; set; }
 
     public FileSystemEntry(
         string name,

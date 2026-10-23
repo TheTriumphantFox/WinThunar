@@ -1,8 +1,8 @@
 # Migrating an older MSI installation
 
-## Candidate automatic protection
+## Automatic protection in 0.5.9
 
-The **unpublished 0.5.9 source** adds native protection for **Just me** migrations from
+Published **0.5.9** adds native protection for **Just me** migrations from
 legacy MSIs. Published 0.5.8 and earlier installers retain the failure described below.
 An application update alone still does not replace an old cached MSI.
 
@@ -125,7 +125,9 @@ rejected by SHA-256 before execution; the verified read-only ISO replacement was
 Snapshot `automatic-msi-059-late-rollback-registration-failed-20261022` retains this failure.
 The VM is restored to `automatic-msi-059-migration-maintenance-passed-20261022` and left
 Saved, with all NICs disabled. The normal success, both failure branches and rejected
-sequence experiment remain separate evidence; no host app or public release was changed.
+sequence experiment remain separate evidence; no host app or public release was changed
+by those guest checks. The subsequent [0.5.9 publication](RELEASE-0.5.9.md) is verified
+separately against the final release binaries.
 
 ## Direct migration loses user state
 
@@ -195,7 +197,8 @@ They do not make direct migration safe or add automatic state protection to the 
 the declared disposable guest before writes or launches. Its `migration-input.json` records
 origin/guest MachineGuids, a unique case ID, both MSI product codes, expected versions and
 the names, sizes and SHA-256 digests of four assets: `BaseMsi`, `UpdatedPackage`, `TargetMsi`
-and `TargetPackage`. Inputs must match the preserved public release metadata.
+and `TargetPackage`. Public inputs must match preserved release metadata; private candidates
+and deliberately failing variants require separate recorded hashes and must not be published.
 
 Use a new clean guest case for installation, then preserve a checkpoint after the update:
 

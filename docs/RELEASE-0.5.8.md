@@ -2,7 +2,8 @@
 
 Published [22 October 2026](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.8)
 for Windows 11 x64 from source `b8cf52a83550d6cc486ad14241beb238203ef0e5` (PRs #21 and #22).
-This is the latest stable release; the public updater feed offers 0.5.8 full/delta packages.
+Superseded by [0.5.9](RELEASE-0.5.9.md), which adds automatic per-user migration state
+protection while retaining a known forced-rollback MSI registration limitation.
 
 ## Changes since 0.5.7
 
@@ -36,9 +37,9 @@ newer-DLL signature, scope-specific version searches and shortcut choices. Appli
 assemblies match across the versioned ZIP, public portable ZIP and full package, retain the
 window-close session fix and exclude smoke/fault hooks. Local checksum sidecars passed.
 
-All **five public binary sizes and SHA-256 digests** match the verified upload files. The
-public feed contains exactly the 0.5.8 full/delta entries, latest stable resolves to 0.5.8,
-and the source tag points to the built commit. The **202,337-byte 0.5.7-to-0.5.8 delta**
+All **five public binary sizes and SHA-256 digests** match the verified upload files. At
+publication, its public feed contained exactly the 0.5.8 full/delta entries, latest stable
+resolved to 0.5.8, and the source tag matched the built commit. The **202,337-byte 0.5.7-to-0.5.8 delta**
 reconstructed all **528 package entries** with matching names, lengths and content hashes.
 All **nine historical update packages** retain their original hashes. The restricted delta
 check was denied a move in temporary staging; normal-access reconstruction passed. The

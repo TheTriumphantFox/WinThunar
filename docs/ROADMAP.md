@@ -3,15 +3,16 @@
 ## Release and source status
 
 Checked 22 October 2026. The latest published application is
-[0.5.8](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.8), published 22 October 2026.
-The changes are merged into `main` through PRs #21 and #22 (source `b8cf52a`), and the GitHub updater feed
-offers 0.5.8. Documentation-only commits do not distribute an application version.
-See [release notes](RELEASE-0.5.8.md) for package verification and remaining limits.
+[0.5.9](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.9), published 22 October 2026.
+The changes are merged into `main` through PR #25 (source `44d13d6`), and the GitHub updater feed
+offers 0.5.9. Documentation-only commits do not distribute an application version.
+See [release notes](RELEASE-0.5.9.md) for package verification and remaining limits.
 
-Source is prepared for **[0.5.9](RELEASE-0.5.9.md)**, an unpublished candidate with automatic
+Release **[0.5.9](RELEASE-0.5.9.md)** includes automatic
 per-user legacy-MSI migration protection, rollback restoration and an interrupted-migration
-startup guard. Legacy all-users migration is refused before removal; preparing this source
-does not change the published updater feed.
+startup guard. Legacy all-users migration is refused before removal. Five public binary
+hashes, both MSI policies, the source tag/feed, all 528 reconstructed delta entries and
+eleven historical packages were verified. The release passed 173 service tests with one skip.
 Incomplete old-MSI registration restoration during forced unelevated rollback remains a
 known issue in 0.5.9; the state-retention fix does not establish complete installer rollback.
 
@@ -69,7 +70,7 @@ below are now in published 0.5.3; test harnesses are source tools excluded from 
 - [x] Storage-error/process-termination stress harness and recovery fixes for overlapping history records and concurrent restart recovery.
 - [x] Disposable NTFS VHD verification of cross-volume history and actual disk-full allocation failures; native long-path copy/stream/history fixes.
 
-Installed copies can discover 0.5.8 through GitHub Releases. See [release publishing](RELEASES.md)
+Installed copies can discover 0.5.9 through GitHub Releases. See [release publishing](RELEASES.md)
 and [accessibility status](ACCESSIBILITY.md) for package behavior and remaining checks.
 
 ## 1. Browser foundation
@@ -144,6 +145,7 @@ and [accessibility status](ACCESSIBILITY.md) for package behavior and remaining 
 - [x] Publish 0.5.6 with persistent theme selection, window/dialog propagation, verified assets/feed, and a reconstructed 0.5.5-to-0.5.6 delta.
 - [x] Publish 0.5.7 with closing-window session persistence, isolated updater/guest tools, verified assets/feed, and a reconstructed 0.5.6-to-0.5.7 delta.
 - [x] Publish 0.5.8 with corrected new-MSI cleanup/repair policy, native guest evidence, verified assets/feed and a reconstructed 0.5.7-to-0.5.8 delta; existing cached MSIs are not retrofitted.
+- [x] Publish 0.5.9 with per-user migration state protection, interrupted-migration startup guard, verified assets/feed/tag and all 528 reconstructed 0.5.8-to-0.5.9 delta entries. Forced-rollback MSI registration failure remains disclosed.
 - [x] Confirm the existing all-users 0.5.0 to 0.5.3 full-package upgrade from updater logs and all 524 deployed file hashes; see [updater verification](UPDATER-VERIFICATION.md).
 - [ ] Repeat the installed upgrade under controlled UI conditions; verify per-user apply-on-close, installed delta updates, and Windows Installer repair/uninstall metadata. The logged all-users full-package upgrade succeeded; the original MSI product entry still reports 0.5.0.0.
   - Earlier read-only post-publication inspection found installed 0.5.3 with no later update check. The subsequent migration-lab captures found installed 0.5.8.0 before/after with unchanged observed hashes; these captures do not establish its UI upgrade path. A disposable unique-identity console probe verifies production-backend delta/full apply-on-exit, corrupt-delta fallback, corrupt-full rejection/retry, pending-package rediscovery, and updated-process startup; see [updater verification](UPDATER-VERIFICATION.md). Released-app UI, Setup/MSI, and UAC coverage remain open.
@@ -153,7 +155,7 @@ and [accessibility status](ACCESSIBILITY.md) for package behavior and remaining 
 - [ ] Review uninstall settings/recovery retention. Controlled silent per-user `/x` removed the app, both registrations and both shortcuts, preserved the generated document, and left Explorer working, but also deleted the session/update settings directory. Recovery/Undo data and positive Shell cleanup were not exercised.
   - The [MSI maintenance policy](MSI-MAINTENANCE.md), published in 0.5.8 installers, corrects the cleanup ID and adds a repair guard for an updated installation, including a missing DLL. Both base/current MSIs pass eleven native condition cases. A corrected-MSI per-user guest run passed same-version repair, native 0.5.7 apply with all 524 deployed files matching, three rejected older-repair cases without mutation, and uninstall retention plus enabled Shell cleanup. Existing cached MSIs are not changed by application updates.
 - [ ] Preserve user state automatically during legacy-MSI migration. The [original 0.5.5 MSI -> native 0.5.7 update -> published 0.5.8 MSI test](MSI-MIGRATION.md) returned 0, matched all 524 target files and replaced the cached MSI/registration, but old-MSI cleanup deleted all five seeded settings/plugin/recovery files. Interactive/all-users coverage and real recovery/Undo retention remain open.
-  - [x] Implement automatic per-user protection in unpublished 0.5.9. Private-candidate migration retains all five seeded state files without helper restoration; all 524 deployed files match after migration and both repairs. Uninstall retains state/document and removes app/registrations/shortcuts/enabled Shell integration. Native filesystem checks cover locks, stale holds and competing-state refusal. All-users legacy migration is refused before removal.
+  - [x] Implement and publish automatic per-user protection in 0.5.9. Private-candidate migration retains all five seeded state files without helper restoration; all 524 deployed files match after migration and both repairs. Uninstall retains state/document and removes app/registrations/shortcuts/enabled Shell integration. Native filesystem checks cover locks, stale holds and competing-state refusal. All-users legacy migration is refused before removal.
   - [ ] Resolve the forced-rollback MSI registration failure retained as a known issue in 0.5.9. The retained sequence restores state and all 524 application files, but Windows Installer cannot restore the old product registration in the unelevated guest; see [rollback evidence](MSI-MIGRATION.md#forced-rollback-finding--known-limitation). A component-sequencing experiment failed payload rollback and was rejected.
   - [x] Verify an explicit external backup/restore workaround from the pre-migration checkpoint. All five state files and 524 deployed files match after restoration and both repair modes. Uninstall removes the app, registrations, shortcuts and explicitly enabled Shell integration while retaining state and the generated document. This is test-helper behavior; direct MSI migration still loses state.
 - [ ] Complete the manual accessibility checks documented in [ACCESSIBILITY.md](ACCESSIBILITY.md).

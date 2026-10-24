@@ -50,6 +50,13 @@ integration notes below before choosing it as your default file manager.
 
 ## What's new
 
+### Preparing 0.5.13
+
+This maintenance release records a passing installed two-window Restart Now test from public
+0.5.11 to public 0.5.12, adds a reusable guest-test helper, and updates Help > What's New.
+DOCX text preview/search and thumbnail improvements from 0.5.12 are retained.
+See the [0.5.13 release notes](docs/RELEASE-0.5.13.md) for scope and publication status.
+
 ### Published in 0.5.12
 
 DOCX files gain a read-only body-text preview and direct `content:` search without an Office
@@ -332,10 +339,10 @@ Install the Velopack packaging tool once:
 dotnet tool install -g vpk --version 1.2.161
 ```
 
-Build a release from the main checkout; this example uses 0.5.12:
+Build a release from the main checkout; this example uses 0.5.13:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.5.12
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.5.13
 ```
 
 For a new release, choose an unused version and update all four version locations before

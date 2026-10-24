@@ -2319,6 +2319,8 @@ public sealed partial class MainPage : Page
             IsTextSelectionEnabled = true
         });
 
+        AddHeading("Version 0.5.13 — maintenance update");
+        AddParagraph("This maintenance release carries forward tab restoration when restarting to update, DOCX body-text preview and search, and the thumbnail improvements from 0.5.12.");
         AddHeading("Version 0.5.12 — read and find DOCX text");
         AddParagraph("Select a downloaded DOCX file with the Preview Pane enabled to read and copy its body text. Search with type:docx content:\"annual report\" to find phrases in the current document without Office or Windows indexing.");
         AddParagraph("DOCX preview shows body text, not Word page layout. Files are limited to 16 MiB, previews to 32,768 characters, and content search to 1,048,576 extracted characters. Other Office formats and password-protected documents are not supported.");

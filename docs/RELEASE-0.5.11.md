@@ -51,9 +51,11 @@ portable ZIP and full package.
 All five public binary sizes/SHA-256 digests match the verified build. The downloaded modern
 feed offers matching 0.5.11 full/delta entries, the compatibility feed offers the matching full
 package, latest stable resolves to 0.5.11 and its tag points to the source commit above.
-Evidence is retained in `artifacts/verification-0.5.11/`. The installed test of a future update
-initiated by the public 0.5.11 Restart Now handler remains pending; the source regression and
-earlier installed full/delta cases are recorded separately.
+Evidence is retained in `artifacts/verification-0.5.11/`. A separate
+[24 October installed retest](PRIORITY-VERIFICATION.md#installed-public-0511-restart-now-retest-24-october-2026)
+initiated by public 0.5.11 updates to public 0.5.12 and retains both tabs after a secondary
+window's save. It verifies 528 reconstructed entries and 524 deployed files using a seeded base
+cache and offline feed; the source regression and earlier installed cases remain separate.
 
 | GitHub binary | Bytes | SHA-256 |
 | --- | ---: | --- |

@@ -299,3 +299,43 @@ capture timestamps and correlate process IDs and settings check times.
 All guest outputs live beneath `%USERPROFILE%\WinThunarUpgradeLab\<run-id>-<scope>`. Preserve
 failures and ambiguous data. Export results before restoring/destroying the guest. Preparation,
 asset hashes, or the separate generated console probe do not count as passing this UI matrix.
+
+## Released Restart Now regression helper
+
+The [24 October public 0.5.11-to-0.5.12 case](PRIORITY-VERIFICATION.md#installed-public-0511-restart-now-retest-24-october-2026)
+passes the installed fixed handler, including both tabs after another window's single-tab save.
+Prepare a new bundle with `New-ReleasedUpgradeLab.ps1 -BaseVersion 0.5.11 -TargetVersion 0.5.12
+-MsiOnly`, and copy `scripts/Test-ReleasedRestartGuest.ps1` into it before transferring the bundle
+to a clean disposable Windows guest. Verify transferred bytes/digests; the originating host is
+refused by every helper action. Never use an existing personal installation as the guest fixture.
+
+Run the helper in the guest's normal, unelevated test account, using its local bundle path:
+
+```powershell
+.\Test-ReleasedRestartGuest.ps1 -Action Prepare -Bundle C:\TestInput
+```
+
+`Prepare` installs the public base MSI silently per-user, records the natural cache and explicitly
+seeds the verified base full package if absent. It generates Source/Destination tabs, a Source
+bookmark, Compact view, Light theme and a retention document, then launches the actual app through
+a limited interactive scheduled task with the local feed override. This is test setup, not
+interactive MSI scope/shortcut coverage or unseeded cache verification.
+
+1. Inspect the two tabs and active Destination folder. Use the real Help > Check for Updates.
+   Wait for the app's update-ready banner, then run `-Action Ready` to verify delta completion,
+   no full fallback and every reconstructed package entry against the public full package.
+2. Use File > New Window. Inspect its single Destination tab, then close only that secondary
+   window. Run `-Action BeforeRestart` to require the original PID and the overwritten single-tab
+   saved session. Inspect that the original window still shows both tabs.
+3. Click the original window's real Restart Now button. Wait for native update completion and
+   the relaunched app's rendered tabs. Run `-Action VerifyRestart` to require a new process,
+   the target version, every deployed file hash and retained tabs/active folder/view/bookmark/
+   theme/document. Record the actual UI and any prompts separately.
+4. Run `-Action Export`; compare the exported archive's byte count and SHA-256 on the host and
+   verify every entry in its embedded `files.json` manifest. Preserve a named guest checkpoint.
+
+Use the same `-Bundle` path for every action. `Export` also preserves failing cases. Premature
+`Ready`/`VerifyRestart` calls refuse incomplete work; retain those attempts and retry after the
+actual app/native completion. This helper does not automate UAC, restore snapshots, download
+release assets or exercise Setup/all-users maintenance. The generated scheduled task is confined
+to the disposable guest and named with the bundle's unique run ID.

@@ -1,10 +1,14 @@
 # Accessibility status
 
-Source/smoke status updated on 23 October 2026. This is a source and smoke-check
+Source/smoke status updated on 24 October 2026. This is a source and smoke-check
 status document, not a claim of full screen-reader compatibility or accessibility conformance.
-The latest recorded published application is 0.5.12; the support below is included in the release unless
+The latest recorded published application is 0.5.13; the support below is included in the release unless
 marked unreleased, subject to the verification limits here.
 See the [release/source status](ROADMAP.md#release-and-source-status).
+
+The 0.5.13 maintenance pass completes 87 desktop checks and two theme-restart checks,
+including the current What's New summary in Light and Dark; both renders were inspected.
+This adds release-summary coverage, not manual screen-reader or contrast-theme conformance.
 
 ## Support in 0.5.3
 

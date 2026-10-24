@@ -50,7 +50,7 @@ integration notes below before choosing it as your default file manager.
 
 ## What's new
 
-### Preparing 0.5.13
+### Published in 0.5.13
 
 This maintenance release records a passing installed two-window Restart Now test from public
 0.5.11 to public 0.5.12, adds a reusable guest-test helper, and updates Help > What's New.
@@ -89,11 +89,11 @@ installer; use the latest MSI to get these safeguards. See the
 
 ## Release and source status
 
-The latest published application release is **[0.5.12](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.12)**
-(23 October 2026), from source `1629c72` (PR #31). Its changes are merged into `main`, and the GitHub updater feed
-offers 0.5.12 to installed copies. Use **Help > Check for Updates...** to check immediately;
+The latest published application release is **[0.5.13](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.13)**
+(24 October 2026), from source `23d989f` (PR #33). Its changes are merged into `main`, and the GitHub updater feed
+offers 0.5.13 to installed copies. Use **Help > Check for Updates...** to check immediately;
 portable copies are updated manually. Documentation and website updates alone do not update the app.
-See the [0.5.12 release notes](docs/RELEASE-0.5.12.md) for verification and remaining limits.
+See the [0.5.13 release notes](docs/RELEASE-0.5.13.md) for verification and remaining limits.
 The version string alone does not establish that a local build matches published binaries.
 
 Release **[0.5.10](docs/RELEASE-0.5.10.md)** provides a guarded legacy-MSI migration

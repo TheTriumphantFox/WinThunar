@@ -2,15 +2,19 @@
 
 ## Release and source status
 
-Source is preparing **[0.5.13](RELEASE-0.5.13.md)** as a maintenance release with an updated
-What's New and the completed installed public Restart Now retest. Publication is pending;
-the currently verified public release below remains 0.5.12.
+Checked 24 October 2026. The latest published application is
+[0.5.13](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.13), published 24 October 2026.
+The changes are merged into `main` through PR #33 (source `23d989f`), and the GitHub updater feed
+offers 0.5.13. Documentation-only commits do not distribute an application version.
+See [release notes](RELEASE-0.5.13.md) for package verification and remaining limits.
 
-Checked 23 October 2026. The latest published application is
-[0.5.12](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.12), published 23 October 2026.
-The changes are merged into `main` through PR #31 (source `1629c72`), and the GitHub updater feed
-offers 0.5.12. Documentation-only commits do not distribute an application version.
-See [release notes](RELEASE-0.5.12.md) for package verification and remaining limits.
+Release **[0.5.13](RELEASE-0.5.13.md)** is a maintenance update with a current What's New and
+the reusable installed Restart Now verification helper. The public 0.5.11-to-0.5.12 two-window
+retest preserves both tabs and active folder after a secondary save. The 0.5.13 release passes
+211 service tests with one skip, 87 desktop checks and two theme-restart checks. Five public
+binary digests, both MSI policies/embedded guard, source tag/feeds, all 528 reconstructed delta
+entries and 19 unchanged historical packages are verified. An installed upgrade to 0.5.13 and
+the broader remaining matrix are not established by these package checks.
 
 Release **[0.5.12](RELEASE-0.5.12.md)** adds bounded DOCX body-text preview and fresh filesystem
 content search, thumbnail worker bounds/reuse and an updated Help > What's New. Verification
@@ -98,7 +102,7 @@ below are now in published 0.5.3; test harnesses are source tools excluded from 
 - [x] Storage-error/process-termination stress harness and recovery fixes for overlapping history records and concurrent restart recovery.
 - [x] Disposable NTFS VHD verification of cross-volume history and actual disk-full allocation failures; native long-path copy/stream/history fixes.
 
-Installed copies can discover 0.5.12 through GitHub Releases. See [release publishing](RELEASES.md)
+Installed copies can discover 0.5.13 through GitHub Releases. See [release publishing](RELEASES.md)
 and [accessibility status](ACCESSIBILITY.md) for package behavior and remaining checks.
 
 ## 1. Browser foundation
@@ -182,6 +186,7 @@ open where their full coverage is not established.
 - [x] Publish 0.5.9 with per-user migration state protection, interrupted-migration startup guard, verified assets/feed/tag and all 528 reconstructed 0.5.8-to-0.5.9 delta entries. Forced-rollback MSI registration failure remains disclosed.
 - [x] Publish 0.5.10 with guarded same-account elevated legacy migration, verified public assets/feed/tag and embedded native policy, all 528 reconstructed 0.5.9-to-0.5.10 delta entries, and thirteen unchanged historical packages. Installed guest evidence remains distinguished from public-package verification.
 - [x] Publish 0.5.12 with bounded DOCX body-text preview/search, thumbnail workers/reuse, verified public assets/feed/tag and MSI policies, all 528 reconstructed 0.5.11-to-0.5.12 delta entries and 17 unchanged historical packages.
+- [x] Publish maintenance release 0.5.13 with updated What's New and reusable guest verification tooling; verify five public binary digests, source tag/feeds, both MSI policies/embedded guard, all 528 reconstructed 0.5.12-to-0.5.13 delta entries and 19 unchanged historical packages.
 - [x] Confirm the existing all-users 0.5.0 to 0.5.3 full-package upgrade from updater logs and all 524 deployed file hashes; see [updater verification](UPDATER-VERIFICATION.md).
 - [ ] Repeat the installed upgrade under controlled UI conditions; verify per-user apply-on-close, installed delta updates, and Windows Installer repair/uninstall metadata. The logged all-users full-package upgrade succeeded; the original MSI product entry still reports 0.5.0.0.
   - [x] Verify the public 0.5.8 per-user MSI's interactive scope/shortcut controls and no-base full update to public 0.5.10, first/last-window close behavior, all 524 deployed hashes, tabs/bookmark/view/theme/plugin/document retention, old-repair refusal, current-MSI refresh/both repairs and uninstall with positive Shell cleanup. See the [priority evidence](PRIORITY-VERIFICATION.md).

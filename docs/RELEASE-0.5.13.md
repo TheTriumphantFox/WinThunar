@@ -1,7 +1,8 @@
 # WinThunar 0.5.13
 
-Release preparation, 24 October 2026. This version is not published yet; installed copies
-continue to use the public 0.5.12 feed until 0.5.13 is published and verified.
+Published [24 October 2026](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.13)
+for Windows 11 x64 from source `23d989f2ac3c7b7d89b88a3b944daf5da071c25d` (PR #33).
+All five public binary digests, both updater feeds and the source tag match the verified build.
 Project, assembly/file, manifest and release-script versions are aligned at 0.5.13
 (four-part version 0.5.13.0).
 
@@ -35,9 +36,29 @@ refusals pass. One restricted service-runner attempt could not connect to testho
 zero tests; its aborted report is retained separately from the passing rerun. Builds/tests
 report NU1900 when NuGet vulnerability metadata is unavailable.
 
-Package, MSI policy, delta reconstruction and public-feed checks are pending. Evidence is in
-`artifacts/verification-0.5.13/`. The earlier installed 0.5.11-to-0.5.12 evidence is separate
-from these release checks and does not establish an installed upgrade to 0.5.13.
+The normal release build ran from clean merged `main` using `Publish-Release.ps1 -Version 0.5.13`.
+Application assemblies match across the versioned ZIP, public portable ZIP and full package.
+Both MSI copies have matching hashes, version 0.5.13.0, scope/shortcut controls and the existing
+repair/migration safeguards. The embedded native guard matches the final source build; deliberate
+failure actions are absent. Application packages exclude smoke/fault entry points and the new
+guest-test helper.
+
+The **345,381-byte** 0.5.12-to-0.5.13 delta reconstructs all **528 archive entries** with matching
+names, lengths and SHA-256 digests. All **19 historical update packages** retain their hashes.
+All five public binary sizes/SHA-256 digests match the verified build. The modern feed offers
+matching 0.5.13 full/delta entries, the compatibility feed offers the matching full package,
+latest stable resolves to 0.5.13 and the tag points to the source commit above.
+
+Evidence is in `artifacts/verification-0.5.13/`. The earlier installed 0.5.11-to-0.5.12 evidence
+is separate from these release checks and does not establish an installed upgrade to 0.5.13.
+
+| GitHub binary | Bytes | SHA-256 |
+| --- | ---: | --- |
+| `WinThunar.App-win.msi` | 93,429,760 | `ac89c3d2a48bca9f429393808c70c099e038427cda6741d2f00fc7286bc2bfcf` |
+| `WinThunar.App-win-Portable.zip` | 111,948,580 | `d4624c0dd5e1025f8b23e0e2d10ff166d70a016c70ad5f970c3d11c443059160` |
+| `WinThunar.App-win-Setup.exe` | 119,496,706 | `b7300afe3cd2d8a10892d64ffbf5f7354af84959f7261157917d9ee416d3bfd2` |
+| `WinThunar.App-0.5.13-full.nupkg` | 111,965,186 | `469695adde28edfd89fc4731223bd8d69aa6269ae7d467fbc91766c0419a1da7` |
+| `WinThunar.App-0.5.13-delta.nupkg` | 345,381 | `40fc59bfecd8b4ec1626081aa776bbe8872d90861f5dc0c405bc624172639685` |
 
 ## Limits
 

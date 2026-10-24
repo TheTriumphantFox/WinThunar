@@ -7,6 +7,8 @@ The later thumbnail-resource and DOCX follow-ups below are published in 0.5.12; 
 binary digests, source tag, updater feeds and reconstructed delta are verified separately below.
 The 24 October follow-up also verifies the installed public 0.5.11 Restart Now handler updating
 to public 0.5.12 with both tabs retained after a secondary window overwrites the saved session.
+Maintenance release 0.5.13 publishes the new source helper and updated What's New; its package
+and public-feed verification is recorded below, separately from installed upgrade coverage.
 
 ## Disposition of the priority list
 
@@ -279,6 +281,32 @@ capture ran before reconstruction finished, and one restart verification ran bef
 apply/relaunch completed; both attempts are retained and are not application failures or passes.
 The completed captures above establish the result. Setup, all-users/elevation, unseeded cache,
 public-network discovery, live Undo and other maintenance contexts remain outside this case.
+
+## 0.5.13 publication verification, 24 October 2026
+
+Published from clean merged `main`, source `23d989f2ac3c7b7d89b88a3b944daf5da071c25d` (PR #33),
+using `Publish-Release.ps1 -Version 0.5.13`. This maintenance release updates What's New and
+ships the reusable guest helper as source tooling. App packages retain DOCX/thumbnail/session
+behavior and exclude the guest helper, smoke/fault entry points and generated fixtures.
+
+The service suite passes **211 tests**, with one existing symbolic-link permission skip;
+**87 desktop checks and two theme-restart checks** pass, including the maintenance summary in
+Light and Dark. Both renders were inspected. All five guest-helper actions reject the host,
+and syntax validation passes. The initial restricted testhost connection timeout ran zero
+tests and is retained separately from the passing service rerun.
+
+Both MSI copies match, with version 0.5.13.0, scope/shortcut controls and existing maintenance/
+migration safeguards. The embedded native guard matches its final source build, with deliberate
+failure hooks absent. All five public binary sizes/SHA-256 digests, modern/compatibility feeds,
+latest stable release and source tag are verified. The **345,381-byte** 0.5.12-to-0.5.13 delta
+reconstructs all **528 entries** with matching names, lengths and hashes. All **19 historical
+packages** retain their hashes. Evidence is in `artifacts/verification-0.5.13/`; see the
+[release notes](RELEASE-0.5.13.md).
+
+The installed test above covers public 0.5.11-to-0.5.12; package verification does not establish
+an installed upgrade to 0.5.13. Other install/maintenance contexts, manual accessibility,
+notifications, broader Office/filter coverage and longer/slow-network endurance remain open.
+Hardware/network and interactive UAC cases remain deferred.
 
 ## Document filters and unsupported links
 

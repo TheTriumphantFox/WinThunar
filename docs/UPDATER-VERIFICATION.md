@@ -1,5 +1,16 @@
 # Installed updater verification
 
+## 0.5.13 maintenance release, 24 October 2026
+
+Published from clean merged source `23d989f` (PR #33), with the source guest regression helper
+and current What's New. The [installed fixed-handler test](PRIORITY-VERIFICATION.md#installed-public-0511-restart-now-retest-24-october-2026)
+covers public 0.5.11-to-0.5.12 and passes both tabs/active folder after another window's save.
+It uses an explicitly seeded base and offline feed; it does not establish an installed update
+to 0.5.13. The release itself passes 211 service tests with one skip, 87 desktop checks and two
+theme-restart checks. All five public binary digests, both MSI copies/embedded policy, source
+tag/feeds, all 528 reconstructed 0.5.12-to-0.5.13 delta entries and 19 historical package hashes
+are verified. See [0.5.13 release notes](RELEASE-0.5.13.md).
+
 ## 0.5.11 publication and Restart Now fix
 
 Published 23 October 2026 from clean merged source `c87dd99` (PR #29). The invoking window's

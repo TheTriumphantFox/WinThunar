@@ -1,16 +1,18 @@
-# Priority verification, 23 October 2026
+# Priority verification, 23–24 October 2026
 
 This pass verifies current public packages in the offline Windows 11 guest, fixes a reproduced
 Restart Now session-loss bug and adds reusable verification tooling. That remedy and the original
 tooling are published in 0.5.11; see the [release notes](RELEASE-0.5.11.md) for package status.
 The later thumbnail-resource and DOCX follow-ups below are published in 0.5.12; its five public
 binary digests, source tag, updater feeds and reconstructed delta are verified separately below.
+The 24 October follow-up also verifies the installed public 0.5.11 Restart Now handler updating
+to public 0.5.12 with both tabs retained after a secondary window overwrites the saved session.
 
 ## Disposition of the priority list
 
 | Area | Verified in this pass | Remaining work |
 | --- | --- | --- |
-| Installer/updater | Interactive public 0.5.8 per-user installation; full update to public 0.5.10; first/last-window close behavior; seeded public 0.5.9 delta and actual Restart Now payload/relaunch; all 524 deployed hashes; session fix published in 0.5.11 with verified packages/feed | Installed update initiated by the fixed public handler; unseeded delta/cache behavior, Setup, all-users and UAC matrix |
+| Installer/updater | Interactive public 0.5.8 per-user installation; full update to public 0.5.10; first/last-window close behavior; seeded public 0.5.9 delta and actual Restart Now payload/relaunch; fixed public 0.5.11 handler updates to public 0.5.12 with both tabs retained; all 524 deployed hashes | Unseeded delta/cache behavior, public-network feed, Setup, all-users and UAC matrix |
 | User-state protection | Public MSI refresh, both repair modes, startup recovery and uninstall retention; positive Shell cleanup | Legacy public-MSI migration under elevation, live Undo workflows and other installation contexts |
 | Accessibility | Final 0.5.12 source: 85 desktop checks and two restart checks, including DOCX naming and existing focus/preview coverage | Manual screen-reader, contrast, scaling, pointer and full keyboard review |
 | Hardware/network failures | Existing VHD/loopback evidence retained | Separate SMB server, physical removal and separate physical devices deferred at the maintainer's request |
@@ -91,9 +93,9 @@ Evidence is in `artifacts/priority-restart-before-fix-20261023/`,
 `priorities-delta-20261023/` directory. The fixed source suite passes **70 desktop checks and two
 theme-restart checks**. A normal x64 publish also passes and excludes the updater replacement,
 restart regression and endurance entry points. The public 0.5.10 packages are unchanged; the
-remedy is published in 0.5.11 and requires an installed update initiated by that version for
-the remaining public-handler retest. An update initiated by an earlier version still uses
-its old handler.
+remedy is published in 0.5.11. The installed update initiated by that version passes the
+[24 October retest](#installed-public-0511-restart-now-retest-24-october-2026) below.
+An update initiated by an earlier version still uses its old handler.
 
 The exported `priorities-delta-20261023/delta-case-evidence.zip` is **172,195 bytes**, SHA-256
 `0c29bdafaecd6e8c27789e59def5d492029e8975a34588fc8ac9ca56b6b7f823`.
@@ -226,9 +228,57 @@ lengths and SHA-256 digests. All 17 historical packages remain unchanged. The re
 passes 211 tests with one existing permission skip; 85 desktop and two theme-restart checks pass.
 Evidence is in `artifacts/verification-0.5.12/`; see the [release notes](RELEASE-0.5.12.md).
 
-This does not establish the installed 0.5.11 Restart Now handler's update to 0.5.12. That UI path,
-manual accessibility, notifications, broader Office/filter coverage and longer/slow-network
-endurance remain open; hardware/network and interactive UAC cases remain deferred.
+Publication verification alone does not establish the installed Restart Now UI path; the
+separate 24 October case below verifies that path. Manual accessibility, notifications, broader
+Office/filter coverage and longer/slow-network endurance remain open; hardware/network and
+interactive UAC cases remain deferred.
+
+## Installed public 0.5.11 Restart Now retest, 24 October 2026
+
+The existing offline Windows 11 guest was restored from its clean activated baseline after
+preserving the previous saved state. All eight network adapters remained disabled. Five test
+inputs matched their recorded public GitHub release sizes and SHA-256 digests. The public
+0.5.11 MSI installed silently per-user under the unelevated test account with UAC enabled.
+The base package was absent from the natural cache and was explicitly seeded; this case does
+not verify naturally cached delta selection or the public-network feed.
+
+The real **Help > Check for Updates** command downloaded the 711,758-byte public 0.5.12 delta
+from the isolated local feed, with no full fallback. All **528 reconstructed archive entries**
+matched the public full package by name, length and SHA-256. The app still ran 0.5.11 before
+the requested restart. The original window displayed Source and Destination tabs, Destination
+active, with a Source bookmark, Compact List and Light theme.
+
+The actual **File > New Window** command opened a secondary Destination-only window. Closing
+that window left the original process alive and saved only Destination in `session.json`.
+The original window still visibly held both tabs. Its real **Restart Now** button exited PID
+4776, applied 0.5.12 without a UAC prompt and relaunched one process, PID 7516. After native
+completion, all **524 deployed files** matched the public target full package. Both tab paths,
+active tab/folder, Compact view, Source bookmark, Light theme and the generated document passed
+retention checks. The restarted tabs/bookmark and Compact List selection were also inspected
+in the actual UI. This closes the released-handler retest; the earlier 0.5.10 loss remains a
+valid historical failure.
+
+The reusable `scripts/Test-ReleasedRestartGuest.ps1` prepares the fixture and verifies delta,
+secondary-window save, relaunch, deployed files and retained state. Every action rejects the
+originating host through the existing bundle preflight before any writes or launches; all five
+host-refusal cases and PowerShell syntax validation pass. UI steps remain actual guest actions.
+See the [lab instructions](RELEASED-UPGRADE-LAB.md#released-restart-now-regression-helper).
+
+Evidence is under
+`artifacts/windows-upgrade-vm-20261021-212229-9192ed86/priorities-restart-20261024/`.
+The exported `restart-case-evidence.zip` is **177,528 bytes**, SHA-256
+`70c1868ad30e812ad495b5fe18f55da583c7a187befbc4c8a1a9f4690340b17a`.
+The host verified its guest digest and all **34** manifest files. Six host-side UI captures,
+native logs, package comparisons, the seeded-cache record and retained state are preserved.
+Snapshot `published-0511-0512-restart-session-retained-20261024` preserves the passing guest in
+**Saved** state. The host's installed DLL, updater and manifest retain their pre-test hashes.
+
+The first host-to-guest ZIP copy reported success but produced zero bytes; preparation refused
+it before installation. A read-only ISO supplied the verified inputs instead. One readiness
+capture ran before reconstruction finished, and one restart verification ran before native
+apply/relaunch completed; both attempts are retained and are not application failures or passes.
+The completed captures above establish the result. Setup, all-users/elevation, unseeded cache,
+public-network discovery, live Undo and other maintenance contexts remain outside this case.
 
 ## Document filters and unsupported links
 

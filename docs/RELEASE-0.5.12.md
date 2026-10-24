@@ -77,9 +77,12 @@ See [DOCX support and limits](DOCUMENT-TEXT.md).
 Automatic app updates **do not replace an older cached MSI**. Use the latest MSI for installer
 safeguards. Legacy per-user MSI migration still requires administrator elevation in the
 **same Windows account**; preserve an **external backup** of the complete user-state directory
-before legacy maintenance. Legacy all-users migration remains refused. An update initiated by
-0.5.11 uses its fixed Restart Now handler, but that released-handler installed path has not yet
-been retested against 0.5.12; earlier source and installed update evidence remains separate.
+before legacy maintenance. Legacy all-users migration remains refused. The
+[24 October installed retest](PRIORITY-VERIFICATION.md#installed-public-0511-restart-now-retest-24-october-2026)
+uses public 0.5.11's fixed Restart Now handler to update to public 0.5.12: both tabs and active
+folder survive a secondary window's save, all 528 reconstructed entries and 524 deployed files
+match, and view/bookmark/theme/document retention passes. This uses an explicitly seeded base
+cache and offline feed; other installation contexts and public-network discovery remain open.
 
 Physical hardware/network and interactive UAC checks remain deferred at the maintainer's request.
 Manual accessibility, installed/portable notification delivery, Office indexing filters, broader

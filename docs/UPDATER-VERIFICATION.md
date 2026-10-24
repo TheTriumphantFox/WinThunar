@@ -8,8 +8,12 @@ session is saved before native Restart Now exit; Help > What's New explains the 
 All five public binary digests, both MSI copies/embedded policy, source tag and downloaded
 modern/compatibility feeds match. The 683,926-byte 0.5.10-to-0.5.11 delta reconstructs all
 528 entries, with 15 historical packages unchanged. See [release notes](RELEASE-0.5.11.md).
-An installed future update initiated by the public 0.5.11 handler remains pending; updating
-from an older app still uses its old handler. No new hardware or interactive UAC cases were run.
+The [24 October installed public 0.5.11-to-0.5.12 retest](PRIORITY-VERIFICATION.md#installed-public-0511-restart-now-retest-24-october-2026)
+passes the actual Restart Now handler after a secondary window overwrites the saved session:
+both tabs/active folder and view/bookmark/theme/document survive, with 528 reconstructed entries
+and 524 deployed hashes matching. The base cache is explicitly seeded and the feed is offline.
+Updating from an older app still uses its old handler. No new hardware or interactive UAC cases
+were run.
 
 ## Public per-user lifecycle verification, 23 October 2026
 
@@ -376,9 +380,11 @@ The policy ships in the 0.5.8 MSI; the historical failures in older public insta
 
 - A controlled UI repeat of installing 0.5.0, checking/downloading, choosing Install Now,
   responding to UAC, and reviewing the new app after restart.
-- The remaining released-app matrix: per-user full/no-base, Restart Now, all-users UAC paths,
-  interactive maintenance/Apps UI, and the public GitHub feed. The first seeded per-user delta/apply-on-close
-  path passed file verification, but tab persistence failed as recorded above.
+- The remaining released-app matrix includes unseeded delta/cache behavior, Setup, all-users
+  UAC paths, interactive maintenance/Apps UI, and the public-network GitHub feed. The later
+  [priority evidence](PRIORITY-VERIFICATION.md) verifies public per-user full/no-base updates and
+  the fixed public Restart Now handler. The first seeded per-user delta/apply-on-close case's
+  historical tab-persistence failure remains recorded above.
 - UI outcomes after cancelling UAC or after an updater child process fails following a successful
   launch. The application can report synchronous launch errors; it cannot infer the outcome of
   a child process after it has exited.

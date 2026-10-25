@@ -2,15 +2,20 @@
 
 ## Release and source status
 
-Version 0.5.15 is prepared as a [release candidate](RELEASE-0.5.15.md) with container-binding
-reuse and the completed focused fifteen-minute source retest. Publication and public-package
-verification are pending; installed copies still receive 0.5.14 until publication.
-
 Checked 24 October 2026. The latest published application is
-[0.5.14](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.14), published 24 October 2026.
-The changes are merged into `main` through PR #35 (source `e28cde2`), and the GitHub updater feed
-offers 0.5.14. Documentation-only commits do not distribute an application version.
-See [release notes](RELEASE-0.5.14.md) for package verification and remaining limits.
+[0.5.15](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.15), published 24 October 2026.
+The changes are merged into `main` through PR #37 (source `5e01f89`), and the GitHub updater feed
+offers 0.5.15. Documentation-only commits do not distribute an application version.
+See [release notes](RELEASE-0.5.15.md) for package verification and remaining limits.
+
+Release **[0.5.15](RELEASE-0.5.15.md)** reuses file-container accessible-name bindings and adds
+native content-transition regressions and isolated test diagnostics. The versioned source
+passes 211 service tests with one skip, 158 desktop checks and two restart checks. The earlier
+focused fifteen-minute source run passes 3,558 searches and 2,372 previews; retained memory and
+the native crash's exact cause remain open. Five public binary digests, both MSI policies and
+embedded guard, source tag/feeds, all 528 reconstructed delta entries and 23 historical
+packages are verified. Installed upgrade to this version and broader manual/network coverage
+remain unverified.
 
 Release **[0.5.14](RELEASE-0.5.14.md)** fixes F6 region selection/focus restoration and stale
 folder-watcher navigation, adds accessible split/command action names and a current What's New.
@@ -114,7 +119,7 @@ below are now in published 0.5.3; test harnesses are source tools excluded from 
 - [x] Storage-error/process-termination stress harness and recovery fixes for overlapping history records and concurrent restart recovery.
 - [x] Disposable NTFS VHD verification of cross-volume history and actual disk-full allocation failures; native long-path copy/stream/history fixes.
 
-Installed copies can discover 0.5.14 through GitHub Releases. See [release publishing](RELEASES.md)
+Installed copies can discover 0.5.15 through GitHub Releases. See [release publishing](RELEASES.md)
 and [accessibility status](ACCESSIBILITY.md) for package behavior and remaining checks.
 
 ## 1. Browser foundation
@@ -200,6 +205,7 @@ open where their full coverage is not established.
 - [x] Publish 0.5.12 with bounded DOCX body-text preview/search, thumbnail workers/reuse, verified public assets/feed/tag and MSI policies, all 528 reconstructed 0.5.11-to-0.5.12 delta entries and 17 unchanged historical packages.
 - [x] Publish maintenance release 0.5.13 with updated What's New and reusable guest verification tooling; verify five public binary digests, source tag/feeds, both MSI policies/embedded guard, all 528 reconstructed 0.5.12-to-0.5.13 delta entries and 19 unchanged historical packages.
 - [x] Publish 0.5.14 with keyboard/focus and watcher fixes; verify five public binary digests, source tag/feeds, both MSI policies/embedded guard, all 528 reconstructed 0.5.13-to-0.5.14 delta entries and 21 unchanged historical packages. Longer endurance and installed-upgrade limits remain disclosed.
+- [x] Publish 0.5.15 with reusable container bindings and recorded focused endurance evidence; verify five public binary digests, source tag/feeds, both MSI policies/embedded guard, all 528 reconstructed 0.5.14-to-0.5.15 delta entries and 23 unchanged historical packages. Broader retention/crash and installed-upgrade limits remain disclosed.
 - [x] Confirm the existing all-users 0.5.0 to 0.5.3 full-package upgrade from updater logs and all 524 deployed file hashes; see [updater verification](UPDATER-VERIFICATION.md).
 - [ ] Repeat the installed upgrade under controlled UI conditions; verify per-user apply-on-close, installed delta updates, and Windows Installer repair/uninstall metadata. The logged all-users full-package upgrade succeeded; the original MSI product entry still reports 0.5.0.0.
   - [x] Verify the public 0.5.8 per-user MSI's interactive scope/shortcut controls and no-base full update to public 0.5.10, first/last-window close behavior, all 524 deployed hashes, tabs/bookmark/view/theme/plugin/document retention, old-repair refusal, current-MSI refresh/both repairs and uninstall with positive Shell cleanup. See the [priority evidence](PRIORITY-VERIFICATION.md).
@@ -239,13 +245,13 @@ open where their full coverage is not established.
 - [ ] Broader Shell/device browsing, cloud status, Office/general document previews, and fresh document-content extraction.
   - [x] Publish bounded, read-only DOCX main-body text preview and fresh filesystem `content:` search in 0.5.12, with generated service/desktop regressions. See [DOCX support and limits](DOCUMENT-TEXT.md). Word layout, other Office formats and Windows indexing-filter coverage remain open.
 - [ ] Extend local search performance measurements to sustained UI/thumbnail and slow-network endurance checks.
-  - [x] Unreleased: reuse each file container's accessible-name binding across content changes,
+  - [x] Published 0.5.15: reuse each file container's accessible-name binding across content changes,
     with filename/metadata, live Git-status, replacement/null content and binding-reuse checks
-    in all three layouts and the split pane. The final short pass completes 156 desktop checks
+    in all three layouts and the split pane. The pre-version-bump short pass completes 156 desktop checks
     and two restart checks. Per-run instance keys, recorded native exit outcomes and extra
     finalization/GC diagnostics improve repeatability; see the
-    [follow-up evidence](PRIORITY-VERIFICATION.md#unreleased-container-binding-follow-up-24-october-2026).
-  - [x] Unreleased: complete the final focused fifteen-minute source retest with 1,186 cycles,
+    [follow-up evidence](PRIORITY-VERIFICATION.md#container-binding-follow-up-24-october-2026).
+  - [x] Record the final focused fifteen-minute source retest for 0.5.15 with 1,186 cycles,
     3,558 searches, 2,372 previews, 159 desktop checks and two restart checks; both processes
     exit zero. Four sampled entries remain after cleanup and handles return to 3,748.
     Private memory remains above startup (359 versus 278 MiB); crash root cause, broader
@@ -260,7 +266,7 @@ open where their full coverage is not established.
     1,335 searches, 890 previews, 131 recorded desktop checks and two restart checks. Both
     the pre-change focused baseline and final source retain entries after diagnostic cleanup;
     retention and the intermediate native crashes remain unresolved in that published source.
-    The unreleased fifteen-minute retest is recorded above; day-long and slow-network
+    The later fifteen-minute source retest is recorded above; day-long and slow-network
     verification remain open.
   - [x] Add and run a five-minute isolated UI/search/thumbnail/preview workload with count assertions, dispatcher/memory/handle sampling and post-work cleanup diagnostics. Memory growth during active churn remains under investigation; slow-network and day-long stability are unverified.
   - [x] Publish bounded thumbnail batch workers and reuse of unchanged images for equivalent layout/zoom requests in 0.5.12. Verify replacement on size/content-mode/metadata changes, cancellation, and a five-minute workload; see [thumbnail resource follow-up](PRIORITY-VERIFICATION.md#thumbnail-resource-follow-up). Longer and slow-network workloads remain open.

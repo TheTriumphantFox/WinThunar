@@ -1,6 +1,7 @@
 # WinThunar 0.5.15
 
-Release candidate for Windows 11 x64. Publication and public-package verification are pending.
+Published [24 October 2026](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.15) for Windows 11 x64 from source `5e01f89186f3de48ccf13cdf2a9b9a80e776ee73` (PR #37).
+All five public binary digests, both updater feeds and the source tag match the verified build.
 Project, assembly/file, manifest and release-script versions are aligned at 0.5.15
 (four-part version 0.5.15.0).
 
@@ -34,12 +35,37 @@ sample is invalid and is not used for comparison. This is not proof of flat/day-
 An unchanged 0.5.14-source baseline reproduces native termination `0xC000027B`; the new focused
 run does not reproduce it, but does not establish its exact root cause. A separate menu-focused
 diagnostic run has different resource behavior and includes intrusive captures; it is not a
-matching focused comparison. See [full evidence and limits](PRIORITY-VERIFICATION.md#unreleased-container-binding-follow-up-24-october-2026).
+matching focused comparison. See [full evidence and limits](PRIORITY-VERIFICATION.md#container-binding-follow-up-24-october-2026).
 
 The versioned 0.5.15 source passes **158 desktop checks, two theme-restart checks and 211
 service tests with one existing symbolic-link privilege skip**. Light/Dark What's New renders
 were inspected. Tests report NU1900 when NuGet vulnerability metadata is unavailable.
-Package and public-release verification are pending.
+Package and public-release verification below is complete.
+
+## Package and publication verification
+
+The normal release build ran from clean merged `main` using `Publish-Release.ps1 -Version 0.5.15`.
+Application assemblies match across the versioned ZIP, public portable ZIP and full package.
+Both MSI copies match, carry version 0.5.15.0, retain scope/shortcut choices and repair/migration
+safeguards, and embed the native guard from the final source build. Deliberate failure actions
+and all checked smoke/fault/container/keyboard/watcher test hooks are absent from app packages.
+
+The **505,042-byte** 0.5.14-to-0.5.15 delta reconstructs all **528 archive entries** with
+matching names, lengths and SHA-256 digests. All **23 historical update packages** retain
+their hashes. All five public binary sizes/SHA-256 digests match the verified build. The modern
+feed offers matching 0.5.15 full/delta entries, the compatibility feed offers the matching full
+package, latest stable resolves to 0.5.15 and the tag points to the source commit above.
+
+Evidence is in `artifacts/verification-0.5.15/`. These are source/package checks; an installed
+upgrade to 0.5.15 remains unverified.
+
+| GitHub binary | Bytes | SHA-256 |
+| --- | ---: | --- |
+| `WinThunar.App-win.msi` | 93,450,240 | `801edb124cc00b9f849df82648d1c4df1188f2e7217e1e7e45c20228db9d3f12` |
+| `WinThunar.App-win-Setup.exe` | 119,499,184 | `04e41698879aeb432e5fbb357f27ba7443ae38e0735735bcc1c95a0ecf90c24e` |
+| `WinThunar.App-0.5.15-delta.nupkg` | 505,042 | `c195bb704bc64098c3d7312b396073d96a51f40295a28369024ab7be08150e8a` |
+| `WinThunar.App-win-Portable.zip` | 111,951,058 | `5f4f898b3b73e9c68af26a9381efc1d610ebb20604452bafa63e6896350fe18c` |
+| `WinThunar.App-0.5.15-full.nupkg` | 111,967,664 | `647e0426dc8509bfee3f5cdb9a4f324ce212211dfda5c3bf338999b4f547405a` |
 
 ## Limits
 

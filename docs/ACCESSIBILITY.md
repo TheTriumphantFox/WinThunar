@@ -2,7 +2,7 @@
 
 Source/smoke status updated on 24 October 2026. This is a source and smoke-check
 status document, not a claim of full screen-reader compatibility or accessibility conformance.
-The latest recorded published application is 0.5.14; the support below is included in the release unless
+The latest recorded published application is 0.5.15; the support below is included in the release unless
 marked unreleased, subject to the verification limits here.
 See the [release/source status](ROADMAP.md#release-and-source-status).
 
@@ -34,7 +34,7 @@ desktop checks exercise WinUI focus; they do not run Narrator or complete the ma
 The final focused five-minute workload passes 131 recorded desktop checks and two restart
 checks; see [resource measurements and remaining native-crash limits](PRIORITY-VERIFICATION.md#keyboard-and-endurance-follow-up-24-october-2026).
 
-## Unreleased file-container binding follow-up
+## File-container binding follow-up in 0.5.15
 
 The source now installs one accessible-name binding per file container, following its current
 `Content.AutomationName`. Recycling no longer creates a new binding that captures each file
@@ -42,12 +42,14 @@ entry. Generated native checks verify current filenames/metadata, live Git-statu
 replacement content and clearing the name on null while retaining the same binding. They
 cover Details, Icons and Compact before/after search, plus the split pane.
 
-The final short pass completes **156 desktop checks and two theme-restart checks**. The test
+The pre-version-bump short pass completes **156 desktop checks and two theme-restart checks**. The test
 drains the real background Git query before setting a synthetic status; the preserved first
 attempt exposed that test race. These checks do not run a screen reader. This change is
-unreleased; see the [endurance evidence and limits](PRIORITY-VERIFICATION.md#unreleased-container-binding-follow-up-24-october-2026).
+included in published 0.5.15; see the [endurance evidence and limits](PRIORITY-VERIFICATION.md#container-binding-follow-up-24-october-2026).
 The final focused fifteen-minute run passes 159 desktop checks and two restart checks,
 including the same binding assertions; it does not extend manual screen-reader coverage.
+The versioned 0.5.15 release pass completes 158 desktop checks and two restart checks,
+including its updated What's New in Light and Dark.
 
 ## Support in 0.5.3
 

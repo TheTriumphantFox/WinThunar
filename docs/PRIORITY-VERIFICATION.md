@@ -25,6 +25,90 @@ and public-feed verification is recorded below, separately from installed upgrad
 Interactive UAC cases are also deferred at the maintainer's request. These boundaries apply to
 this verification pass; existing historical failures remain recorded in their original documents.
 
+## Unreleased keyboard and endurance follow-up, 24 October 2026
+
+The source follow-up after published 0.5.13 fixes F6 region selection for search, side-pane
+children, pathbar editing and split navigation. It adds preview text/PDF/scroller and disabled
+command-input targets, restores file-list focus when focused auxiliary controls close, and
+announces explicit split/command button actions through automation peers. Pane-local focus
+notifications select the appropriate file-command pane, ignoring stale events and other windows.
+See [accessibility behavior](ACCESSIBILITY.md#unreleased-keyboard-follow-up).
+
+The original executable with new regression checks fails at **F6 leaves the search input for
+the side pane**. The final keyboard/watcher follow-up passes **128 desktop checks and two
+theme-restart checks**. The service suite passes **211 tests with one symbolic-link privilege
+skip**. These are generated focus/automation checks, not a completed manual accessibility review.
+Evidence is in `artifacts/desktop-keyboard-before-20261024/`,
+`artifacts/desktop-keyboard-final-20261024/results/` and
+`artifacts/keyboard-services-native-20261024/`. The first sandboxed desktop launch lacked WinRT
+folder access for screenshots; the normal-desktop baseline reproduced the actual F6 failure.
+The sandboxed service runner could not connect to its test host; the normal-desktop rerun passes.
+
+The first attempted 15-minute workload **failed** with a native process termination, exit
+`0xC000027B`, before a final report was written. Windows records `Microsoft.UI.Xaml.dll`
+3.2.3.0 as the faulting module. The preserved minidump contains stowed HRESULTs `0x8000FFFF`
+and `0x80040111`; Microsoft's public symbols resolve the latter stack through activation-factory
+lookup, property-path binding, control-template creation and layout. The former stack is absent
+from the minidump. This does not establish a root cause or a fixed runtime issue.
+
+Evidence is in `artifacts/desktop-keyboard-endurance-final-20261024/`, including Windows
+events, symbolized stack, source hashes and the 25,398,126-byte dump, SHA-256
+`1dc7655507deda3e1f92dc251d1abdad9ce43cd78730e6218484ef804d5b4052`.
+The crash precedes the separate naming-check app launch. It remains a failed endurance case.
+
+The endurance harness now atomically saves a compact `endurance-progress.json` at each existing
+sample (every ten cycles and during cleanup). A native termination can no longer erase every
+completed-work/memory counter with the final in-memory report. Checkpoint file I/O is part of
+the generated workload, so its timing is diagnostic rather than a controlled comparison with
+older runs. The 15-minute rerun also terminates natively: its last checkpoint records **240
+cycles, 720 searches and 480 previews** at 172.7 seconds. Private memory rises from 282 to
+543 MiB, handles from 3,713 to 6,952, and sampled live entries from zero to 171. Its preserved
+dump is **24,919,319 bytes**, SHA-256
+`a68bc01ef54ff792d089caa0d68068821db75105f3768c73974bfe1388625a5b`.
+See `artifacts/desktop-keyboard-soak-rerun-20261024/`. This reproduces the failure rather
+than verifying 15-minute stability. These failures belong to the intermediate global-focus
+observer implementation. The final implementation uses pane-local handlers and avoids repeated
+border updates when the active pane has not changed. The five-minute comparisons below do not
+establish the native crash's cause or a successful 15-minute retest. Day-long and slow-network
+coverage remain open.
+
+The pre-change source at `b7fc5c0`, with the file list focused and only test-harness progress
+checkpoints/debounce-drain setup added, passes a five-minute comparison: **422 cycles,
+1,266 searches and 844 previews**. Private memory rises from about **263 MiB** to **431 MiB**
+after three diagnostic collections, handles from **3,584** to **3,666**, and **321** sampled
+entries remain alive. Focused retention therefore also occurs before the keyboard changes.
+This baseline does not reproduce the native crash or establish its cause. Product-source Git
+blob hashes are checked against HEAD in `artifacts/desktop-baseline-focused-b-20261024/comparison-scope.json`.
+The first baseline attempt hit the separate watcher race below and remains preserved.
+
+The stale-watcher fix adds a busy guard before a debounced native event starts a refresh.
+While another folder is enumerating, `CurrentPath` still names the old folder; its watcher
+previously could start `NavigateAsync(CurrentPath)` and cancel the requested navigation.
+The generated regression creates an actual filesystem event during the busy state, verifies
+that it cannot clear that state or reload old entries, then verifies live watching resumes.
+It fails against unchanged pre-change view-model code in
+`artifacts/desktop-watcher-before-fix-20261024/` and passes in the final source run.
+
+The final normal x64 publish succeeds; its DLL excludes all five checked keyboard, watcher,
+smoke, endurance and restart test markers. Its verification record is in
+`artifacts/keyboard-final-normal-build-20261024/verification.json`. This is unreleased source
+work with the existing assembly version; installed copies still receive published 0.5.13.
+
+The **final source** passes the same five-minute focused local workload: **445 cycles,
+1,335 searches, 890 previews, 131 recorded desktop checks and two theme-restart checks**.
+Maximum observed dispatcher gap is **265 ms**. Private memory is about **281 MiB** initially,
+**421 MiB** at workload end and **417 MiB** after cleanup/three diagnostic collections;
+managed memory after cleanup is **38 MiB**. Handles are **3,613** initially and **3,730**
+after cleanup; **291** sampled entries remain alive. The baseline and final source both retain
+entries, so this does not resolve long-session retention. The native crashes above remain
+preserved failures, and their absence in this shorter final run is not proof of a crash fix.
+
+Final evidence is in `artifacts/desktop-keyboard-final-20261024/soak-results/`; source hashes
+are in its parent directory. Both final short/workload runs use the same generated executable.
+The keyboard render and the workload's icon/final renders were inspected. All generated data
+and diagnostic collections are confined to the test build; the normal application does not
+force garbage collection or write endurance checkpoints.
+
 ## Public per-user installer lifecycle
 
 The base MSI was selected by its recorded public SHA-256 digest. Its actual scope and shortcut

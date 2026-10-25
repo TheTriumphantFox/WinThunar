@@ -1,5 +1,8 @@
 # WinThunar roadmap
 
+Version 0.5.14 is prepared as a [release candidate](RELEASE-0.5.14.md) with the keyboard,
+watcher and diagnostic follow-ups below. Publication and public-package verification are pending.
+
 ## Release and source status
 
 Checked 24 October 2026. The latest published application is
@@ -208,6 +211,12 @@ open where their full coverage is not established.
     - [x] Publish the guarded migration policy in 0.5.10 and verify both release MSI copies and the embedded guard. The same-account elevated path does not establish non-legacy MSI rollback, all-users migration or standard-user elevation through another account.
   - [x] Verify an explicit external backup/restore workaround from the pre-migration checkpoint. All five state files and 524 deployed files match after restoration and both repair modes. Uninstall removes the app, registrations, shortcuts and explicitly enabled Shell integration while retaining state and the generated document. This is test-helper behavior; direct MSI migration still loses state.
 - [ ] Complete the manual accessibility checks documented in [ACCESSIBILITY.md](ACCESSIBILITY.md).
+  - [x] Unreleased source follow-up corrects F6 navigation for search, side-pane children,
+    pathbar editing, split navigation, preview and command output, plus focus restoration
+    when those controls close. Verify explicit split/command action names through button
+    automation peers; 128 generated desktop checks and two theme-restart checks pass,
+    including the separate native folder-watcher regression below.
+    The full manual screen-reader, contrast, scaling and keyboard review remains open.
 - [x] Verify real disk-full after main-stream writes on a disposable NTFS VHD, including Copy/Move and new/Replace recovery, retry, and Undo.
 - [x] Reproduce and fix lost staging-journal tracking during owned loopback-SMB share removal; verify source loss after replacement Move commit.
 - [x] Add an actionable recovery warning/dialog and safe retry while protecting live transfers/history and ambiguous copies.
@@ -220,6 +229,17 @@ open where their full coverage is not established.
 - [ ] Broader Shell/device browsing, cloud status, Office/general document previews, and fresh document-content extraction.
   - [x] Publish bounded, read-only DOCX main-body text preview and fresh filesystem `content:` search in 0.5.12, with generated service/desktop regressions. See [DOCX support and limits](DOCUMENT-TEXT.md). Word layout, other Office formats and Windows indexing-filter coverage remain open.
 - [ ] Extend local search performance measurements to sustained UI/thumbnail and slow-network endurance checks.
+  - [x] Unreleased source fix prevents an old folder's watcher from cancelling a busy
+    navigation to a new folder. The native watcher regression fails against the pre-change
+    source and passes with the guard; normal watching resumes afterward.
+  - [x] Preserve compact endurance progress checkpoints so a native crash retains completed
+    counts and memory/handle samples. Two attempted 15-minute runs terminate in native WinUI;
+    their dumps and progress evidence are preserved in [priority verification](PRIORITY-VERIFICATION.md#unreleased-keyboard-and-endurance-follow-up-24-october-2026).
+  - [x] Verify the final unreleased source with a focused five-minute workload: 445 cycles,
+    1,335 searches, 890 previews, 131 recorded desktop checks and two restart checks. Both
+    the pre-change focused baseline and final source retain entries after diagnostic cleanup;
+    retention and the intermediate native crashes remain unresolved. A 15-minute final retest,
+    day-long and slow-network verification remain open.
   - [x] Add and run a five-minute isolated UI/search/thumbnail/preview workload with count assertions, dispatcher/memory/handle sampling and post-work cleanup diagnostics. Memory growth during active churn remains under investigation; slow-network and day-long stability are unverified.
   - [x] Publish bounded thumbnail batch workers and reuse of unchanged images for equivalent layout/zoom requests in 0.5.12. Verify replacement on size/content-mode/metadata changes, cancellation, and a five-minute workload; see [thumbnail resource follow-up](PRIORITY-VERIFICATION.md#thumbnail-resource-follow-up). Longer and slow-network workloads remain open.
 - [ ] Add and verify native handling of unsupported reparse-point types before claiming support.

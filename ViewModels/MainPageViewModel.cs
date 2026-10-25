@@ -1286,7 +1286,9 @@ public partial class MainPageViewModel : ObservableObject, IDisposable
             await Task.Delay(300, cancellationToken);
             App.DispatcherQueue.TryEnqueue(async () =>
             {
-                if (!_disposed && !cancellationToken.IsCancellationRequested && !IsSearchMode && Directory.Exists(CurrentPath))
+                // CurrentPath still names the previous folder while a new navigation is
+                // enumerating. Its old watcher must not cancel that navigation and reload it.
+                if (!_disposed && !cancellationToken.IsCancellationRequested && !IsBusy && !IsSearchMode && Directory.Exists(CurrentPath))
                 {
                     await NavigateAsync(CurrentPath, false);
                 }

@@ -43,11 +43,11 @@ Documentation-only changes do not require a new application version.
 
 ## Build and local outputs
 
-Run from the main checkout. This example uses 0.5.14;
+Run from the main checkout. This example uses the prepared 0.5.15 candidate;
 existing output paths are deliberately not overwritten:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.5.14
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.5.15
 ```
 
 For version `X.Y.Z`, the script writes:

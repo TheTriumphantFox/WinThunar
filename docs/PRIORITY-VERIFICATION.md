@@ -109,6 +109,94 @@ The keyboard render and the workload's icon/final renders were inspected. All ge
 and diagnostic collections are confined to the test build; the normal application does not
 force garbage collection or write endurance checkpoints.
 
+## Unreleased container-binding follow-up, 24 October 2026
+
+A fresh run of the unchanged 0.5.14 source reproduces native termination `0xC000027B` in
+`Microsoft.UI.Xaml.dll` 3.2.3.0. Its last checkpoint records **190 cycles, 570 searches and
+380 previews at 136.9 seconds**. The Windows event records and progress are preserved in
+`artifacts/priority-endurance-baseline-desktop-20261024/`. The first sandboxed attempt stopped
+before the workload because WinRT screenshot-folder access was denied; that is separate from
+the normal-desktop native failure. The new Windows report's temporary minidump was already
+gone when inspected; no new crash dump is claimed for that run.
+
+The source replaces per-entry accessible-name bindings with one binding to each container's
+current `Content.AutomationName`. It no longer captures each successive file entry as the
+binding source. A regression against unchanged product code detects that capture; the final
+native checks also exercise filename/metadata changes, live Git status, replacement content,
+null content and binding reuse in all three layouts and the split pane. The final short run
+passes **156 desktop checks and two theme-restart checks**, with both processes exiting zero.
+An intermediate test failed because a real background Git query overwrote its synthetic
+status; waiting for that query removes the race. Evidence is in
+`artifacts/priority-container-binding-before-20261024/`,
+`artifacts/priority-container-binding-final-20261024/` and
+`artifacts/priority-container-binding-final-b-20261024/`.
+
+The smoke runner now assigns a stable instance key per generated output directory, preserving
+restart behavior while preventing another test from redirecting windows into an existing run.
+It records desktop/restart process outcomes and rejects nonzero exit codes even when a report
+exists. Future endurance samples include pending-finalization, GC heap/commit/fragmentation
+counters and runtime/architecture metadata. These additions are test-only; normal builds do
+not collect garbage or write these reports.
+
+The service suite passes **211 tests with one symbolic-link privilege skip**. Evidence is in
+`artifacts/priority-endurance-services-20261024/`. The longer diagnostic run and resource
+measurements are recorded separately below; neither a reduced weak-entry sample nor a single
+completed workload establishes a native-crash root cause or day-long stability.
+
+The first changed-build diagnostic completes **971 cycles, 2,913 searches and 1,942 previews**
+over fifteen minutes, with **152 recorded desktop checks and two restart checks**. Its inspected
+icon render shows focus on the File menu, unlike the crashing baseline's file-row focus, so it
+is not a matching focused comparison. It also includes a forced diagnostic heap capture,
+thread inspection, an 8.3-second dump pause and concurrent builds/short checks; its dispatcher
+maximum is not an application-latency measurement. Private memory is about **274 MiB** initially,
+**857 MiB** at workload end and **628 MiB** after cleanup/three diagnostic collections. Handles
+are **3,541**, **18,065** and **3,696** respectively; six sampled entries survive cleanup.
+The active heap is dominated by COM-wrapper tables, many reachable through pending-finalizer
+containers; this does not establish the native crash's root cause. The capture and summary are
+in `artifacts/priority-container-binding-fixed-20261024/`.
+
+The final harness explicitly restores file-list focus after its container tests. A short
+focused workload on that source passes **33 cycles, 99 searches, 66 previews, 159 desktop
+checks and two restart checks**. The final sample records five surviving weak entries and
+seven pending finalizations. This verifies the added counters, not long-session stability.
+Evidence is in `artifacts/priority-container-binding-counters-20261024/`. Its icon render and
+the final short-run render were inspected.
+
+The final normal x64 Release publish succeeds and excludes the six checked smoke, endurance,
+container-binding, keyboard, Git-loading and smoke-instance markers; verification is in
+`artifacts/priority-container-binding-final-normal-20261024/verification.json`. These changes
+are not yet published. Notification registration still reports the existing missing Insights
+resource-DLL error; installed upgrades, manual accessibility and slow-network/day-long checks
+remain open.
+
+The **final focused fifteen-minute run passes** on .NET 10.0.11 x64: **1,186 cycles,
+3,558 searches, 2,372 previews, 159 desktop checks and two theme-restart checks**. Desktop and
+restart processes both exit zero. The inspected initial icon render confirms file-row focus,
+matching the failed baseline's condition. The six checked product/harness document hashes in
+the executable's portable PDB match the current source. No debugger, heap capture or forced
+collection is used during this run's active workload; its post-work cleanup retains the
+existing three diagnostic collection rounds. The first minute overlaps the preceding
+diagnostic run's cleanup; these are local diagnostics, not a controlled throughput benchmark.
+
+| Final focused run | Initial | Workload end | After cleanup / third collection |
+| --- | ---: | ---: | ---: |
+| Private memory | 278 MiB | 372 MiB | 359 MiB |
+| Process handles | 3,482 | 3,865 | 3,748 |
+| Sampled entries still alive | 0 | 6 of 3,558 | 4 of 3,558 |
+| Pending finalizations at the latest GC | 2,259 | 5,974 | 7 |
+
+Maximum sampled dispatcher gap is **288 ms**. Managed memory after cleanup is about **40 MiB**.
+The initial raw `GC.GetTotalMemory(false)` sample is negative and is invalid as a managed-size
+measurement; it is preserved in the report and is not used for an initial/final comparison.
+The positive GC heap/commit/fragmentation counters remain separate measurements.
+
+Evidence, source verification, process outcomes and the complete sample series are in
+`artifacts/priority-container-binding-focused-20261024/`. This completes the targeted focused
+fifteen-minute source retest. It does not establish the earlier crash's exact root cause or
+flat memory use: private and managed memory remain above startup, and the menu-focused
+diagnostic behaves differently. Keep broader retention, native-runtime, day-long and
+slow-network investigation open. No installed package was changed or released by this pass.
+
 ## Public per-user installer lifecycle
 
 The base MSI was selected by its recorded public SHA-256 digest. Its actual scope and shortcut

@@ -1,7 +1,7 @@
 param(
     [Parameter()]
     [ValidatePattern('^\d+\.\d+(?:\.\d+)?(?:[-+][0-9A-Za-z.-]+)?$')]
-    [string]$Version = '0.5.14',
+    [string]$Version = '0.5.15',
 
     [Parameter()]
     [switch]$PackageExistingPublish,

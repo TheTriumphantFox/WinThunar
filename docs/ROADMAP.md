@@ -2,6 +2,10 @@
 
 ## Release and source status
 
+Version 0.5.15 is prepared as a [release candidate](RELEASE-0.5.15.md) with container-binding
+reuse and the completed focused fifteen-minute source retest. Publication and public-package
+verification are pending; installed copies still receive 0.5.14 until publication.
+
 Checked 24 October 2026. The latest published application is
 [0.5.14](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.14), published 24 October 2026.
 The changes are merged into `main` through PR #35 (source `e28cde2`), and the GitHub updater feed
@@ -235,6 +239,17 @@ open where their full coverage is not established.
 - [ ] Broader Shell/device browsing, cloud status, Office/general document previews, and fresh document-content extraction.
   - [x] Publish bounded, read-only DOCX main-body text preview and fresh filesystem `content:` search in 0.5.12, with generated service/desktop regressions. See [DOCX support and limits](DOCUMENT-TEXT.md). Word layout, other Office formats and Windows indexing-filter coverage remain open.
 - [ ] Extend local search performance measurements to sustained UI/thumbnail and slow-network endurance checks.
+  - [x] Unreleased: reuse each file container's accessible-name binding across content changes,
+    with filename/metadata, live Git-status, replacement/null content and binding-reuse checks
+    in all three layouts and the split pane. The final short pass completes 156 desktop checks
+    and two restart checks. Per-run instance keys, recorded native exit outcomes and extra
+    finalization/GC diagnostics improve repeatability; see the
+    [follow-up evidence](PRIORITY-VERIFICATION.md#unreleased-container-binding-follow-up-24-october-2026).
+  - [x] Unreleased: complete the final focused fifteen-minute source retest with 1,186 cycles,
+    3,558 searches, 2,372 previews, 159 desktop checks and two restart checks; both processes
+    exit zero. Four sampled entries remain after cleanup and handles return to 3,748.
+    Private memory remains above startup (359 versus 278 MiB); crash root cause, broader
+    retention, day-long and slow-network verification remain open.
   - [x] Published 0.5.14 fix prevents an old folder's watcher from cancelling a busy
     navigation to a new folder. The native watcher regression fails against the pre-change
     source and passes with the guard; normal watching resumes afterward.
@@ -244,8 +259,9 @@ open where their full coverage is not established.
   - [x] Verify the pre-version-bump final source with a focused five-minute workload: 445 cycles,
     1,335 searches, 890 previews, 131 recorded desktop checks and two restart checks. Both
     the pre-change focused baseline and final source retain entries after diagnostic cleanup;
-    retention and the intermediate native crashes remain unresolved. A 15-minute final retest,
-    day-long and slow-network verification remain open.
+    retention and the intermediate native crashes remain unresolved in that published source.
+    The unreleased fifteen-minute retest is recorded above; day-long and slow-network
+    verification remain open.
   - [x] Add and run a five-minute isolated UI/search/thumbnail/preview workload with count assertions, dispatcher/memory/handle sampling and post-work cleanup diagnostics. Memory growth during active churn remains under investigation; slow-network and day-long stability are unverified.
   - [x] Publish bounded thumbnail batch workers and reuse of unchanged images for equivalent layout/zoom requests in 0.5.12. Verify replacement on size/content-mode/metadata changes, cancellation, and a five-minute workload; see [thumbnail resource follow-up](PRIORITY-VERIFICATION.md#thumbnail-resource-follow-up). Longer and slow-network workloads remain open.
 - [ ] Add and verify native handling of unsupported reparse-point types before claiming support.

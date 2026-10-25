@@ -34,6 +34,21 @@ desktop checks exercise WinUI focus; they do not run Narrator or complete the ma
 The final focused five-minute workload passes 131 recorded desktop checks and two restart
 checks; see [resource measurements and remaining native-crash limits](PRIORITY-VERIFICATION.md#keyboard-and-endurance-follow-up-24-october-2026).
 
+## Unreleased file-container binding follow-up
+
+The source now installs one accessible-name binding per file container, following its current
+`Content.AutomationName`. Recycling no longer creates a new binding that captures each file
+entry. Generated native checks verify current filenames/metadata, live Git-status changes,
+replacement content and clearing the name on null while retaining the same binding. They
+cover Details, Icons and Compact before/after search, plus the split pane.
+
+The final short pass completes **156 desktop checks and two theme-restart checks**. The test
+drains the real background Git query before setting a synthetic status; the preserved first
+attempt exposed that test race. These checks do not run a screen reader. This change is
+unreleased; see the [endurance evidence and limits](PRIORITY-VERIFICATION.md#unreleased-container-binding-follow-up-24-october-2026).
+The final focused fifteen-minute run passes 159 desktop checks and two restart checks,
+including the same binding assertions; it does not extend manual screen-reader coverage.
+
 ## Support in 0.5.3
 
 - `F6` / `Shift+F6` cycles between folder tabs, the location control, the visible side pane,

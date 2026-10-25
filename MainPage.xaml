@@ -333,7 +333,7 @@
             </StackPanel>
         </Border>
 
-        <Grid Grid.Row="2" Padding="8,4,8,8" ColumnSpacing="6" Background="{ThemeResource SystemControlBackgroundAltHighBrush}">
+        <Grid x:Name="LocationBar" Grid.Row="2" Padding="8,4,8,8" ColumnSpacing="6" Background="{ThemeResource SystemControlBackgroundAltHighBrush}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
@@ -479,6 +479,7 @@
 
                 <Border
                     x:Name="PrimaryPaneBorder"
+                    GotFocus="FilePaneRegion_GotFocus"
                     Grid.Column="0"
                     BorderBrush="{ThemeResource SystemControlHighlightAccentBrush}"
                     BorderThickness="0"
@@ -693,6 +694,7 @@
 
                 <Border
                     x:Name="SecondaryPaneBorder"
+                    GotFocus="FilePaneRegion_GotFocus"
                     Grid.Column="2"
                     BorderBrush="{ThemeResource SystemControlHighlightAccentBrush}"
                     BorderThickness="0"
@@ -713,15 +715,15 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <Button Padding="7,3" Content="&#x2190;" Click="SplitBack_Click" ToolTipService.ToolTip="Back" />
-                            <Button Grid.Column="1" Padding="7,3" Content="&#x2191;" Click="SplitUp_Click" ToolTipService.ToolTip="Up" />
-                            <Button Grid.Column="2" Padding="7,3" Content="&#x2302;" Click="SplitHome_Click" ToolTipService.ToolTip="Home" />
+                            <Button Padding="7,3" Content="&#x2190;" AutomationProperties.Name="Back in split pane" Click="SplitBack_Click" ToolTipService.ToolTip="Back" />
+                            <Button Grid.Column="1" Padding="7,3" Content="&#x2191;" AutomationProperties.Name="Parent folder in split pane" Click="SplitUp_Click" ToolTipService.ToolTip="Up" />
+                            <Button Grid.Column="2" Padding="7,3" Content="&#x2302;" AutomationProperties.Name="Home in split pane" Click="SplitHome_Click" ToolTipService.ToolTip="Home" />
                             <TextBox
                                 x:Name="SplitLocationBox" AutomationProperties.Name="Split pane folder location"
                                 Grid.Column="3"
                                 Text="{x:Bind SplitViewModel.CurrentPath, Mode=OneWay}"
                                 KeyDown="SplitLocationBox_KeyDown" />
-                            <Button Grid.Column="4" Content="Go" Click="SplitGo_Click" />
+                            <Button Grid.Column="4" Content="Go" AutomationProperties.Name="Open entered split pane folder" Click="SplitGo_Click" />
                         </Grid>
 
                         <Grid x:Name="SplitDetailsHeader" Grid.Row="1" ContextRequested="DetailsHeader_ContextRequested" Padding="10,0" Background="{ThemeResource SystemControlBackgroundAltHighBrush}" BorderBrush="{ThemeResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="0,0,0,1">
@@ -819,7 +821,7 @@
                     BorderBrush="{ThemeResource SystemControlForegroundBaseMediumLowBrush}"
                     BorderThickness="1,0,0,0"
                     Visibility="Collapsed">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <ScrollViewer x:Name="PreviewScroller" AutomationProperties.Name="Selected file preview" IsTabStop="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <StackPanel Spacing="10">
                         <TextBlock Text="PREVIEW" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" />
                         <TextBlock x:Name="PreviewTitle" FontWeight="SemiBold" TextWrapping="Wrap" />
@@ -869,7 +871,7 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <TextBlock x:Name="TerminalPathLabel" Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}" FontFamily="Consolas" TextTrimming="CharacterEllipsis" />
-                    <Button Grid.Column="1" Content="Close" Click="CloseTerminalPanel_Click" />
+                    <Button Grid.Column="1" Content="Close" AutomationProperties.Name="Close command panel" Click="CloseTerminalPanel_Click" />
                 </Grid>
                 <TextBox
                     x:Name="TerminalOutput" AutomationProperties.Name="Command output"
@@ -889,7 +891,7 @@
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="PS&gt;" Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}" FontFamily="Consolas" VerticalAlignment="Center" />
                     <TextBox x:Name="TerminalCommand" AutomationProperties.Name="PowerShell command" Grid.Column="1" FontFamily="Consolas" KeyDown="TerminalCommand_KeyDown" />
-                    <Button Grid.Column="2" Content="Run" Click="RunTerminalCommand_Click" />
+                    <Button Grid.Column="2" Content="Run" AutomationProperties.Name="Run PowerShell command" Click="RunTerminalCommand_Click" />
                 </Grid>
             </Grid>
         </Border>

@@ -50,6 +50,14 @@ integration notes below before choosing it as your default file manager.
 
 ## What's new
 
+### 0.5.14 release candidate
+
+F6 and Shift+F6 now reach the visible search/location controls, side-pane children, split
+navigation, previews and command output. Closing focused auxiliary panes restores file-list
+focus, and split/command buttons have explicit accessible names. An old folder's watcher can
+no longer cancel a busy navigation to a new folder. See the [0.5.14 release notes](docs/RELEASE-0.5.14.md)
+for verification and the remaining endurance limits. Publication is pending.
+
 ### Published in 0.5.13
 
 This maintenance release records a passing installed two-window Restart Now test from public
@@ -339,10 +347,10 @@ Install the Velopack packaging tool once:
 dotnet tool install -g vpk --version 1.2.161
 ```
 
-Build a release from the main checkout; this example uses 0.5.13:
+Build a release from the main checkout; this example uses 0.5.14:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.5.13
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.5.14
 ```
 
 For a new release, choose an unused version and update all four version locations before

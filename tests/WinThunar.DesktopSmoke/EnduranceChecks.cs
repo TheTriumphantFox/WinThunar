@@ -63,11 +63,21 @@ public sealed partial class MainPage
         void Sample(string phase = "workload")
         {
             using var process = Process.GetCurrentProcess();
-            samples.Add(new { phase, seconds = clock.Elapsed.TotalSeconds, cycles, managedBytes = GC.GetTotalMemory(false),
+            var sample = new { phase, seconds = clock.Elapsed.TotalSeconds, cycles, managedBytes = GC.GetTotalMemory(false),
                 allocatedBytes = GC.GetTotalAllocatedBytes(), privateBytes = process.PrivateMemorySize64,
                 workingSet = process.WorkingSet64, handles = process.HandleCount, maximumDispatchGapMilliseconds,
                 gen0Collections = GC.CollectionCount(0), gen1Collections = GC.CollectionCount(1), gen2Collections = GC.CollectionCount(2),
-                observedEntriesAlive = entriesObserved.Count(entry => entry.IsAlive) });
+                observedEntriesAlive = entriesObserved.Count(entry => entry.IsAlive) };
+            samples.Add(sample);
+            // A native termination cannot run finally. Preserve a small checkpoint instead
+            // of losing every completed cycle with the final in-memory report.
+            var progressPath = Path.Combine(directory, "endurance-progress.json");
+            File.WriteAllText(progressPath + ".tmp", JsonSerializer.Serialize(new
+            {
+                processId = Environment.ProcessId, requestedSeconds = seconds,
+                completedSearches = phases.Count, previews, latestSample = sample
+            }, new JsonSerializerOptions { WriteIndented = true }));
+            File.Move(progressPath + ".tmp", progressPath, overwrite: true);
         }
         async Task Search(string query, int expected)
         {

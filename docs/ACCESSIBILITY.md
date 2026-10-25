@@ -10,6 +10,30 @@ The 0.5.13 maintenance pass completes 87 desktop checks and two theme-restart ch
 including the current What's New summary in Light and Dark; both renders were inspected.
 This adds release-summary coverage, not manual screen-reader or contrast-theme conformance.
 
+## Unreleased keyboard follow-up
+
+F6 / Shift+F6 now recognizes the whole side pane, primary pane, split pane, preview and
+command panel, including their nested controls. The location region targets the visible
+search input, pathbar editor or folder location. Preview navigation reaches selectable text,
+an enabled PDF page button or the preview scroller. During a running command, the command
+region targets its read-only output while input is disabled.
+
+Keyboard focus inside either file pane, including split navigation, selects that pane for
+file commands. Closing focused search, preview, command or split controls restores focus to
+the appropriate file list. Pane-local focus handlers ignore notifications after focus
+has left their region; other windows and modal dialogs do not change the command target.
+
+Split Back/Up/Home/Go and command Close/Run buttons now have explicit action names, verified
+through their WinUI button automation peers. The new checks await completed native focus
+notifications where pane activation matters; WinUI raises `GotFocus` asynchronously, as
+documented by [Microsoft](https://learn.microsoft.com/windows/windows-app-sdk/api/winrt/microsoft.ui.xaml.uielement.gotfocus).
+
+These changes are local source work after 0.5.13. The final short run passes 128 desktop
+checks and two theme-restart checks, including the separate watcher regression. The generated
+desktop checks exercise WinUI focus; they do not run Narrator or complete the manual review below.
+The final focused five-minute workload passes 131 recorded desktop checks and two restart
+checks; see [resource measurements and remaining native-crash limits](PRIORITY-VERIFICATION.md#unreleased-keyboard-and-endurance-follow-up-24-october-2026).
+
 ## Support in 0.5.3
 
 - `F6` / `Shift+F6` cycles between folder tabs, the location control, the visible side pane,

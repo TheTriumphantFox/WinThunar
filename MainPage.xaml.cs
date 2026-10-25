@@ -544,6 +544,7 @@ public sealed partial class MainPage : Page
 
     private void ApplyImagePreview()
     {
+        var restoreFocus = !_showImagePreview && ContainsFocus(ImagePreviewPane, FocusManager.GetFocusedElement(XamlRoot) as DependencyObject);
         ImagePreviewMenuItem.IsChecked = _showImagePreview;
         ImagePreviewColumn.Width = _showImagePreview ? new GridLength(260) : new GridLength(0);
         ImagePreviewPane.Visibility = _showImagePreview ? Visibility.Visible : Visibility.Collapsed;
@@ -559,6 +560,7 @@ public sealed partial class MainPage : Page
             PreviewText.Text = string.Empty;
             PdfPageControls.Visibility = Visibility.Collapsed;
         }
+        if (restoreFocus) ActiveFileList.Focus(FocusState.Keyboard);
     }
 
     private void TerminalPanel_Click(object sender, RoutedEventArgs e)
@@ -577,6 +579,7 @@ public sealed partial class MainPage : Page
 
     private void ApplyTerminalPanel()
     {
+        var restoreFocus = !_showTerminalPanel && ContainsFocus(TerminalPane, FocusManager.GetFocusedElement(XamlRoot) as DependencyObject);
         TerminalPanelMenuItem.IsChecked = _showTerminalPanel;
         TerminalPane.Visibility = _showTerminalPanel ? Visibility.Visible : Visibility.Collapsed;
         TerminalPathLabel.Text = ActiveBrowser.CurrentPath;
@@ -584,6 +587,7 @@ public sealed partial class MainPage : Page
         {
             TerminalCommand.Focus(FocusState.Programmatic);
         }
+        else if (restoreFocus) ActiveFileList.Focus(FocusState.Keyboard);
     }
 
     private async void RunTerminalCommand_Click(object sender, RoutedEventArgs e) => await RunTerminalCommandAsync();
@@ -2319,6 +2323,9 @@ public sealed partial class MainPage : Page
             IsTextSelectionEnabled = true
         });
 
+        AddHeading("Version 0.5.14 — keyboard and navigation fixes");
+        AddParagraph("F6 and Shift+F6 now move through the visible search or location controls, side pane, file panes, Preview Pane and command panel. Closing focused auxiliary panes returns keyboard focus to your files. Split navigation and command buttons have clearer accessible names.");
+        AddParagraph("Folder change notifications no longer interrupt loading a new folder by navigating back to the previous one.");
         AddHeading("Version 0.5.13 — maintenance update");
         AddParagraph("This maintenance release carries forward tab restoration when restarting to update, DOCX body-text preview and search, and the thumbnail improvements from 0.5.12.");
         AddHeading("Version 0.5.12 — read and find DOCX text");
@@ -3293,6 +3300,15 @@ public sealed partial class MainPage : Page
 
     private void FilePane_GotFocus(object sender, RoutedEventArgs e) => SetActivePaneForList(sender);
 
+    private void FilePaneRegion_GotFocus(object sender, RoutedEventArgs e)
+    {
+        // GotFocus is asynchronous. Ignore an old event after focus leaves this region.
+        // Pane-local handlers also exclude other windows and modal dialogs naturally.
+        if (_disposed || sender is not DependencyObject region || XamlRoot is null ||
+            !ContainsFocus(region, FocusManager.GetFocusedElement(XamlRoot) as DependencyObject)) return;
+        SetActivePane(ReferenceEquals(sender, SecondaryPaneBorder) ? BrowserPane.Secondary : BrowserPane.Primary);
+    }
+
     private static bool ContainsFocus(DependencyObject region, DependencyObject? focused)
     {
         while (focused is not null)
@@ -3311,14 +3327,34 @@ public sealed partial class MainPage : Page
             BrowserViewMode.Compact => CompactFileList,
             _ => FileList
         };
-        var regions = new List<Control> { BrowserTabs, _usePathBar ? PathBarEditButton : LocationBox,
-            DirectoryTree.Visibility == Visibility.Visible ? DirectoryTree : PlacesList, primary };
-        if (_splitPaneOpen) regions.Add(SecondaryFileList);
-        if (_showTerminalPanel) regions.Add(TerminalCommand);
+        // Identify the whole region, so F6 works from its buttons and nested controls too.
+        // Choose targets from actual visibility: search and pathbar editing replace location.
+        Control location = SearchBox.Visibility == Visibility.Visible ? SearchBox
+            : LocationBox.Visibility == Visibility.Visible ? LocationBox : PathBarEditButton;
+        var regions = new List<(DependencyObject Scope, Control Target)>
+        {
+            (BrowserTabs, BrowserTabs), (LocationBar, location),
+            DirectoryTree.Visibility == Visibility.Visible ? (DirectoryTree, DirectoryTree) : (ShortcutsSidePane, PlacesList),
+            (PrimaryPaneBorder, primary)
+        };
+        if (_splitPaneOpen) regions.Add((SecondaryPaneBorder, SecondaryFileList));
+        if (_showImagePreview)
+        {
+            Control preview = PreviewText.Visibility == Visibility.Visible ? PreviewText
+                : PdfPageControls.Visibility == Visibility.Visible && PdfNextPage.IsEnabled ? PdfNextPage
+                : PdfPageControls.Visibility == Visibility.Visible && PdfPreviousPage.IsEnabled ? PdfPreviousPage
+                : PreviewScroller;
+            regions.Add((ImagePreviewPane, preview));
+        }
+        if (_showTerminalPanel) regions.Add((TerminalPane, TerminalCommand.IsEnabled ? TerminalCommand : TerminalOutput));
         var focused = FocusManager.GetFocusedElement(XamlRoot) as DependencyObject;
-        var index = regions.FindIndex(region => ContainsFocus(region, focused));
-        var next = (index + (reverse ? -1 : 1) + regions.Count) % regions.Count;
-        regions[next].Focus(FocusState.Keyboard);
+        var index = regions.FindIndex(region => ContainsFocus(region.Scope, focused));
+        if (index < 0) index = reverse ? 0 : -1;
+        for (var offset = 1; offset <= regions.Count; offset++)
+        {
+            var next = (index + (reverse ? -offset : offset) + regions.Count) % regions.Count;
+            if (regions[next].Target.Focus(FocusState.Keyboard)) return;
+        }
     }
 
     private void ColumnGrip_KeyDown(object sender, KeyRoutedEventArgs e)
@@ -5366,6 +5402,7 @@ public sealed partial class MainPage : Page
 
     private void CloseSplitPane()
     {
+        var restoreFocus = ContainsFocus(SecondaryPaneBorder, FocusManager.GetFocusedElement(XamlRoot) as DependencyObject);
         _splitPaneOpen = false;
         SplitViewMenuItem.IsChecked = false;
         SplitDividerColumn.Width = new GridLength(0);
@@ -5374,6 +5411,7 @@ public sealed partial class MainPage : Page
         SecondaryPaneBorder.Visibility = Visibility.Collapsed;
         _splitTab = null;
         SetActivePane(BrowserPane.Primary);
+        if (restoreFocus) ActiveFileList.Focus(FocusState.Keyboard);
         SaveSession();
     }
 
@@ -5386,9 +5424,11 @@ public sealed partial class MainPage : Page
 
     private void SetActivePane(BrowserPane pane)
     {
-        _activePane = pane == BrowserPane.Secondary && _splitPaneOpen
+        var activePane = pane == BrowserPane.Secondary && _splitPaneOpen
             ? BrowserPane.Secondary
             : BrowserPane.Primary;
+        if (_activePane == activePane) return;
+        _activePane = activePane;
         UpdateActivePaneVisuals();
     }
 
@@ -5431,7 +5471,13 @@ public sealed partial class MainPage : Page
         _searchInputDelay?.Dispose();
         _searchInputDelay = null;
         var browser = _searchBrowser;
+        var restoreFocus = ContainsFocus(LocationBar, FocusManager.GetFocusedElement(XamlRoot) as DependencyObject);
         HideSearchBar();
+        if (restoreFocus)
+        {
+            SetActivePane(ReferenceEquals(browser, SplitViewModel) ? BrowserPane.Secondary : BrowserPane.Primary);
+            ActiveFileList.Focus(FocusState.Keyboard);
+        }
         if (browser is not null)
         {
             await browser.EndSearchAsync();

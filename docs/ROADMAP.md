@@ -1,15 +1,20 @@
 # WinThunar roadmap
 
-Version 0.5.14 is prepared as a [release candidate](RELEASE-0.5.14.md) with the keyboard,
-watcher and diagnostic follow-ups below. Publication and public-package verification are pending.
-
 ## Release and source status
 
 Checked 24 October 2026. The latest published application is
-[0.5.13](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.13), published 24 October 2026.
-The changes are merged into `main` through PR #33 (source `23d989f`), and the GitHub updater feed
-offers 0.5.13. Documentation-only commits do not distribute an application version.
-See [release notes](RELEASE-0.5.13.md) for package verification and remaining limits.
+[0.5.14](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.14), published 24 October 2026.
+The changes are merged into `main` through PR #35 (source `e28cde2`), and the GitHub updater feed
+offers 0.5.14. Documentation-only commits do not distribute an application version.
+See [release notes](RELEASE-0.5.14.md) for package verification and remaining limits.
+
+Release **[0.5.14](RELEASE-0.5.14.md)** fixes F6 region selection/focus restoration and stale
+folder-watcher navigation, adds accessible split/command action names and a current What's New.
+It passes 211 service tests with one skip, 128 desktop checks and two theme-restart checks.
+Five public binary digests, both MSI policies/embedded guard, source tag/feeds, all 528
+reconstructed delta entries and 21 retained historical packages are verified. The earlier
+focused five-minute source workload passes; memory retention, native-crash/longer endurance,
+manual accessibility and an installed upgrade to this version remain open.
 
 Release **[0.5.13](RELEASE-0.5.13.md)** is a maintenance update with a current What's New and
 the reusable installed Restart Now verification helper. The public 0.5.11-to-0.5.12 two-window
@@ -105,7 +110,7 @@ below are now in published 0.5.3; test harnesses are source tools excluded from 
 - [x] Storage-error/process-termination stress harness and recovery fixes for overlapping history records and concurrent restart recovery.
 - [x] Disposable NTFS VHD verification of cross-volume history and actual disk-full allocation failures; native long-path copy/stream/history fixes.
 
-Installed copies can discover 0.5.13 through GitHub Releases. See [release publishing](RELEASES.md)
+Installed copies can discover 0.5.14 through GitHub Releases. See [release publishing](RELEASES.md)
 and [accessibility status](ACCESSIBILITY.md) for package behavior and remaining checks.
 
 ## 1. Browser foundation
@@ -190,6 +195,7 @@ open where their full coverage is not established.
 - [x] Publish 0.5.10 with guarded same-account elevated legacy migration, verified public assets/feed/tag and embedded native policy, all 528 reconstructed 0.5.9-to-0.5.10 delta entries, and thirteen unchanged historical packages. Installed guest evidence remains distinguished from public-package verification.
 - [x] Publish 0.5.12 with bounded DOCX body-text preview/search, thumbnail workers/reuse, verified public assets/feed/tag and MSI policies, all 528 reconstructed 0.5.11-to-0.5.12 delta entries and 17 unchanged historical packages.
 - [x] Publish maintenance release 0.5.13 with updated What's New and reusable guest verification tooling; verify five public binary digests, source tag/feeds, both MSI policies/embedded guard, all 528 reconstructed 0.5.12-to-0.5.13 delta entries and 19 unchanged historical packages.
+- [x] Publish 0.5.14 with keyboard/focus and watcher fixes; verify five public binary digests, source tag/feeds, both MSI policies/embedded guard, all 528 reconstructed 0.5.13-to-0.5.14 delta entries and 21 unchanged historical packages. Longer endurance and installed-upgrade limits remain disclosed.
 - [x] Confirm the existing all-users 0.5.0 to 0.5.3 full-package upgrade from updater logs and all 524 deployed file hashes; see [updater verification](UPDATER-VERIFICATION.md).
 - [ ] Repeat the installed upgrade under controlled UI conditions; verify per-user apply-on-close, installed delta updates, and Windows Installer repair/uninstall metadata. The logged all-users full-package upgrade succeeded; the original MSI product entry still reports 0.5.0.0.
   - [x] Verify the public 0.5.8 per-user MSI's interactive scope/shortcut controls and no-base full update to public 0.5.10, first/last-window close behavior, all 524 deployed hashes, tabs/bookmark/view/theme/plugin/document retention, old-repair refusal, current-MSI refresh/both repairs and uninstall with positive Shell cleanup. See the [priority evidence](PRIORITY-VERIFICATION.md).
@@ -211,7 +217,7 @@ open where their full coverage is not established.
     - [x] Publish the guarded migration policy in 0.5.10 and verify both release MSI copies and the embedded guard. The same-account elevated path does not establish non-legacy MSI rollback, all-users migration or standard-user elevation through another account.
   - [x] Verify an explicit external backup/restore workaround from the pre-migration checkpoint. All five state files and 524 deployed files match after restoration and both repair modes. Uninstall removes the app, registrations, shortcuts and explicitly enabled Shell integration while retaining state and the generated document. This is test-helper behavior; direct MSI migration still loses state.
 - [ ] Complete the manual accessibility checks documented in [ACCESSIBILITY.md](ACCESSIBILITY.md).
-  - [x] Unreleased source follow-up corrects F6 navigation for search, side-pane children,
+  - [x] Published 0.5.14 follow-up corrects F6 navigation for search, side-pane children,
     pathbar editing, split navigation, preview and command output, plus focus restoration
     when those controls close. Verify explicit split/command action names through button
     automation peers; 128 generated desktop checks and two theme-restart checks pass,
@@ -229,13 +235,13 @@ open where their full coverage is not established.
 - [ ] Broader Shell/device browsing, cloud status, Office/general document previews, and fresh document-content extraction.
   - [x] Publish bounded, read-only DOCX main-body text preview and fresh filesystem `content:` search in 0.5.12, with generated service/desktop regressions. See [DOCX support and limits](DOCUMENT-TEXT.md). Word layout, other Office formats and Windows indexing-filter coverage remain open.
 - [ ] Extend local search performance measurements to sustained UI/thumbnail and slow-network endurance checks.
-  - [x] Unreleased source fix prevents an old folder's watcher from cancelling a busy
+  - [x] Published 0.5.14 fix prevents an old folder's watcher from cancelling a busy
     navigation to a new folder. The native watcher regression fails against the pre-change
     source and passes with the guard; normal watching resumes afterward.
   - [x] Preserve compact endurance progress checkpoints so a native crash retains completed
     counts and memory/handle samples. Two attempted 15-minute runs terminate in native WinUI;
-    their dumps and progress evidence are preserved in [priority verification](PRIORITY-VERIFICATION.md#unreleased-keyboard-and-endurance-follow-up-24-october-2026).
-  - [x] Verify the final unreleased source with a focused five-minute workload: 445 cycles,
+    their dumps and progress evidence are preserved in [priority verification](PRIORITY-VERIFICATION.md#keyboard-and-endurance-follow-up-24-october-2026).
+  - [x] Verify the pre-version-bump final source with a focused five-minute workload: 445 cycles,
     1,335 searches, 890 previews, 131 recorded desktop checks and two restart checks. Both
     the pre-change focused baseline and final source retain entries after diagnostic cleanup;
     retention and the intermediate native crashes remain unresolved. A 15-minute final retest,

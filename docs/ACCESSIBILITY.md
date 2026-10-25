@@ -2,7 +2,7 @@
 
 Source/smoke status updated on 24 October 2026. This is a source and smoke-check
 status document, not a claim of full screen-reader compatibility or accessibility conformance.
-The latest recorded published application is 0.5.13; the support below is included in the release unless
+The latest recorded published application is 0.5.14; the support below is included in the release unless
 marked unreleased, subject to the verification limits here.
 See the [release/source status](ROADMAP.md#release-and-source-status).
 
@@ -10,7 +10,7 @@ The 0.5.13 maintenance pass completes 87 desktop checks and two theme-restart ch
 including the current What's New summary in Light and Dark; both renders were inspected.
 This adds release-summary coverage, not manual screen-reader or contrast-theme conformance.
 
-## Unreleased keyboard follow-up
+## Keyboard follow-up in 0.5.14
 
 F6 / Shift+F6 now recognizes the whole side pane, primary pane, split pane, preview and
 command panel, including their nested controls. The location region targets the visible
@@ -28,11 +28,11 @@ through their WinUI button automation peers. The new checks await completed nati
 notifications where pane activation matters; WinUI raises `GotFocus` asynchronously, as
 documented by [Microsoft](https://learn.microsoft.com/windows/windows-app-sdk/api/winrt/microsoft.ui.xaml.uielement.gotfocus).
 
-These changes are local source work after 0.5.13. The final short run passes 128 desktop
+These changes are included in published 0.5.14. The final short run passes 128 desktop
 checks and two theme-restart checks, including the separate watcher regression. The generated
 desktop checks exercise WinUI focus; they do not run Narrator or complete the manual review below.
 The final focused five-minute workload passes 131 recorded desktop checks and two restart
-checks; see [resource measurements and remaining native-crash limits](PRIORITY-VERIFICATION.md#unreleased-keyboard-and-endurance-follow-up-24-october-2026).
+checks; see [resource measurements and remaining native-crash limits](PRIORITY-VERIFICATION.md#keyboard-and-endurance-follow-up-24-october-2026).
 
 ## Support in 0.5.3
 

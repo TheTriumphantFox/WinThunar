@@ -76,10 +76,10 @@ lists reserve filename space when split/preview panes narrow the available width
   request and when the saved right-side folder still exists.
 - **Since 0.5.3:** keyboard focus moving into a file pane also makes that pane active;
   `F6` / `Shift+F6` cycles between the main keyboard regions.
-- **Unreleased after 0.5.13:** F6 recognizes search, pathbar editing, side-pane children,
+- **Since 0.5.14:** F6 recognizes search, pathbar editing, side-pane children,
   split navigation, selectable preview text/PDF controls and command output when input is
   disabled. Closing a focused search or auxiliary pane restores file-list focus. Split
-  navigation focus selects the right pane for file commands. See [keyboard verification](ACCESSIBILITY.md#unreleased-keyboard-follow-up).
+  navigation focus selects the right pane for file commands. See [keyboard verification](ACCESSIBILITY.md#keyboard-follow-up-in-0514).
 
 ## Bookmarks and session state
 

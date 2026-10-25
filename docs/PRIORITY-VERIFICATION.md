@@ -25,14 +25,14 @@ and public-feed verification is recorded below, separately from installed upgrad
 Interactive UAC cases are also deferred at the maintainer's request. These boundaries apply to
 this verification pass; existing historical failures remain recorded in their original documents.
 
-## Unreleased keyboard and endurance follow-up, 24 October 2026
+## Keyboard and endurance follow-up, 24 October 2026
 
-The source follow-up after published 0.5.13 fixes F6 region selection for search, side-pane
+The follow-up published in 0.5.14 fixes F6 region selection for search, side-pane
 children, pathbar editing and split navigation. It adds preview text/PDF/scroller and disabled
 command-input targets, restores file-list focus when focused auxiliary controls close, and
 announces explicit split/command button actions through automation peers. Pane-local focus
 notifications select the appropriate file-command pane, ignoring stale events and other windows.
-See [accessibility behavior](ACCESSIBILITY.md#unreleased-keyboard-follow-up).
+See [accessibility behavior](ACCESSIBILITY.md#keyboard-follow-up-in-0514).
 
 The original executable with new regression checks fails at **F6 leaves the search input for
 the side pane**. The final keyboard/watcher follow-up passes **128 desktop checks and two
@@ -91,8 +91,8 @@ It fails against unchanged pre-change view-model code in
 
 The final normal x64 publish succeeds; its DLL excludes all five checked keyboard, watcher,
 smoke, endurance and restart test markers. Its verification record is in
-`artifacts/keyboard-final-normal-build-20261024/verification.json`. This is unreleased source
-work with the existing assembly version; installed copies still receive published 0.5.13.
+`artifacts/keyboard-final-normal-build-20261024/verification.json`. That pre-version-bump source build predates the 0.5.14 packaging pass below; its keyboard
+and watcher code is now included in published 0.5.14.
 
 The **final source** passes the same five-minute focused local workload: **445 cycles,
 1,335 searches, 890 previews, 131 recorded desktop checks and two theme-restart checks**.
@@ -413,3 +413,21 @@ failures. The normal x64 publish build after the restart fix passed, and its DLL
 smoke/endurance/restart test entry points. Builds report NU1900 because vulnerability metadata was unavailable from NuGet.
 The [notification runtime issue](https://github.com/microsoft/WindowsAppSDK/issues/6774) remains
 marked pending release; no runtime substitution was made.
+
+## 0.5.14 publication verification, 24 October 2026
+
+Source `e28cde2f4af9dddd76db51c39218c51fe26e84e9` (PR #35) was packaged from clean merged `main` using
+`Publish-Release.ps1 -Version 0.5.14`. The versioned suite passes **211 service tests with one
+symbolic-link privilege skip, 128 desktop checks and two theme-restart checks**. Light/Dark
+What's New renders were inspected. Test builds may report NU1900 when vulnerability metadata
+is unavailable. The earlier source workload and native failures above remain separate evidence.
+
+All five public binary sizes/digests, both MSI copies and their embedded native guard, the
+source tag, both update feeds and latest stable are verified. The **701,691-byte** delta
+reconstructs all **528 entries** and all **21 retained historical packages** keep their
+hashes. Package assemblies agree and exclude smoke/fault/keyboard/watcher test entry points.
+See `artifacts/verification-0.5.14/` and [release notes](RELEASE-0.5.14.md).
+
+This establishes publication and updater-feed availability, not an installed upgrade to 0.5.14,
+a native-crash fix or completed manual accessibility/longer endurance. Prior retained-entry
+measurements and native failures are preserved, with hardware/network and interactive UAC deferred.

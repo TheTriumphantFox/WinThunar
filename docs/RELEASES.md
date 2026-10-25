@@ -1,29 +1,20 @@
 # Building and publishing releases
 
-Checked 24 October 2026 against the release script, project/manifest versions, and GitHub
-Releases. The latest published application is **[0.5.13](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.13)**,
-released 24 October 2026 from source commit `23d989f` (PR #33). Its public MSI, portable ZIP,
-setup executable, full/delta packages, both update feeds and source tag were verified. See the
-[release notes](RELEASE-0.5.13.md), [MSI policy evidence](MSI-MAINTENANCE.md) and
-[updater verification](UPDATER-VERIFICATION.md) for corrected-MSI native checks and historical
-public-installer failures. Existing cached MSIs retain their old behavior. A subsequent
-[legacy-MSI migration test](MSI-MIGRATION.md) installed 0.5.8 with matching payload/cache,
-but old-MSI removal deleted seeded user state. The external backup/restore workaround
-passed migration, both repairs and uninstall retention. Published 0.5.9 adds
-automatic per-user protection; the remaining interactive/all-users matrix remains open.
+Checked 24 October 2026. The latest published application is **[0.5.14](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.14)**, released
+24 October 2026 from source `e28cde2` (PR #35). The release fixes keyboard/focus and stale-watcher
+navigation, adds accessible split/command names and updates What's New. Project, manifest,
+release defaults, public packages and updater feed are aligned at 0.5.14.
 
-0.5.13 is a maintenance release with a current What's New and reusable guest regression helper.
-Five public binary digests, both feeds, all 528 reconstructed delta entries and 19 historical
-packages are verified. The installed public 0.5.11-to-0.5.12 two-window Restart Now retest also
-passes; its explicitly seeded cache/offline feed and remaining matrix are recorded separately.
+All five public binary digests, both MSI policies and their embedded native guard, both feeds,
+source tag, all 528 reconstructed 0.5.13-to-0.5.14 delta entries and 21 historical packages
+are verified. See [release notes](RELEASE-0.5.14.md) and [priority verification](PRIORITY-VERIFICATION.md).
+Installed upgrade to 0.5.14, longer endurance/native-crash resolution and manual accessibility
+remain unverified. Historical installed/public-package evidence is distinguished in those notes.
 
-Source versions, the public release and updater feed are aligned at **[0.5.13](RELEASE-0.5.13.md)**.
-The MSI now requires actual same-account elevation before legacy per-user migration. Installed
-unelevated refusal, elevated early/late rollback, subsequent migration, both repairs and uninstall
-pass in the private guest suite; public package verification is recorded separately. The
-[0.5.9 forced-rollback failure](MSI-MIGRATION.md#forced-rollback-finding--known-limitation)
-remains in existing cached installers until replaced with a corrected MSI. Non-legacy major-upgrade
-rollback and legacy all-users migration remain outside the verified path.
+Automatic app updates do not replace an older cached MSI. Use the latest MSI for installer
+safeguards. Legacy per-user migration requires actual same-account elevation; legacy all-users
+migration is refused. Other installer/UAC contexts and historical failures retain their
+[maintenance](MSI-MAINTENANCE.md), [migration](MSI-MIGRATION.md) and [rollback](MSI-ROLLBACK.md) limits.
 
 ## Prerequisites and version checklist
 
@@ -46,17 +37,17 @@ Before a new release, select an unused three-part version and update all of thes
 3. The default `$Version` in `scripts/Publish-Release.ps1`.
 4. The README release example and the current release/status references in these docs.
 
-The current published version is **0.5.13**; see its
-[release notes](RELEASE-0.5.13.md). For example, a release `X.Y.Z` uses assembly/file/manifest version `X.Y.Z.0`.
+The current published version is **0.5.14**; see its
+[release notes](RELEASE-0.5.14.md). For example, a release `X.Y.Z` uses assembly/file/manifest version `X.Y.Z.0`.
 Documentation-only changes do not require a new application version.
 
 ## Build and local outputs
 
-Run from the main checkout. This example uses 0.5.13;
+Run from the main checkout. This example uses 0.5.14;
 existing output paths are deliberately not overwritten:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.5.13
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.5.14
 ```
 
 For version `X.Y.Z`, the script writes:
@@ -109,7 +100,7 @@ releases and upload assets for this repository. Keep it out of source, command h
 and logs. With the token already supplied, run:
 
 ```powershell
-$releaseVersion = '0.5.13' # Published-release example; choose an unused version for the next release.
+$releaseVersion = '0.5.14' # Published-release example; choose an unused version for the next release.
 try {
     vpk upload github --outputDir .\artifacts\installer --repoUrl https://github.com/TheTriumphantFox/WinThunar --token $env:GITHUB_TOKEN --publish --releaseName "WinThunar $releaseVersion" --tag "v$releaseVersion"
     if ($LASTEXITCODE -ne 0) { throw 'GitHub release upload failed.' }

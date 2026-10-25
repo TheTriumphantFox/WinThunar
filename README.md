@@ -50,13 +50,13 @@ integration notes below before choosing it as your default file manager.
 
 ## What's new
 
-### 0.5.14 release candidate
+### Published in 0.5.14
 
 F6 and Shift+F6 now reach the visible search/location controls, side-pane children, split
 navigation, previews and command output. Closing focused auxiliary panes restores file-list
 focus, and split/command buttons have explicit accessible names. An old folder's watcher can
 no longer cancel a busy navigation to a new folder. See the [0.5.14 release notes](docs/RELEASE-0.5.14.md)
-for verification and the remaining endurance limits. Publication is pending.
+for verified packages and the remaining endurance limits.
 
 ### Published in 0.5.13
 
@@ -97,11 +97,11 @@ installer; use the latest MSI to get these safeguards. See the
 
 ## Release and source status
 
-The latest published application release is **[0.5.13](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.13)**
-(24 October 2026), from source `23d989f` (PR #33). Its changes are merged into `main`, and the GitHub updater feed
-offers 0.5.13 to installed copies. Use **Help > Check for Updates...** to check immediately;
-portable copies are updated manually. Documentation and website updates alone do not update the app.
-See the [0.5.13 release notes](docs/RELEASE-0.5.13.md) for verification and remaining limits.
+The latest published application release is **[0.5.14](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.14)**
+(24 October 2026), from source `e28cde2` (PR #35). Its changes are merged into `main`, and the
+GitHub updater feed offers 0.5.14 to installed copies. Use **Help > Check for Updates...** to
+check immediately; portable copies are updated manually. Documentation-only updates do not update the app.
+See the [0.5.14 release notes](docs/RELEASE-0.5.14.md) for verified packages and remaining limits.
 The version string alone does not establish that a local build matches published binaries.
 
 Release **[0.5.10](docs/RELEASE-0.5.10.md)** provides a guarded legacy-MSI migration

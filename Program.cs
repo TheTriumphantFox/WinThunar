@@ -13,7 +13,14 @@ namespace WinThunar;
 public static class Program
 {
 #if ROADMAP_SMOKE_TEST
-    private const string InstanceKey = "WinThunar.DesktopSmoke";
+    // A failed or concurrently running test must not receive another run's windows.
+    // The restart checks keep the same directory and therefore the same stable key.
+    private static readonly string InstanceKey = "WinThunar.DesktopSmoke." + Convert.ToHexString(
+        System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(
+            Path.TrimEndingDirectorySeparator(Path.GetFullPath(
+                Environment.GetEnvironmentVariable("WINTHUNAR_SMOKE_DIRECTORY")
+                    ?? throw new InvalidOperationException("The desktop smoke test needs an isolated directory.")))
+                .ToUpperInvariant())));
 #else
     private const string InstanceKey = "WinThunar.Main";
 #endif

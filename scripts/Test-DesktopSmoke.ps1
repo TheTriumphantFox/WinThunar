@@ -10,6 +10,18 @@ $runRoot = [IO.Path]::GetFullPath($OutputDirectory)
 if (Test-Path -LiteralPath $runRoot) { throw "Choose a new smoke-test output directory: $runRoot" }
 New-Item -ItemType Directory -Path $runRoot | Out-Null
 $publish = Join-Path $runRoot 'app'
+function Save-ProcessOutcome($TestProcess, [string]$Name, [bool]$TimedOut) {
+    $TestProcess.Refresh()
+    $code = if ($TestProcess.HasExited) { $TestProcess.ExitCode } else { $null }
+    [ordered]@{
+        processId = $TestProcess.Id
+        executable = Join-Path $publish 'WinThunar.exe'
+        recordedUtc = [DateTime]::UtcNow.ToString('o')
+        timedOut = $TimedOut
+        exitCode = $code
+        enduranceSeconds = $EnduranceSeconds
+    } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $runRoot ($Name + '-process.json')) -Encoding UTF8
+}
 & dotnet publish (Join-Path $projectRoot 'WinThunar.csproj') --configuration Release --runtime win-x64 --self-contained true -p:Platform=x64 -p:WindowsPackageType=None -p:WindowsAppSDKSelfContained=true -p:PublishProfile=win-x64 -p:RoadmapSmokeTest=true --output $publish
 if ($LASTEXITCODE -ne 0) { throw 'Desktop smoke build failed.' }
 $previousDirectory = $env:WINTHUNAR_SMOKE_DIRECTORY
@@ -27,8 +39,11 @@ try {
     if (-not $process.WaitForExit($timeoutSeconds * 1000)) {
         # Stop only the test process started above, never an installed or portable user instance.
         Stop-Process -Id $process.Id -ErrorAction SilentlyContinue
+        Save-ProcessOutcome $process 'desktop' $true
         throw "Desktop smoke test timed out. Outputs: $runRoot"
     }
+    Save-ProcessOutcome $process 'desktop' $false
+    if ($process.ExitCode -ne 0) { throw "Desktop smoke process failed (exit $($process.ExitCode)). Outputs: $runRoot" }
     $report = Join-Path $env:WINTHUNAR_SMOKE_DIRECTORY 'result.json'
     if (-not (Test-Path -LiteralPath $report)) { throw "No desktop smoke report (exit $($process.ExitCode)). Outputs: $runRoot" }
     $result = Get-Content -LiteralPath $report -Raw | ConvertFrom-Json
@@ -39,8 +54,11 @@ try {
     $restart = Start-Process -FilePath (Join-Path $publish 'WinThunar.exe') -WindowStyle Hidden -PassThru
     if (-not $restart.WaitForExit(45000)) {
         Stop-Process -Id $restart.Id -ErrorAction SilentlyContinue
+        Save-ProcessOutcome $restart 'restart' $true
         throw "Theme restart check timed out. Outputs: $runRoot"
     }
+    Save-ProcessOutcome $restart 'restart' $false
+    if ($restart.ExitCode -ne 0) { throw "Theme restart process failed (exit $($restart.ExitCode)). Outputs: $runRoot" }
     $restartReport = Join-Path $env:WINTHUNAR_SMOKE_DIRECTORY 'theme-restart-result.json'
     if (-not (Test-Path -LiteralPath $restartReport)) { throw "No theme restart report (exit $($restart.ExitCode)). Outputs: $runRoot" }
     $restartResult = Get-Content -LiteralPath $restartReport -Raw | ConvertFrom-Json

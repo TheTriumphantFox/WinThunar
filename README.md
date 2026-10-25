@@ -50,6 +50,14 @@ integration notes below before choosing it as your default file manager.
 
 ## What's new
 
+### 0.5.15 release candidate
+
+File rows reuse their accessible-name bindings across browsing and search, preserving current
+names, metadata and Git status when containers are recycled. The source passes a focused
+fifteen-minute workload with 3,558 searches and 2,372 previews; retained memory and the earlier
+native-crash root cause remain under investigation. See the [0.5.15 release notes](docs/RELEASE-0.5.15.md).
+Publication and public-package verification are pending.
+
 ### Published in 0.5.14
 
 F6 and Shift+F6 now reach the visible search/location controls, side-pane children, split
@@ -347,10 +355,10 @@ Install the Velopack packaging tool once:
 dotnet tool install -g vpk --version 1.2.161
 ```
 
-Build a release from the main checkout; this example uses 0.5.14:
+Build a release from the main checkout; this example uses 0.5.15:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.5.14
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.5.15
 ```
 
 For a new release, choose an unused version and update all four version locations before

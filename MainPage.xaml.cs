@@ -2323,6 +2323,8 @@ public sealed partial class MainPage : Page
             IsTextSelectionEnabled = true
         });
 
+        AddHeading("Version 0.5.15 — file-row accessibility and stability follow-up");
+        AddParagraph("File rows reuse their accessible-name bindings as you browse and search, keeping names, metadata and Git status current when Windows recycles a row.");
         AddHeading("Version 0.5.14 — keyboard and navigation fixes");
         AddParagraph("F6 and Shift+F6 now move through the visible search or location controls, side pane, file panes, Preview Pane and command panel. Closing focused auxiliary panes returns keyboard focus to your files. Split navigation and command buttons have clearer accessible names.");
         AddParagraph("Folder change notifications no longer interrupt loading a new folder by navigating back to the previous one.");
@@ -3283,17 +3285,21 @@ public sealed partial class MainPage : Page
 
     private void FileContainer_Changing(ListViewBase sender, ContainerContentChangingEventArgs args)
     {
-        if (args.InRecycleQueue)
-        {
-            args.ItemContainer.ClearValue(Microsoft.UI.Xaml.Automation.AutomationProperties.NameProperty);
-            return;
-        }
-        if (args.Item is FileSystemEntry entry)
+        // Follow Content on the container rather than capturing each successive entry.
+        // The same binding survives recycling, clears when Content is null, and still
+        // observes AutomationName changes (including asynchronous Git status).
+        if (!args.InRecycleQueue && args.Item is FileSystemEntry &&
+            args.ItemContainer.GetBindingExpression(Microsoft.UI.Xaml.Automation.AutomationProperties.NameProperty) is null)
             args.ItemContainer.SetBinding(Microsoft.UI.Xaml.Automation.AutomationProperties.NameProperty,
                 new Microsoft.UI.Xaml.Data.Binding
                 {
-                    Source = entry,
-                    Path = new PropertyPath(nameof(FileSystemEntry.AutomationName)),
+                    RelativeSource = new Microsoft.UI.Xaml.Data.RelativeSource
+                    {
+                        Mode = Microsoft.UI.Xaml.Data.RelativeSourceMode.Self
+                    },
+                    Path = new PropertyPath($"Content.{nameof(FileSystemEntry.AutomationName)}"),
+                    FallbackValue = string.Empty,
+                    TargetNullValue = string.Empty,
                     Mode = Microsoft.UI.Xaml.Data.BindingMode.OneWay
                 });
     }

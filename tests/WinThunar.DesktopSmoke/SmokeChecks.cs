@@ -244,6 +244,7 @@ public sealed partial class MainPage
             await CheckThumbnailReuseAsync(directory, checks);
             await CheckFolderWatcherAsync(directory, checks);
             await CheckKeyboardRegionsAsync(directory, checks);
+            await CheckContainerBindingsAsync(directory, checks);
             await RunOptionalEnduranceAsync(directory, checks);
             await CheckRestartSessionAsync(directory, checks);
             await CheckWindowCloseSessionAsync(directory, checks);
@@ -369,6 +370,8 @@ public sealed partial class MainPage
                     var whatsNew = CreateWhatsNewDialog();
                     var showingWhatsNew = whatsNew.ShowAsync();
                     await Task.Delay(150);
+                    Require(FindSmokeText(whatsNew.Content as DependencyObject, "Version 0.5.15 — file-row accessibility and stability follow-up") is not null,
+                        $"What's New describes the 0.5.15 file-row accessibility release in {theme}", checks);
                     Require(FindSmokeText(whatsNew.Content as DependencyObject, "Version 0.5.14 — keyboard and navigation fixes") is not null,
                         $"What's New describes the 0.5.14 keyboard and navigation release in {theme}", checks);
                     Require(FindSmokeText(whatsNew.Content as DependencyObject, "Version 0.5.12 — read and find DOCX text") is not null,

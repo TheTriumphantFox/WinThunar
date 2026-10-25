@@ -16,6 +16,7 @@ public partial class MainPageViewModel : ObservableObject, IDisposable
     private readonly SemaphoreSlim _imageLoadGate = new(6);
 #if ROADMAP_SMOKE_TEST
     internal Task ImageLoadingCompletion { get; private set; } = Task.CompletedTask;
+    internal bool GitStatusLoading => _gitLoading;
 #endif
     private CancellationTokenSource? _searchCancellation;
     private CancellationTokenSource? _imageCancellation;

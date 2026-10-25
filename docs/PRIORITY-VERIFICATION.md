@@ -109,7 +109,7 @@ The keyboard render and the workload's icon/final renders were inspected. All ge
 and diagnostic collections are confined to the test build; the normal application does not
 force garbage collection or write endurance checkpoints.
 
-## Unreleased container-binding follow-up, 24 October 2026
+## Container-binding follow-up, 24 October 2026
 
 A fresh run of the unchanged 0.5.14 source reproduces native termination `0xC000027B` in
 `Microsoft.UI.Xaml.dll` 3.2.3.0. Its last checkpoint records **190 cycles, 570 searches and
@@ -165,8 +165,9 @@ the final short-run render were inspected.
 The final normal x64 Release publish succeeds and excludes the six checked smoke, endurance,
 container-binding, keyboard, Git-loading and smoke-instance markers; verification is in
 `artifacts/priority-container-binding-final-normal-20261024/verification.json`. These changes
-are not yet published. Notification registration still reports the existing missing Insights
-resource-DLL error; installed upgrades, manual accessibility and slow-network/day-long checks
+are now included in published 0.5.15; its package verification is recorded below. Notification
+registration still reports the existing missing Insights resource-DLL error; installed upgrades,
+manual accessibility and slow-network/day-long checks
 remain open.
 
 The **final focused fifteen-minute run passes** on .NET 10.0.11 x64: **1,186 cycles,
@@ -195,7 +196,8 @@ Evidence, source verification, process outcomes and the complete sample series a
 fifteen-minute source retest. It does not establish the earlier crash's exact root cause or
 flat memory use: private and managed memory remain above startup, and the menu-focused
 diagnostic behaves differently. Keep broader retention, native-runtime, day-long and
-slow-network investigation open. No installed package was changed or released by this pass.
+slow-network investigation open. This earlier source-verification pass did not change an
+installed copy; the subsequent 0.5.15 publication is recorded below.
 
 ## Public per-user installer lifecycle
 
@@ -519,3 +521,20 @@ See `artifacts/verification-0.5.14/` and [release notes](RELEASE-0.5.14.md).
 This establishes publication and updater-feed availability, not an installed upgrade to 0.5.14,
 a native-crash fix or completed manual accessibility/longer endurance. Prior retained-entry
 measurements and native failures are preserved, with hardware/network and interactive UAC deferred.
+
+## 0.5.15 publication verification, 24 October 2026
+
+Source `5e01f89186f3de48ccf13cdf2a9b9a80e776ee73` (PR #37) was packaged from clean merged `main` using
+`Publish-Release.ps1 -Version 0.5.15`. The versioned suite passes **211 service tests with one
+symbolic-link privilege skip, 158 desktop checks and two theme-restart checks**. Light/Dark
+What's New renders were inspected. The earlier fifteen-minute source workload is separate
+evidence and does not establish a general native-crash fix or flat memory use.
+
+All five public binary sizes/digests, both MSI copies and embedded native guard, source tag,
+both updater feeds and latest stable are verified. The **505,042-byte** delta reconstructs
+all **528 entries** and all **23 retained historical packages** keep their hashes.
+Application assemblies agree and checked test/fault hooks are absent. See
+`artifacts/verification-0.5.15/` and [release notes](RELEASE-0.5.15.md).
+
+Installed upgrade to 0.5.15, broader memory/runtime, manual accessibility, notifications and
+day-long/slow-network coverage remain open. Hardware/network and interactive UAC remain deferred.

@@ -50,13 +50,13 @@ integration notes below before choosing it as your default file manager.
 
 ## What's new
 
-### 0.5.15 release candidate
+### Published in 0.5.15
 
 File rows reuse their accessible-name bindings across browsing and search, preserving current
 names, metadata and Git status when containers are recycled. The source passes a focused
 fifteen-minute workload with 3,558 searches and 2,372 previews; retained memory and the earlier
 native-crash root cause remain under investigation. See the [0.5.15 release notes](docs/RELEASE-0.5.15.md).
-Publication and public-package verification are pending.
+The public packages, source tag and GitHub update feed are verified.
 
 ### Published in 0.5.14
 
@@ -105,11 +105,11 @@ installer; use the latest MSI to get these safeguards. See the
 
 ## Release and source status
 
-The latest published application release is **[0.5.14](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.14)**
-(24 October 2026), from source `e28cde2` (PR #35). Its changes are merged into `main`, and the
-GitHub updater feed offers 0.5.14 to installed copies. Use **Help > Check for Updates...** to
+The latest published application release is **[0.5.15](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.15)**
+(24 October 2026), from source `5e01f89` (PR #37). Its changes are merged into `main`, and the
+GitHub updater feed offers 0.5.15 to installed copies. Use **Help > Check for Updates...** to
 check immediately; portable copies are updated manually. Documentation-only updates do not update the app.
-See the [0.5.14 release notes](docs/RELEASE-0.5.14.md) for verified packages and remaining limits.
+See the [0.5.15 release notes](docs/RELEASE-0.5.15.md) for verified packages and remaining limits.
 The version string alone does not establish that a local build matches published binaries.
 
 Release **[0.5.10](docs/RELEASE-0.5.10.md)** provides a guarded legacy-MSI migration

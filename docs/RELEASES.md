@@ -1,15 +1,15 @@
 # Building and publishing releases
 
-Checked 24 October 2026. The latest published application is **[0.5.14](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.14)**, released
-24 October 2026 from source `e28cde2` (PR #35). The release fixes keyboard/focus and stale-watcher
-navigation, adds accessible split/command names and updates What's New. Project, manifest,
-release defaults, public packages and updater feed are aligned at 0.5.14.
+Checked 24 October 2026. The latest published application is **[0.5.15](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.15)**, released
+24 October 2026 from source `5e01f89` (PR #37). The release reuses file-row accessible-name
+bindings, adds native content-transition coverage and updates What's New. Project, manifest,
+release defaults, public packages and updater feed are aligned at 0.5.15.
 
-All five public binary digests, both MSI policies and their embedded native guard, both feeds,
-source tag, all 528 reconstructed 0.5.13-to-0.5.14 delta entries and 21 historical packages
-are verified. See [release notes](RELEASE-0.5.14.md) and [priority verification](PRIORITY-VERIFICATION.md).
-Installed upgrade to 0.5.14, longer endurance/native-crash resolution and manual accessibility
-remain unverified. Historical installed/public-package evidence is distinguished in those notes.
+All five public binary digests, both MSI policies and embedded guard, both feeds, source tag,
+all 528 reconstructed 0.5.14-to-0.5.15 delta entries and 23 historical packages are verified.
+See [release notes](RELEASE-0.5.15.md) and [priority verification](PRIORITY-VERIFICATION.md).
+The earlier focused fifteen-minute source workload passes; installed upgrade to 0.5.15,
+general retention/crash resolution and manual accessibility remain unverified.
 
 Automatic app updates do not replace an older cached MSI. Use the latest MSI for installer
 safeguards. Legacy per-user migration requires actual same-account elevation; legacy all-users
@@ -37,13 +37,13 @@ Before a new release, select an unused three-part version and update all of thes
 3. The default `$Version` in `scripts/Publish-Release.ps1`.
 4. The README release example and the current release/status references in these docs.
 
-The current published version is **0.5.14**; see its
-[release notes](RELEASE-0.5.14.md). For example, a release `X.Y.Z` uses assembly/file/manifest version `X.Y.Z.0`.
+The current published version is **0.5.15**; see its
+[release notes](RELEASE-0.5.15.md). For example, a release `X.Y.Z` uses assembly/file/manifest version `X.Y.Z.0`.
 Documentation-only changes do not require a new application version.
 
 ## Build and local outputs
 
-Run from the main checkout. This example uses the prepared 0.5.15 candidate;
+Run from the main checkout. This example uses 0.5.15;
 existing output paths are deliberately not overwritten:
 
 ```powershell
@@ -100,7 +100,7 @@ releases and upload assets for this repository. Keep it out of source, command h
 and logs. With the token already supplied, run:
 
 ```powershell
-$releaseVersion = '0.5.14' # Published-release example; choose an unused version for the next release.
+$releaseVersion = '0.5.15' # Published-release example; choose an unused version for the next release.
 try {
     vpk upload github --outputDir .\artifacts\installer --repoUrl https://github.com/TheTriumphantFox/WinThunar --token $env:GITHUB_TOKEN --publish --releaseName "WinThunar $releaseVersion" --tag "v$releaseVersion"
     if ($LASTEXITCODE -ne 0) { throw 'GitHub release upload failed.' }

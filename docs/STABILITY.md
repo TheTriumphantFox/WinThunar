@@ -1,12 +1,15 @@
 # Stability investigation, 24–26 October 2026
 
-**Current status:** the typed-tracker candidate completes a second one-hour workload and
-restart with clean exits, but again fails the resource-growth gate: 312 additional median
-handles and 11.52 MiB of median private memory. Its tracker median remains 170.
-The conditional 24-hour retest is not started; handle-type diagnostics continue. The earlier
-86,400-second request fails at approximately 21 hours with native `0xC000027B`; its post-work
-heap/restart stages are not reached. The retained dumps and sample histories are preserved.
-Passing checks below establish their stated scopes, not closure of P0 stability.
+**Current status:** the remaining handle growth was Windows.Storage's brokered `StorageFile`
+calls retaining impersonation Token handles. With thumbnails and image previews moved off
+that path, **the one-hour Files and one-hour Menu workloads both pass the resource gate** with
+no crash: +9 and +43.5 median handles (limit 128), +1.33 and +2.20 MiB median private memory
+(limit 8 MiB), and zero Token handles. See
+[Token-handle cause and storage-free thumbnails](#token-handle-cause-and-storage-free-thumbnails-26-october).
+Two native items remain open. The historical `0xC000027B` failure at about 21 hours has not
+been retested on this source. One launch of the changed source hit a WinUI virtualization
+access violation (`0xC0000005`) before its workload; twelve other launches did not.
+The retained dumps and sample histories are preserved.
 
 This is source work following published 0.5.15. It has not been published or applied to
 installed copies. P0 stability remains open until the longer workload and native-crash
@@ -408,6 +411,121 @@ known-handle self-test and initial failed-launch logs are retained in
 typed snapshots aligned with the settled resource windows, followed by held-cleanup counts;
 allocation tracing is needed before assigning a growing category to application or runtime
 code. The failed resource gate continues to block the conditional day-long retest.
+
+### Token-handle cause and storage-free thumbnails, 26 October
+
+The typed-snapshot hour (`artifacts/stability-pss-hour-20261026/`) completes **3,032 cycles,
+9,096 searches and 6,064 previews** with 200 desktop and two restart checks, clean exits and
+no crash. It fails the resource gate for the third time: median handles grow **227** and median
+private memory **14,589,952 bytes**. Its typed snapshots attribute the handle growth almost
+entirely to one category: median **Token** handles rise from **176 to 420** between the
+settled windows, while Event, Thread and every other type stay within ±3. After cleanup the
+process still holds **405 Token handles**. The five-minute diagnostic fell back to 38.
+
+That hour's full dump has no handle stream, and `!htrace -diff` records handle values without
+stacks on this machine. Breakpoints on `NtOpenProcessToken[Ex]`, `NtOpenThreadToken[Ex]`,
+`NtDuplicateToken` and `NtFilterToken` give attribution instead. Each breakpoint records the
+call stack plus a one-shot return breakpoint that records the returned handle value. After
+the workload, a `DebugBreakProcess` break during the diagnostic hold lists the live Token
+handles. The method is first validated on the known-token fixture: all 32 deliberately
+retained tokens match their `OpenProcessToken` caller.
+
+On the application, the debugger observes **about 4,000 token opens per workload cycle**,
+nearly all inside `windows.storage.dll`. The tokens still open at the first break come from
+Windows.Storage's brokered WinRT calls, which duplicate the caller's token
+(`combase!CServerSecurity::ImpersonateClient` → `DuplicateToken`), plus the shell thumbnail
+cache (`thumbcache` → `OpenProcessToken`). These calls are made by `StorageFile.GetThumbnailAsync`,
+`StorageFolder.GetThumbnailAsync` and `StorageFile.OpenReadAsync`. Breakpoint overhead slows the
+workload to five cycles in ten minutes, so this trace attributes the category; it does not
+measure the leak rate. Evidence: `artifacts/stability-token-stacks-20261026/` (early break,
+`token-attribution-early-break.txt`) and `artifacts/stability-token-stacks-20261026-run2/`.
+
+The source no longer uses `StorageFile` or `StorageFolder` for thumbnails or image previews:
+
+- `ShellThumbnailReader` asks the shell's in-process `IShellItemImageFactory` for the item
+  image off the UI thread. It copies the returned `HBITMAP` into premultiplied BGRA, fixing
+  opaque images that report a zero alpha channel, and deletes the bitmap. `ShellImageService`
+  then creates a `WriteableBitmap` on the UI thread. Small list sizes request type icons only,
+  as before.
+- Image previews decode from a `FileStream` through `AsRandomAccessStream`. A codec failure
+  still falls back to the shell image.
+- Preview selection (PDF, DOCX, text, image, unsupported) moves out of `MainPage.xaml.cs` into
+  `FilePreviewLoader`, which returns a typed result. `MainPage` keeps only the UI updates.
+- `RecycleBinService` now disposes its `WindowsIdentity`, which holds a Token handle until it
+  is finalized.
+
+A console check of the reader (`artifacts/stability-p0-tooling-20261026/readertest/`) returns a
+96×60 opaque JPEG thumbnail, a transparent 96×96 icon, the folder image and the workload PNG's
+exact pixels.
+
+**Twenty-minute check.** An Alternate run on the changed source
+(`artifacts/stability-storage-fix-20min-20261026/`) passes 200 desktop and two restart checks
+and completes **1,745 cycles in 1,200 active seconds**, about 70% more cycles per second than
+the old source. Its 21 typed snapshots show **zero Token handles throughout**. Workload handles
+stay between 3,357 and 3,520, and private memory between 311 and 316 MiB after warm-up. Its idle
+sample briefly reports 505 MiB, settling to 374 MiB after collection. The harness now samples
+directly after its final window capture (`after-capture`) to separate capture surfaces from
+cleanup. A two-minute repeat shows the capture adding 11 MiB and cleanup ending below the
+workload level. The hour runs below do not repeat the spike.
+
+**One-hour Files workload: passes.** `artifacts/stability-files-hour-2-20261026/` completes
+**4,909 cycles, 14,727 searches and 9,818 previews** in 3,600.5 active seconds. All searches
+keep focus in the file list. It passes 200 desktop and two restart checks with both exits zero,
+compiled-source verification and unchanged recorded sources. The maximum active sample gap is
+9.7 seconds.
+
+| Metric | 20–30 minutes (84 samples) | Final ten minutes (79 samples) | Growth | Allowed growth |
+| --- | ---: | ---: | ---: | ---: |
+| Median handles | 3,379 | 3,388 | **9 — pass** | 128 |
+| Median private bytes | 317,569,024 | 318,963,712 | **1,394,688 (1.33 MiB) — pass** | 8 MiB |
+| Median live name trackers | 160 | 160 | 0 — pass | 32 |
+
+Private memory stays between 300 and 310 MiB for the whole workload and ends at 291 MiB after
+cleanup. The 61 typed snapshots record at most **one** Token handle and none at the end. No
+entry from the initial 100-entry cohort survives. Evidence: `resource-gate.json` in the run
+directory and the adjacent `-observer/snapshots.ndjson`.
+
+**One-hour Menu workload: passes, with two standby interruptions.**
+`artifacts/stability-menu-hour-20261026/` completes **4,751 cycles, 14,253 searches and 9,502
+previews** in 3,600.3 active seconds. All searches keep focus in the File menu. It passes 200
+desktop and two restart checks with both exits zero, compiled-source verification and
+unchanged recorded sources. The laptop was on battery. It entered Modern Standby twice during
+the run: from 14:14 to 15:07 (lid, then battery-austerity) and from 15:33 to 17:41 (idle timeout,
+then battery-austerity). That stretched wall time to 14,077.6 seconds; the largest wall gap
+between samples is 7,333 seconds. The harness counts awake time, and the largest *active*
+sample gap is 13.3 seconds. The process survives both suspend/resume cycles. A temporary
+display-awake request covered the last 20 active minutes; it changed no power settings.
+
+| Metric | 20–30 minutes (86 samples) | Final ten minutes (76 samples) | Growth | Allowed growth |
+| --- | ---: | ---: | ---: | ---: |
+| Median handles | 3,366 | 3,409.5 | **43.5 — pass** | 128 |
+| Median private bytes | 316,536,832 | 318,844,928 | **2,308,096 (2.20 MiB) — pass** | 8 MiB |
+| Median live name trackers | 169 | 169 | 0 — pass | 32 |
+
+The handle growth is a single step at the second resume, not a slope. Ten-minute medians are
+3,380, 3,366 and 3,358 before it, then 3,408 and 3,409.5 after it. Private memory stays between
+301 and 305 MiB for the whole workload and ends at 300 MiB after cleanup. All 61 typed snapshots
+record **zero** Token handles. Evidence: `resource-gate.json`, the NDJSON histories and the
+`-observer/` snapshots. An uninterrupted Menu hour on mains power would remove the standby
+caveat; it was not run.
+
+The menu-focused diagnostic that preceded this work reached 857 MiB and 18,065 handles.
+Both workloads now stay near 300 MiB and 3,400 handles.
+
+**Native access violation on one launch.** The first Files attempt
+(`artifacts/stability-files-hour-20261026/`) exits with `0xC0000005` 23 seconds after launch, at
+the first endurance cycle and after the pre-work checks. The fault is a null read in
+`Microsoft.UI.Xaml!ModernCollectionBasePanel::CacheManager::InitCollectionsCache`, reached from
+`GenerateContainerAtIndex` during an ordinary render-tick `UpdateLayout`. No application frame
+is on the stack. The run starts right after the view switches from Icons to Details while the
+search replaces 60 image results with 300 text results. The retained dump is `crash-28772.dmp`
+with `crash-stack-full.txt`. The Application log for the preceding five days records no earlier
+WinThunar crash with this signature; the earlier crashes are `0xC000027B` and one combase
+`0xC0000602`. On the changed source this access violation occurs **once in thirteen launches**:
+the 20-minute run, a two-minute run, eight 45-second full-suite runs
+(`artifacts/stability-av-rate-new-20261026/`) and both one-hour workloads do not repeat it.
+That rate cannot show whether faster thumbnail completion makes this WinUI path more likely.
+It is recorded as an open native failure, not as a pass.
 
 Before closing this priority:
 

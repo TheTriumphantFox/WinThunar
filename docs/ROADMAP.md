@@ -198,20 +198,28 @@ The checklist and evidence trail that used to be here are kept in the
 
 ### P0 — Stability under sustained use
 
-Current source mitigations pass desktop/restart checks but fail the one-hour resource gate;
-P0 remains open. See the [stability status and evidence](STABILITY.md).
+The one-hour Files and Menu workloads both pass the resource gate with no crash (26 October).
+Two native failures stay open, so P0 is not closed yet. See the
+[stability status and evidence](STABILITY.md).
 
-- [ ] Close the native `0xC000027B` termination in `Microsoft.UI.Xaml.dll`: the extended run
-  still crashes after about 21 hours. A full dump identifies COM-wrapper lock-wait/reentrant
-  dispatch; the typed-container mitigation still needs extended verification.
-- [ ] Bound memory and handle growth during browsing, search and previews. The .NET 10.0.11
-  COM-wrapper leak is confirmed ([dotnet/runtime#129191](https://github.com/dotnet/runtime/issues/129191));
-  the upstream fix is expected in 10.0.13. A Release-only workaround and bounded native-owned
-  name trackers are verified, but the one-hour resource-growth gate still fails.
-- [ ] Ship only after a one-hour focused workload and a one-hour menu-focused workload both
-  finish with no crash and memory that levels off.
+- [ ] Close the native `0xC000027B` termination in `Microsoft.UI.Xaml.dll`. An earlier extended
+  run crashed after about 21 hours; a full dump identifies COM-wrapper lock-wait/reentrant
+  dispatch. Neither one-hour gate run on the current source crashes, but the long run has not
+  been repeated. Also open: one launch of the current source hit a WinUI virtualization access
+  violation (`0xC0000005`, `ModernCollectionBasePanel`) before its workload; twelve others did not.
+- [x] Bound memory and handle growth during browsing, search and previews (26 October).
+  Windows.Storage's brokered `StorageFile` thumbnail and preview calls retained impersonation
+  Token handles (176 → 420 in an hour). Thumbnails now come from the shell's
+  `IShellItemImageFactory`, and previews decode from a file stream. The .NET 10.0.11
+  COM-wrapper leak ([dotnet/runtime#129191](https://github.com/dotnet/runtime/issues/129191))
+  keeps its Release-only workaround until 10.0.13.
+- [x] Ship only after a one-hour focused workload and a one-hour menu-focused workload both
+  finish with no crash and memory that levels off (26 October). Files: +9 handles and
+  +1.33 MiB; Menu: +43.5 handles and +2.20 MiB, with the handle step at a standby resume.
+  Both hold about 300 MiB and zero Token handles.
 - [ ] Continue moving logic out of `MainPage.xaml.cs` where the crash and memory work touches
-  it; typed container-name tracking now lives in its own service.
+  it. Typed container-name tracking and preview loading (`FilePreviewLoader`) now live in
+  their own services.
 
 ### P0 — Real users
 

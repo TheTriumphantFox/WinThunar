@@ -25,6 +25,25 @@ and public-feed verification is recorded below, separately from installed upgrad
 Interactive UAC cases are also deferred at the maintainer's request. These boundaries apply to
 this verification pass; existing historical failures remain recorded in their original documents.
 
+## One-hour stability gate, 26 October 2026
+
+Source work after 0.5.15, not published. The roadmap's ship gate is one hour of the focused
+workload and one hour of the menu-focused workload, each finishing with no crash and with
+memory that levels off. The gate measures growth between the 20–30 minute window and the
+final ten minutes: at most 128 median handles, 8 MiB of median private memory and 32 trackers.
+
+| Run | Cycles / searches / previews | Checks | Handle growth | Private-memory growth | Token handles |
+| --- | ---: | --- | ---: | ---: | ---: |
+| Alternate, old source (`stability-pss-hour-20261026`) | 3,032 / 9,096 / 6,064 | 200 + 2 restart, exits 0 | 227 — fail | 13.91 MiB — fail | 176 → 420 |
+| Files, current source (`stability-files-hour-2-20261026`) | 4,909 / 14,727 / 9,818 | 200 + 2 restart, exits 0 | 9 — pass | 1.33 MiB — pass | ≤ 1 |
+| Menu, current source (`stability-menu-hour-20261026`) | 4,751 / 14,253 / 9,502 | 200 + 2 restart, exits 0 | 43.5 — pass | 2.20 MiB — pass | 0 |
+
+The Menu run was suspended twice by Modern Standby on battery. The gate counts awake time;
+its handle growth is one step at the second resume. One earlier Files launch on the current
+source ended with a WinUI access violation before its workload, and it is listed as open. Details,
+the token attribution method and the fix are in
+[STABILITY.md](STABILITY.md#token-handle-cause-and-storage-free-thumbnails-26-october).
+
 ## Keyboard and endurance follow-up, 24 October 2026
 
 The follow-up published in 0.5.14 fixes F6 region selection for search, side-pane

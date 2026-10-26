@@ -1,12 +1,16 @@
+using System.Runtime.InteropServices.WindowsRuntime;
+using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
-using Windows.Storage;
-using Windows.Storage.FileProperties;
 
 namespace WinThunar.Services;
 
+/// <summary>
+/// Thumbnails and image previews without Windows.Storage's brokered <c>StorageFile</c> calls,
+/// which retained impersonation Token handles across long sessions.
+/// </summary>
 public sealed class ShellImageService
 {
-    public async Task<BitmapImage?> GetPreviewAsync(
+    public async Task<ImageSource?> GetPreviewAsync(
         string path,
         uint requestedSize,
         CancellationToken cancellationToken)
@@ -21,8 +25,9 @@ public sealed class ShellImageService
 
         try
         {
-            var file = await StorageFile.GetFileFromPathAsync(path);
-            using var stream = await file.OpenReadAsync();
+            await using var file = new FileStream(path, FileMode.Open, FileAccess.Read,
+                FileShare.ReadWrite | FileShare.Delete, 65536, FileOptions.Asynchronous);
+            using var stream = file.AsRandomAccessStream();
             cancellationToken.ThrowIfCancellationRequested();
 
             var image = new BitmapImage
@@ -49,7 +54,7 @@ public sealed class ShellImageService
         }
     }
 
-    public async Task<BitmapImage?> GetImageAsync(
+    public async Task<ImageSource?> GetImageAsync(
         string path,
         bool isDirectory,
         bool showContentThumbnails,
@@ -58,42 +63,12 @@ public sealed class ShellImageService
     {
         cancellationToken.ThrowIfCancellationRequested();
 
+        // Small list sizes show type icons; folders keep the shell's own folder image.
+        var iconOnly = !isDirectory && !(showContentThumbnails && requestedSize >= 48);
+        ShellBitmapPixels? pixels;
         try
         {
-            StorageItemThumbnail? thumbnail;
-            if (isDirectory)
-            {
-                var folder = await StorageFolder.GetFolderFromPathAsync(path);
-                thumbnail = await folder.GetThumbnailAsync(
-                    ThumbnailMode.SingleItem,
-                    requestedSize,
-                    ThumbnailOptions.UseCurrentScale);
-            }
-            else
-            {
-                var file = await StorageFile.GetFileFromPathAsync(path);
-                thumbnail = await file.GetThumbnailAsync(
-                    showContentThumbnails && requestedSize >= 48 ? ThumbnailMode.PicturesView : ThumbnailMode.ListView,
-                    requestedSize,
-                    ThumbnailOptions.UseCurrentScale);
-            }
-
-            using (thumbnail)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                if (thumbnail is null || thumbnail.Size == 0)
-                {
-                    return null;
-                }
-
-                var image = new BitmapImage
-                {
-                    DecodePixelWidth = (int)requestedSize
-                };
-                await image.SetSourceAsync(thumbnail);
-                cancellationToken.ThrowIfCancellationRequested();
-                return image;
-            }
+            pixels = await Task.Run(() => ShellThumbnailReader.Read(path, (int)requestedSize, iconOnly), cancellationToken);
         }
         catch (OperationCanceledException)
         {
@@ -104,6 +79,17 @@ public sealed class ShellImageService
             // Inaccessible and transient shell items retain the built-in fallback glyph.
             return null;
         }
+
+        cancellationToken.ThrowIfCancellationRequested();
+        if (pixels is null)
+        {
+            return null;
+        }
+
+        var image = new WriteableBitmap(pixels.Width, pixels.Height);
+        pixels.Bgra.CopyTo(image.PixelBuffer);
+        image.Invalidate();
+        return image;
     }
 
     private static bool IsCloudPlaceholder(string path)

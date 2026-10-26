@@ -23,7 +23,7 @@ public sealed partial class MainPage : Page
     private const string InternalDragFormat = "WinThunar.InternalPaths";
     private readonly FileOperationService _fileOperations = new();
     private readonly BulkRenameService _bulkRenameService = new();
-    private readonly ShellImageService _shellImageService = new();
+    private readonly FilePreviewLoader _filePreviewLoader = new();
     private readonly PluginService _pluginService = new();
     private readonly FileTransferQueue _transferQueue;
     private readonly FileOperationHistory _history = new();
@@ -3782,61 +3782,41 @@ public sealed partial class MainPage : Page
             return;
         }
 
-        var imageExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            ".avif", ".bmp", ".gif", ".heic", ".heif", ".ico", ".jpeg", ".jpg", ".png", ".tif", ".tiff", ".webp"
-        };
         try
         {
-            if (Path.GetExtension(entry.FullPath).Equals(".pdf", StringComparison.OrdinalIgnoreCase))
+            if (FilePreviewLoader.IsPdf(entry.FullPath)) PreviewStatus.Text = "Loading PDF page…";
+            switch (await _filePreviewLoader.LoadAsync(entry.FullPath, pdfPageIndex, cancellationToken))
             {
-                PreviewStatus.Text = "Loading PDF page…";
-                var page = await Task.Run(() => PdfFilePreview.ReadAsync(entry.FullPath, pdfPageIndex, cancellationToken), cancellationToken);
-                using var stream = new MemoryStream(page.Image).AsRandomAccessStream();
-                var bitmap = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage();
-                await bitmap.SetSourceAsync(stream);
-                cancellationToken.ThrowIfCancellationRequested();
-                PreviewImage.Source = bitmap;
-                PreviewImage.Visibility = Visibility.Visible;
-                Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(PreviewImage, "Selected PDF page preview");
-                _pdfPreviewEntry = entry;
-                _pdfPageIndex = page.PageIndex;
-                PdfPageNumber.Text = $"Page {page.PageIndex + 1} of {page.PageCount}";
-                PdfPreviousPage.IsEnabled = page.PageIndex > 0;
-                PdfNextPage.IsEnabled = page.PageIndex + 1 < page.PageCount;
-                PdfPageControls.Visibility = Visibility.Visible;
-                PreviewStatus.Text = "PDF preview";
-                return;
+                case PdfPagePreviewImage page:
+                    PreviewImage.Source = page.Image;
+                    PreviewImage.Visibility = Visibility.Visible;
+                    Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(PreviewImage, "Selected PDF page preview");
+                    _pdfPreviewEntry = entry;
+                    _pdfPageIndex = page.PageIndex;
+                    PdfPageNumber.Text = $"Page {page.PageIndex + 1} of {page.PageCount}";
+                    PdfPreviousPage.IsEnabled = page.PageIndex > 0;
+                    PdfNextPage.IsEnabled = page.PageIndex + 1 < page.PageCount;
+                    PdfPageControls.Visibility = Visibility.Visible;
+                    PreviewStatus.Text = "PDF preview";
+                    break;
+                case TextFilePreviewContent { Text: var text, IsDocx: var isDocx }:
+                    PreviewText.Text = text.Text;
+                    Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(PreviewText,
+                        isDocx ? "Selected DOCX body text preview" : "Selected text file preview");
+                    PreviewText.Visibility = Visibility.Visible;
+                    PreviewStatus.Text = isDocx
+                        ? (text.Truncated ? "DOCX body text • showing the first 32,768 characters." : "DOCX body text")
+                        : (text.Truncated ? "Showing the first 32,768 characters." : "Text preview");
+                    break;
+                case ImageFilePreview { Image: var image }:
+                    PreviewImage.Source = image;
+                    Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(PreviewImage, "Selected image preview");
+                    PreviewImage.Visibility = image is null ? Visibility.Collapsed : Visibility.Visible;
+                    break;
+                default:
+                    PreviewStatus.Text = "Preview is available for images, PDFs up to 64 MiB, DOCX body text up to 16 MiB, and supported text files stored on this device.";
+                    break;
             }
-            var isDocx = DocxFileContent.IsDocument(entry.FullPath);
-            var text = await Task.Run(() => isDocx ? DocxFileContent.ReadPreview(entry.FullPath, cancellationToken)
-                : TextFileContent.Supports(entry.FullPath, File.GetAttributes(entry.FullPath))
-                    ? TextFileContent.ReadPreview(entry.FullPath, cancellationToken) : null, cancellationToken);
-            cancellationToken.ThrowIfCancellationRequested();
-            if (text is not null)
-            {
-                PreviewText.Text = text.Text;
-                Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(PreviewText,
-                    isDocx ? "Selected DOCX body text preview" : "Selected text file preview");
-                PreviewText.Visibility = Visibility.Visible;
-                PreviewStatus.Text = isDocx
-                    ? (text.Truncated ? "DOCX body text • showing the first 32,768 characters." : "DOCX body text")
-                    : (text.Truncated ? "Showing the first 32,768 characters." : "Text preview");
-                return;
-            }
-            if (!imageExtensions.Contains(Path.GetExtension(entry.FullPath)))
-            {
-                PreviewStatus.Text = "Preview is available for images, PDFs up to 64 MiB, DOCX body text up to 16 MiB, and supported text files stored on this device.";
-                return;
-            }
-            var image = await _shellImageService.GetPreviewAsync(
-                entry.FullPath,
-                512,
-                cancellationToken);
-            cancellationToken.ThrowIfCancellationRequested();
-            PreviewImage.Source = image;
-            Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(PreviewImage, "Selected image preview");
-            PreviewImage.Visibility = image is null ? Visibility.Collapsed : Visibility.Visible;
         }
         catch (OperationCanceledException)
         {

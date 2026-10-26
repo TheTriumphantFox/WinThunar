@@ -39,7 +39,8 @@ Before a new release, select an unused three-part version and update all of thes
 4. The release example in `CONTRIBUTING.md`, the README's release-notes links, and the current
    release/status references in these docs.
 
-After the GitHub release is public, update the WinGet manifests in `packaging/winget/` and the
+After the GitHub release is public, update the WinGet manifests in `packaging/winget/` (keeping
+`ProductCode: MSI:WinThunar.App`) and the
 Scoop manifest in `bucket/winthunar.json` with the new version, URLs and SHA-256 digests; see
 [distribution channels](DISTRIBUTION.md).
 

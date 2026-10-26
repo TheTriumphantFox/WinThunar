@@ -7,7 +7,13 @@ param(
     [switch]$PackageExistingPublish,
 
     [Parameter()]
-    [switch]$SkipInstaller
+    [switch]$SkipInstaller,
+
+    # signtool.exe "sign" options, for example a certificate thumbprint or Azure Artifact
+    # Signing's /dlib and /dmd options, with /fd SHA256 and a /tr timestamp server.
+    # Velopack signs the binaries and Setup.exe; this script re-signs the MSI after editing it.
+    [Parameter()]
+    [string]$SignParams
 )
 
 $ErrorActionPreference = 'Stop'
@@ -41,6 +47,19 @@ if (-not $SkipInstaller) {
     }
     if (-not (Get-Command vpk -ErrorAction SilentlyContinue)) {
         throw 'The Velopack CLI (vpk) is not installed. Run: dotnet tool install -g vpk --version 1.2.161, or pass -SkipInstaller.'
+    }
+}
+
+$signTool = $null
+if ($SignParams) {
+    if ($SkipInstaller) {
+        throw 'Signing applies to the installer packages; -SignParams cannot be combined with -SkipInstaller.'
+    }
+    $signTool = Get-ChildItem -Path "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" -ErrorAction SilentlyContinue |
+        Sort-Object { [version]$_.Directory.Parent.Name } -Descending |
+        Select-Object -First 1 -ExpandProperty FullName
+    if (-not $signTool) {
+        throw 'signtool.exe was not found in the Windows SDK. Install the Windows SDK signing tools or omit -SignParams.'
     }
 }
 
@@ -123,6 +142,7 @@ Set-Content -LiteralPath $checksumPath -Value "$hash  $releaseName.zip" -Encodin
 
 $msiHash = $null
 if (-not $SkipInstaller) {
+    $signArguments = if ($SignParams) { @('--signParams', $SignParams) } else { @() }
     & vpk pack `
         --packId $installerPackId `
         --runtime win-x64 `
@@ -134,7 +154,8 @@ if (-not $SkipInstaller) {
         --packTitle 'WinThunar' `
         --packAuthors 'TheTriumphantFox' `
         --icon (Join-Path $projectRoot 'Assets\AppIcon.ico') `
-        --outputDir $installerReleasesDirectory
+        --outputDir $installerReleasesDirectory `
+        @signArguments
 
     if ($LASTEXITCODE -ne 0) {
         throw "vpk pack failed with exit code $LASTEXITCODE."
@@ -148,6 +169,17 @@ if (-not $SkipInstaller) {
     # Edited in place so the MSI that `vpk upload` publishes offers the same choices.
     & (Join-Path $PSScriptRoot 'Set-MsiShortcutChoices.ps1') -MsiPath $builtMsi
     & (Join-Path $PSScriptRoot 'Set-MsiMaintenancePolicy.ps1') -MsiPath $builtMsi
+    if ($signTool) {
+        # The edits above invalidate any signature applied during packing.
+        $signing = Start-Process -FilePath $signTool -ArgumentList "sign $SignParams `"$builtMsi`"" -NoNewWindow -Wait -PassThru
+        if ($signing.ExitCode -ne 0) {
+            throw "signtool could not sign $builtMsi (exit code $($signing.ExitCode))."
+        }
+        & $signTool verify /pa $builtMsi
+        if ($LASTEXITCODE -ne 0) {
+            throw "The signed MSI did not verify: $builtMsi"
+        }
+    }
     Copy-Item -LiteralPath $builtMsi -Destination $msiPath
     $msiHash = (Get-FileHash -LiteralPath $msiPath -Algorithm SHA256).Hash.ToLowerInvariant()
     Set-Content -LiteralPath $msiChecksumPath -Value "$msiHash  $releaseName.msi" -Encoding ascii
@@ -160,5 +192,6 @@ if (-not $SkipInstaller) {
     Sha256 = $hash
     Installer = if ($SkipInstaller) { $null } else { $msiPath }
     InstallerSha256 = $msiHash
+    Signed = [bool]$signTool
     PluginCount = $pluginCount
 }

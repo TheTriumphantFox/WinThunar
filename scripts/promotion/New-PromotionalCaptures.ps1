@@ -1,13 +1,16 @@
 param(
     [string]$RepositoryRoot = (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent),
-    [string]$SourceRef = 'v0.5.0',
-    [string]$OutputDirectory
+    [string]$SourceRef = 'v0.5.15',
+    [string]$OutputDirectory,
+    # The location bar shows this path, so keep it outside the capturing account's profile.
+    [string]$FixtureDirectory = 'C:\Users\Public\Documents\WinThunar Demo'
 )
 $ErrorActionPreference = 'Stop'
 $runRoot = Join-Path $env:TEMP ('WinThunarPromo-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
 $source = Join-Path $runRoot 'source'
 $publish = Join-Path $runRoot 'app'
-$fixture = Join-Path $runRoot 'Demo'
+$fixture = [IO.Path]::GetFullPath($FixtureDirectory)
+if (Test-Path -LiteralPath $fixture) { throw "Choose a new fixture directory: $fixture" }
 if (-not $OutputDirectory) { $OutputDirectory = Join-Path $runRoot 'captures' }
 $OutputDirectory = [IO.Path]::GetFullPath($OutputDirectory)
 if (Test-Path -LiteralPath $OutputDirectory) { throw "Choose a new capture output directory: $OutputDirectory" }
@@ -58,9 +61,11 @@ foreach ($file in Get-ChildItem -LiteralPath $fixture -Recurse) { $file.LastWrit
 if ($LASTEXITCODE -ne 0) { throw "Promotional capture build failed. Scratch folder: $runRoot" }
 $priorOutput = $env:WINTHUNAR_PROMO_OUTPUT
 $priorFixture = $env:WINTHUNAR_PROMO_FIXTURE
+$priorSource = $env:WINTHUNAR_PROMO_SOURCE
 try {
     $env:WINTHUNAR_PROMO_OUTPUT = $OutputDirectory
     $env:WINTHUNAR_PROMO_FIXTURE = $fixture
+    $env:WINTHUNAR_PROMO_SOURCE = $SourceRef
     $captureProcess = Start-Process -FilePath (Join-Path $publish 'WinThunar.exe') -WindowStyle Hidden -PassThru
     if (-not $captureProcess.WaitForExit(60000)) {
         Stop-Process -Id $captureProcess.Id -ErrorAction SilentlyContinue
@@ -76,4 +81,7 @@ try {
 finally {
     if ($null -eq $priorOutput) { Remove-Item Env:WINTHUNAR_PROMO_OUTPUT -ErrorAction SilentlyContinue } else { $env:WINTHUNAR_PROMO_OUTPUT = $priorOutput }
     if ($null -eq $priorFixture) { Remove-Item Env:WINTHUNAR_PROMO_FIXTURE -ErrorAction SilentlyContinue } else { $env:WINTHUNAR_PROMO_FIXTURE = $priorFixture }
+    if ($null -eq $priorSource) { Remove-Item Env:WINTHUNAR_PROMO_SOURCE -ErrorAction SilentlyContinue } else { $env:WINTHUNAR_PROMO_SOURCE = $priorSource }
+    # The fixture holds only the synthetic files created above.
+    Remove-Item -LiteralPath $fixture -Recurse -Force -ErrorAction SilentlyContinue
 }

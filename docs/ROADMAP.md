@@ -216,9 +216,16 @@ P0 remains open. See the [stability status and evidence](STABILITY.md).
 ### P0 — Real users
 
 - [ ] Pause releases until the first outside feedback arrives, apart from stability fixes.
-- [ ] Re-announce the current release with current screenshots, and update the stale release
-  references in [PROMOTION.md](PROMOTION.md) and [LAUNCH.md](LAUNCH.md).
+- [x] Recapture the screenshots and demo from the current release, rewrite the README for
+  first-time visitors, and update the stale release references in [PROMOTION.md](PROMOTION.md)
+  and [LAUNCH.md](LAUNCH.md) (26 October 2026).
+- [ ] Post the prepared [0.5.15 follow-up](PROMOTION.md#follow-up-post-for-0515) and
+  [Linux and Xfce](PROMOTION.md#linux-and-xfce-communities) introductions.
 - [ ] Follow up on the pending AlternativeTo review.
+- [ ] Submit the prepared WinGet manifest and test the Scoop bucket; see
+  [distribution channels](DISTRIBUTION.md).
+- [ ] Sign releases, so downloads stop showing SmartScreen's unknown-publisher warning.
+- [ ] Hold Show HN, press pitches and download-site submissions until the stability P0 passes.
 - [ ] Ask five people directly to use WinThunar as their file manager for a day, and collect
   their reports through the tester-feedback form. Those reports set the P1 order.
 

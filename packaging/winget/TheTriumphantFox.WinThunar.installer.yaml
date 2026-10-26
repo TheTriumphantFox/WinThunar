@@ -1,0 +1,27 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.28.0.schema.json
+
+PackageIdentifier: TheTriumphantFox.WinThunar
+PackageVersion: 0.5.15
+MinimumOSVersion: 10.0.22000.0
+InstallerType: msi
+# The MSI's quiet default is a per-user install (ALLUSERS=2, MSIINSTALLPERUSER=1).
+Scope: user
+InstallModes:
+- interactive
+- silent
+- silentWithProgress
+UpgradeBehavior: install
+ReleaseDate: 2026-10-24
+# The MSI registration is hidden (ARPSYSTEMCOMPONENT=1). Velopack's visible entry
+# carries the display version and is updated in place by the app's own updater.
+AppsAndFeaturesEntries:
+- DisplayName: WinThunar
+  Publisher: TheTriumphantFox
+  UpgradeCode: '{31804CE9-95B4-5685-89F0-20B2157CAD52}'
+Installers:
+- Architecture: x64
+  InstallerUrl: https://github.com/TheTriumphantFox/WinThunar/releases/download/v0.5.15/WinThunar.App-win.msi
+  InstallerSha256: 801EDB124CC00B9F849DF82648D1C4DF1188F2E7217E1E7E45C20228DB9D3F12
+  ProductCode: '{F919B290-68C8-4C5A-B6B5-8CFD6E3299CA}'
+ManifestType: installer
+ManifestVersion: 1.28.0

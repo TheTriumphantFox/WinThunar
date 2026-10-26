@@ -11,7 +11,7 @@ using WinThunar.Services;
 
 namespace WinThunar;
 
-// Added only to an isolated copy of the v0.5.0 source for promotional captures.
+// Added only to an isolated copy of a release source (0.5.6 or later) for promotional captures.
 public sealed partial class MainPage
 {
     private async Task CapturePromoAsync()
@@ -20,6 +20,7 @@ public sealed partial class MainPage
         _sessionReady = false;
         var output = Environment.GetEnvironmentVariable("WINTHUNAR_PROMO_OUTPUT")!;
         var fixture = Environment.GetEnvironmentVariable("WINTHUNAR_PROMO_FIXTURE")!;
+        var sourceRef = Environment.GetEnvironmentVariable("WINTHUNAR_PROMO_SOURCE")!;
         var incoming = Path.Combine(fixture, "Incoming");
         var organized = Path.Combine(fixture, "Organized");
         var checks = new List<string>();
@@ -27,6 +28,9 @@ public sealed partial class MainPage
         try
         {
             App.Window.AppWindow.Resize(new Windows.Graphics.SizeInt32(1400, 900));
+            // Match the light media palette whatever the capturing machine's Windows theme is.
+            // The preference is saved to the redirected, disposable profile.
+            App.SetThemePreference(AppThemePreference.Light);
             await ViewModel.InitializeAsync(incoming);
             ViewModel.ViewMode = BrowserViewMode.Details;
             ViewModel.SetColumnWidths(80, 120, 145);
@@ -81,14 +85,16 @@ public sealed partial class MainPage
 
             _showTerminalPanel = true;
             ApplyTerminalPanel();
+            TerminalCommand.Text = @"Get-ChildItem ..\Organized -Name";
+            await RunTerminalCommandAsync();
             await SettlePromoAsync();
             await CapturePromoImageAsync(output, "07-powershell-panel", this);
-            checks.Add("Tabs, split panes, and the PowerShell panel rendered from v0.5.0 source.");
+            checks.Add($"Tabs, split panes, and the PowerShell panel rendered from {sourceRef} source.");
         }
         catch (Exception ex) { failure = ex.ToString(); }
         finally
         {
-            File.WriteAllText(Path.Combine(output, "capture-result.json"), JsonSerializer.Serialize(new { source = "v0.5.0", checks, failure }, new JsonSerializerOptions { WriteIndented = true }));
+            File.WriteAllText(Path.Combine(output, "capture-result.json"), JsonSerializer.Serialize(new { source = sourceRef, checks, failure }, new JsonSerializerOptions { WriteIndented = true }));
             App.Window.Close();
         }
     }

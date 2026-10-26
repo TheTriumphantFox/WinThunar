@@ -1,9 +1,9 @@
 {
-  "source": "v0.5.0",
+  "source": "v0.5.15",
   "checks": [
     "Actual bulk-rename dialog previewed and renamed three synthetic files.",
     "Released transfer command moved all three renamed files into Organized.",
-    "Tabs, split panes, and the PowerShell panel rendered from v0.5.0 source."
+    "Tabs, split panes, and the PowerShell panel rendered from v0.5.15 source."
   ],
   "failure": null
 }

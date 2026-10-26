@@ -5,6 +5,7 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Navigation;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Text.RegularExpressions;
@@ -77,6 +78,8 @@ public sealed partial class MainPage : Page
     private bool _updateBarDismissed;
     private bool _updateCheckRequested;
     private bool _disposed;
+    private readonly ConditionalWeakTable<SelectorItem, FileContainerNameTracker> _containerNames = new();
+    private readonly List<WeakReference<FileContainerNameTracker>> _containerNameTrackers = [];
 
     public MainPageViewModel ViewModel { get; } = new();
     public MainPageViewModel SplitViewModel { get; } = new();
@@ -252,6 +255,10 @@ public sealed partial class MainPage : Page
         }
 
         _disposed = true;
+        foreach (var reference in _containerNameTrackers)
+            if (reference.TryGetTarget(out var tracker)) tracker.Dispose();
+        _containerNameTrackers.Clear();
+        _containerNames.Clear();
         _searchInputDelay?.Cancel();
         _searchInputDelay?.Dispose();
         _searchInputDelay = null;
@@ -3285,23 +3292,21 @@ public sealed partial class MainPage : Page
 
     private void FileContainer_Changing(ListViewBase sender, ContainerContentChangingEventArgs args)
     {
-        // Follow Content on the container rather than capturing each successive entry.
-        // The same binding survives recycling, clears when Content is null, and still
-        // observes AutomationName changes (including asynchronous Git status).
-        if (!args.InRecycleQueue && args.Item is FileSystemEntry &&
-            args.ItemContainer.GetBindingExpression(Microsoft.UI.Xaml.Automation.AutomationProperties.NameProperty) is null)
-            args.ItemContainer.SetBinding(Microsoft.UI.Xaml.Automation.AutomationProperties.NameProperty,
-                new Microsoft.UI.Xaml.Data.Binding
-                {
-                    RelativeSource = new Microsoft.UI.Xaml.Data.RelativeSource
-                    {
-                        Mode = Microsoft.UI.Xaml.Data.RelativeSourceMode.Self
-                    },
-                    Path = new PropertyPath($"Content.{nameof(FileSystemEntry.AutomationName)}"),
-                    FallbackValue = string.Empty,
-                    TargetNullValue = string.Empty,
-                    Mode = Microsoft.UI.Xaml.Data.BindingMode.OneWay
-                });
+        var container = args.ItemContainer;
+        // Native containers can outlive their managed RCW. Tag gives the tracker the
+        // native lifetime; a weak-key-only table would register it again after each RCW GC.
+        var tracker = container.Tag as FileContainerNameTracker ?? _containerNames.GetValue(container, item =>
+        {
+            var created = new FileContainerNameTracker(item);
+            _containerNameTrackers.Add(new(created));
+            if (_containerNameTrackers.Count > 256 && _containerNameTrackers.Count % 64 == 0)
+                _containerNameTrackers.RemoveAll(reference => !reference.TryGetTarget(out _));
+            return created;
+        });
+        // Keep the entire update path typed. A reflection binding reconnects to every
+        // recycled entry inside XAML layout, even if its initial installation was deferred.
+        tracker.SetEntry(args.InRecycleQueue ? null : args.Item as FileSystemEntry);
+        tracker.EnsureContentTracking();
     }
 
     private void FilePane_GotFocus(object sender, RoutedEventArgs e) => SetActivePaneForList(sender);

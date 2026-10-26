@@ -189,6 +189,22 @@ and [accessibility status](ACCESSIBILITY.md) for package behavior and remaining 
 
 ## Remaining gaps
 
+Priority 1 is under active [stability investigation](STABILITY.md): a .NET 10.0.11
+diagnostic COM-wrapper leak is confirmed in the heap and a Release-only source workaround
+is verified with a balanced-call probe and five-minute UI/heap checks. A full dump identifies
+the native crash's lock-wait/reentrant-dispatch mechanism; deferred container bindings and
+compiled file templates pass 185 desktop checks and two restart checks. The day-long request
+terminates natively after about 21 hours with growing native memory/handles; it does not pass.
+Typed name tracking with native-container ownership passes 199 desktop checks and two restart
+checks; its five-minute post-work heap retains 170 trackers instead of the rejected first
+candidate's 38,414. Its one-hour run passes 200 desktop checks and two restart checks with
+clean exits, but fails the resource gate with 281 additional median handles and about 12 MiB
+of median private-memory growth. The post-work heap still has 170 trackers; the conditional
+day-long retest is not started. The next
+test harness excludes sleep from active duration and verifies compiled source checksums;
+its short full regression passes 200 desktop checks and two restart checks. These changes
+are not yet published, and priority 1 remains open.
+
 The [23 October priority verification](PRIORITY-VERIFICATION.md) records the current public
 per-user installer lifecycle, real recovery replay, generated PDF index matches, native
 unsupported-link refusal tests and sustained desktop diagnostics. Physical hardware/network

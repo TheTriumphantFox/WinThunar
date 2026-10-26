@@ -41,6 +41,13 @@
     <Compile Remove="tests\**\*.cs" />
   </ItemGroup>
 
+  <!-- .NET 10.0.11 retains duplicate diagnostic CCW records on every native crossing
+       (dotnet/runtime#129191). Keep managed debugging in Debug builds; disable its
+       registry in Release until the deduplication fix ships in our bundled runtime. -->
+  <ItemGroup Condition="'$(Configuration)' == 'Release'">
+    <RuntimeHostConfigurationOption Include="System.Diagnostics.Debugger.IsSupported" Value="false" />
+  </ItemGroup>
+
   <PropertyGroup Condition="'$(RoadmapSmokeTest)' == 'true'">
     <DefineConstants>$(DefineConstants);ROADMAP_SMOKE_TEST</DefineConstants>
   </PropertyGroup>

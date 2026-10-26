@@ -48,6 +48,14 @@ public sealed partial class MainPage
                 await FinishSmokePreferencesAsync(preferences, apply: false);
                 return;
             }
+            if (Environment.GetEnvironmentVariable("WINTHUNAR_SMOKE_ENDURANCE_ONLY") == "1")
+            {
+                // A matching, minimal workload for debugger-assisted native reproductions.
+                // Ordinary smoke runs still execute the complete regression suite below.
+                await Task.Delay(400);
+                await RunOptionalEnduranceAsync(directory, checks);
+                return;
+            }
             var fixture = Directory.CreateDirectory(Path.Combine(directory, "files")).FullName;
             File.WriteAllText(Path.Combine(fixture, "example.txt"), "Desktop smoke fixture");
             await ViewModel.NavigateAsync(fixture);

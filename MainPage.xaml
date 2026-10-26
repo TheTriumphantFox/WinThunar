@@ -556,10 +556,10 @@
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
                                     <Grid Width="20" Height="22" VerticalAlignment="Center">
-                                        <Image Source="{Binding Thumbnail}" Visibility="{Binding ThumbnailVisibility}" Stretch="Uniform" />
-                                        <FontIcon Glyph="{x:Bind Glyph}" Visibility="{Binding GlyphVisibility}" FontSize="16" />
-                                        <Border Background="{ThemeResource SystemControlBackgroundAltHighBrush}" CornerRadius="3" HorizontalAlignment="Right" VerticalAlignment="Bottom" MinWidth="12" Padding="1,0" Visibility="{Binding GitVisibility}" ToolTipService.ToolTip="{Binding GitDescription}">
-                                            <TextBlock Text="{Binding GitBadge}" FontSize="10" FontWeight="Bold" HorizontalAlignment="Center" Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}" />
+                                        <Image Source="{x:Bind Thumbnail, Mode=OneWay}" Visibility="{x:Bind ThumbnailVisibility, Mode=OneWay}" Stretch="Uniform" />
+                                        <FontIcon Glyph="{x:Bind Glyph}" Visibility="{x:Bind GlyphVisibility, Mode=OneWay}" FontSize="16" />
+                                        <Border Background="{ThemeResource SystemControlBackgroundAltHighBrush}" CornerRadius="3" HorizontalAlignment="Right" VerticalAlignment="Bottom" MinWidth="12" Padding="1,0" Visibility="{x:Bind GitVisibility, Mode=OneWay}" ToolTipService.ToolTip="{x:Bind GitDescription, Mode=OneWay}">
+                                            <TextBlock Text="{x:Bind GitBadge, Mode=OneWay}" FontSize="10" FontWeight="Bold" HorizontalAlignment="Center" Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}" />
                                         </Border>
                                     </Grid>
                                     <TextBlock Grid.Column="1" Text="{x:Bind Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
@@ -604,12 +604,12 @@
                             <Grid Width="{x:Bind IconItemWidth, Mode=OneWay}" Height="{x:Bind IconItemHeight, Mode=OneWay}" ToolTipService.ToolTip="{x:Bind FullPath}">
                                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="5">
                                     <Grid Width="{x:Bind IconImageSize, Mode=OneWay}" Height="{x:Bind IconImageSize, Mode=OneWay}" HorizontalAlignment="Center">
-                                        <Image Source="{Binding Thumbnail}" Visibility="{Binding ThumbnailVisibility}" Stretch="Uniform" />
-                                        <FontIcon Glyph="{x:Bind Glyph}" Visibility="{Binding GlyphVisibility}" FontSize="36" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        <Image Source="{x:Bind Thumbnail, Mode=OneWay}" Visibility="{x:Bind ThumbnailVisibility, Mode=OneWay}" Stretch="Uniform" />
+                                        <FontIcon Glyph="{x:Bind Glyph}" Visibility="{x:Bind GlyphVisibility, Mode=OneWay}" FontSize="36" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                         <Border Background="{ThemeResource SystemControlBackgroundAltHighBrush}" CornerRadius="3"
                                             HorizontalAlignment="Right" VerticalAlignment="Bottom" MinWidth="12" Padding="1,0"
-                                            Visibility="{Binding GitVisibility}" ToolTipService.ToolTip="{Binding GitDescription}">
-                                            <TextBlock Text="{Binding GitBadge}" FontSize="10" FontWeight="Bold" HorizontalAlignment="Center"
+                                            Visibility="{x:Bind GitVisibility, Mode=OneWay}" ToolTipService.ToolTip="{x:Bind GitDescription, Mode=OneWay}">
+                                            <TextBlock Text="{x:Bind GitBadge, Mode=OneWay}" FontSize="10" FontWeight="Bold" HorizontalAlignment="Center"
                                                 Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}" />
                                         </Border>
                                     </Grid>
@@ -660,12 +660,12 @@
                             <Grid Width="232" Height="36" ToolTipService.ToolTip="{x:Bind FullPath}">
                                 <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                                     <Grid Width="20" Height="24" VerticalAlignment="Center">
-                                        <Image Source="{Binding Thumbnail}" Visibility="{Binding ThumbnailVisibility}" Stretch="Uniform" />
-                                        <FontIcon Glyph="{x:Bind Glyph}" Visibility="{Binding GlyphVisibility}" FontSize="16" />
+                                        <Image Source="{x:Bind Thumbnail, Mode=OneWay}" Visibility="{x:Bind ThumbnailVisibility, Mode=OneWay}" Stretch="Uniform" />
+                                        <FontIcon Glyph="{x:Bind Glyph}" Visibility="{x:Bind GlyphVisibility, Mode=OneWay}" FontSize="16" />
                                         <Border Background="{ThemeResource SystemControlBackgroundAltHighBrush}" CornerRadius="3"
                                             HorizontalAlignment="Right" VerticalAlignment="Bottom" MinWidth="12" Padding="1,0"
-                                            Visibility="{Binding GitVisibility}" ToolTipService.ToolTip="{Binding GitDescription}">
-                                            <TextBlock Text="{Binding GitBadge}" FontSize="10" FontWeight="Bold" HorizontalAlignment="Center"
+                                            Visibility="{x:Bind GitVisibility, Mode=OneWay}" ToolTipService.ToolTip="{x:Bind GitDescription, Mode=OneWay}">
+                                            <TextBlock Text="{x:Bind GitBadge, Mode=OneWay}" FontSize="10" FontWeight="Bold" HorizontalAlignment="Center"
                                                 Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}" />
                                         </Border>
                                     </Grid>
@@ -785,12 +785,12 @@
                                                 <ColumnDefinition Width="*" />
                                             </Grid.ColumnDefinitions>
                                             <Grid Width="20" Height="22" VerticalAlignment="Center">
-                                                <Image Source="{Binding Thumbnail}" Visibility="{Binding ThumbnailVisibility}" Stretch="Uniform" />
-                                                <FontIcon Glyph="{x:Bind Glyph}" Visibility="{Binding GlyphVisibility}" FontSize="16" />
+                                                <Image Source="{x:Bind Thumbnail, Mode=OneWay}" Visibility="{x:Bind ThumbnailVisibility, Mode=OneWay}" Stretch="Uniform" />
+                                                <FontIcon Glyph="{x:Bind Glyph}" Visibility="{x:Bind GlyphVisibility, Mode=OneWay}" FontSize="16" />
                                         <Border Background="{ThemeResource SystemControlBackgroundAltHighBrush}" CornerRadius="3"
                                             HorizontalAlignment="Right" VerticalAlignment="Bottom" MinWidth="12" Padding="1,0"
-                                            Visibility="{Binding GitVisibility}" ToolTipService.ToolTip="{Binding GitDescription}">
-                                            <TextBlock Text="{Binding GitBadge}" FontSize="10" FontWeight="Bold" HorizontalAlignment="Center"
+                                            Visibility="{x:Bind GitVisibility, Mode=OneWay}" ToolTipService.ToolTip="{x:Bind GitDescription, Mode=OneWay}">
+                                            <TextBlock Text="{x:Bind GitBadge, Mode=OneWay}" FontSize="10" FontWeight="Bold" HorizontalAlignment="Center"
                                                 Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}" />
                                         </Border>
                                             </Grid>

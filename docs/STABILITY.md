@@ -373,6 +373,42 @@ normal build; it is not added to application packaging. Evidence:
 `artifacts/stability-normal-typed-names-20261026/verification.json`,
 `compiled-source-verification.json` and `runtime-probe-result.json`.
 
+### Handle-type follow-up, 26 October
+
+The failed hour is followed by a separate **300.233-active-second** Alternate diagnostic,
+with **292 cycles, 876 searches and 584 previews**, **200 desktop checks and two restart
+checks**. Both processes exit zero without timing out. All recorded source hashes and the
+compiled C# checksums match. This is an instrumented five-minute diagnostic, not another
+one-hour gate or a day-long pass.
+
+The reader uses the documented Windows
+[Process Snapshotting handle API](https://learn.microsoft.com/windows/win32/api/processsnapshot/ns-processsnapshot-pss_handle_entry),
+without a debugger, VA clone, thread capture or forced collection during work. It validates
+all 32 known Event handle values/types in its own process before application use. Unnamed
+types remain explicit. Thirteen snapshots take 6–18 ms each and preserve type counts and
+handle values, without object names. During the populated workload, Event counts range from
+2,472 to 2,501 and Token counts from 15 to 136. After cleanup, Token counts fall to 38; the
+last held snapshot has 2,435 Events and 3,477 total handles, including 309 unnamed handles.
+This narrows the categories to measure but does not establish a monotonic Token leak or
+identify the allocating component. Reused handle values alone do not establish object identity.
+
+The passive helper captures a **371,926,123-byte** full dump only during the post-work hold.
+Its offline heap has **170 trackers, 170 native content-change delegates and 211 file entries**,
+with no diagnostic-wrapper lists. Observer process exit-code fields are again null; the two
+runner-owned process reports, successful terminal message and result reports establish the
+clean desktop/restart outcomes. The initial follow-up launch fails before building or starting
+the app because an inherited PowerShell module path hides `Get-FileHash`; a fresh-directory
+retry with native Windows PowerShell modules produces the verified result above.
+
+Evidence: `artifacts/stability-pss-handles-final-20261026/diagnostic-verification.json`,
+both process reports, source records, `post-work-capture-outcome.json` and the full heap;
+the adjacent `-observer/` directory holds all typed snapshots. The reader, observer script,
+known-handle self-test and initial failed-launch logs are retained in
+`artifacts/stability-native-handle-observer-20261026/`. The next targeted step is an hour of
+typed snapshots aligned with the settled resource windows, followed by held-cleanup counts;
+allocation tracing is needed before assigning a growing category to application or runtime
+code. The failed resource gate continues to block the conditional day-long retest.
+
 Before closing this priority:
 
 - Preserve the verified native regression and check final build/source identity.

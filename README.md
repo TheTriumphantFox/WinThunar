@@ -2,275 +2,88 @@
 
 **A classic file manager experience for Windows 11.**
 
-WinThunar is a free, open-source Windows file manager inspired by Thunar. Browse with tabs
-and split panes, preview bulk renames, and keep a PowerShell command panel beside your files.
-It is an independent, clean-room implementation built with C#, .NET 10, and WinUI 3,
-released under the MIT License. It is not an official Thunar or Xfce project and contains
-no code copied from Thunar.
+WinThunar is a free, open-source file manager for Windows 11 inspired by Thunar, the Xfce
+file manager. It gives you a menu bar, a location bar and a side pane, plus tabs, split panes,
+a bulk rename with a preview, and a PowerShell panel that follows the folder you are in.
 
 **[Download for Windows 11 (MSI)](https://github.com/TheTriumphantFox/WinThunar/releases/latest/download/WinThunar.App-win.msi)**
 &nbsp;|&nbsp; [Portable ZIP](https://github.com/TheTriumphantFox/WinThunar/releases/latest/download/WinThunar.App-win-Portable.zip)
 &nbsp;|&nbsp; [Release notes and all downloads](https://github.com/TheTriumphantFox/WinThunar/releases/latest)
 
-Windows 11, x64. No separate .NET installation required. Installed copies support automatic
-updates; portable copies are updated manually.
+Windows 11, x64. No separate .NET installation required. Installed copies update themselves;
+portable copies are updated manually.
 
 [![WinThunar showing tabs and two file panes with sample documents](docs/media/winthunar-split-panes.png)](docs/media/winthunar-demo.mp4)
 
-### Why try WinThunar?
-
-- **Keep folders in view.** Tabs and split panes give each folder its own navigation history.
-- **Organize names before moving files.** Bulk rename shows a preview before you apply changes.
-- **Use a familiar layout.** Classic menus, a location bar, bookmarks, and a PowerShell panel
-  keep common tools close to your files.
-
 **[Watch the 25-second demo (MP4)](docs/media/winthunar-demo.mp4)**
 or [open the animated walkthrough (GIF)](docs/media/winthunar-demo.gif).
-The demo uses sample files and the released 0.5.0 interface.
 
-<details>
-<summary>Play the animated walkthrough here</summary>
+## What it adds to File Explorer
 
-![WinThunar walkthrough: tabs, split panes, a bulk-rename preview, and moving the renamed files](docs/media/winthunar-demo.gif)
+- **Two folders side by side.** Press `F3` to split the window. Each pane keeps its own
+  path, history and selection, and drag-and-drop moves or copies between them.
+- **See a rename before it happens.** Select several files and press `F2` to preview every new
+  name before anything changes. A bulk rename undoes as one step.
+- **A shell where your files are.** `F4` opens a PowerShell panel beside the file list that
+  follows the active folder.
+- **Search that understands what you want.** `Ctrl+F` combines names, types, dates, sizes and
+  file contents, for example `name:"annual report" type:pdf modified:last7days size:>1MB`.
+- **Undo for file operations.** Create, rename, copy, move, replace and merge can be undone,
+  up to ten actions per window.
+- **Classic menus and keyboard-first navigation.** A real menu bar, a pathbar or editable
+  location bar, bookmarks, a tree side pane, and `F6` to move between areas of the window.
 
-</details>
+It also has tabs (`Ctrl+T`), detail, icon and compact views (`Ctrl+1`–`Ctrl+3`), thumbnails
+and an image/text/PDF preview pane, Git status badges, the full Windows context menu, archive
+create and extract, Recycle Bin browsing, network shares, light and dark themes, and plugins
+for custom actions. See the [full feature list](docs/FEATURES.md).
 
-### Help improve it
+### Coming from Linux?
 
-Try a few sample folders and tell us what makes everyday file management easier or harder.
-[Share first-tester feedback](https://github.com/TheTriumphantFox/WinThunar/issues/new?template=tester-feedback.yml),
-or [report a bug or request a feature](https://github.com/TheTriumphantFox/WinThunar/issues).
-Useful reports include the WinThunar version, steps to reproduce, and what you expected.
-Please remove personal paths and filenames from screenshots and logs before sharing them.
-
-WinThunar is under active development. Transfer Undo includes Replace and directory Merge in 0.5.3,
-while operations handed to Windows are outside its Undo history. History is window-local and is
-not crash-atomic across multiple items. See the installation and Windows
-integration notes below before choosing it as your default file manager.
-
-## What's new
-
-### Published in 0.5.15
-
-File rows reuse their accessible-name bindings across browsing and search, preserving current
-names, metadata and Git status when containers are recycled. The source passes a focused
-fifteen-minute workload with 3,558 searches and 2,372 previews; retained memory and the earlier
-native-crash root cause remain under investigation. See the [0.5.15 release notes](docs/RELEASE-0.5.15.md).
-The public packages, source tag and GitHub update feed are verified.
-
-### Published in 0.5.14
-
-F6 and Shift+F6 now reach the visible search/location controls, side-pane children, split
-navigation, previews and command output. Closing focused auxiliary panes restores file-list
-focus, and split/command buttons have explicit accessible names. An old folder's watcher can
-no longer cancel a busy navigation to a new folder. See the [0.5.14 release notes](docs/RELEASE-0.5.14.md)
-for verified packages and the remaining endurance limits.
-
-### Published in 0.5.13
-
-This maintenance release records a passing installed two-window Restart Now test from public
-0.5.11 to public 0.5.12, adds a reusable guest-test helper, and updates Help > What's New.
-DOCX text preview/search and thumbnail improvements from 0.5.12 are retained.
-See the [0.5.13 release notes](docs/RELEASE-0.5.13.md) for scope and publication status.
-
-### Published in 0.5.12
-
-DOCX files gain a read-only body-text preview and direct `content:` search without an Office
-installation or Windows indexing filter. For example, `type:docx content:"annual report"` reads
-the current document body. See [DOCX support and limits](docs/DOCUMENT-TEXT.md).
-Thumbnail loading also uses bounded workers and reuses unchanged images for equivalent
-layout/zoom requests; see the [resource verification](docs/PRIORITY-VERIFICATION.md#thumbnail-resource-follow-up).
-These additions are included in the published 0.5.12 downloads.
-See the [0.5.12 release notes](docs/RELEASE-0.5.12.md) for verification and publication status.
-
-### Published in 0.5.11
-
-**Keep your tabs when you restart to update.** After opening and closing another WinThunar
-window, **Restart Now** restores the tabs, active folder and view from the window where you
-clicked the button when tab restoration is enabled. Restart still waits for file transfers and
-Undo/Redo operations in every window. The fix is included in the published 0.5.11 downloads.
-
-Use the new **Help > What's New...** section to read the update summary inside the app.
-See the [0.5.11 release notes](docs/RELEASE-0.5.11.md) for changes and release status.
-See the [verification report](docs/PRIORITY-VERIFICATION.md#installed-delta-and-restart-now-session-fix)
-for the reproduced issue, passing regression and remaining checks.
-
-### Published in 0.5.10
-
-**Safer migration from an older per-user MSI.** The installer requires administrator elevation
-in the same Windows account before removing the old product, protecting the tested recovery
-path if installation fails. Automatic app updates do not replace Windows' cached repair/uninstall
-installer; use the latest MSI to get these safeguards. See the
-[0.5.10 release notes](docs/RELEASE-0.5.10.md) for details.
-
-## Release and source status
-
-The latest published application release is **[0.5.15](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.15)**
-(24 October 2026), from source `5e01f89` (PR #37). Its changes are merged into `main`, and the
-GitHub updater feed offers 0.5.15 to installed copies. Use **Help > Check for Updates...** to
-check immediately; portable copies are updated manually. Documentation-only updates do not update the app.
-See the [0.5.15 release notes](docs/RELEASE-0.5.15.md) for verified packages and remaining limits.
-The version string alone does not establish that a local build matches published binaries.
-
-Release **[0.5.10](docs/RELEASE-0.5.10.md)** provides a guarded legacy-MSI migration
-path: the installer requires actual administrator elevation in the same Windows account
-before old-product removal. Unelevated refusal and elevated early/late rollback, migration,
-both repair modes and uninstall pass in the disposable guest. All five public binary digests,
-the source tag/feed and all 528 reconstructed delta entries match the verified release build.
-Application updates do not replace an older cached MSI; use the corrected installer for this policy.
-
-Release **[0.5.9](docs/RELEASE-0.5.9.md)** adds
-automatic state protection during per-user legacy-MSI migration and an interrupted-migration
-startup guard. All-users legacy migration is refused before removal; see the
-[migration scope and recovery instructions](docs/MSI-MIGRATION.md).
-The release retains a known forced-rollback MSI registration failure: normal migration
-preserves state, but full installer failure recovery is not verified. Read the migration
-findings before legacy-MSI maintenance and keep an external state backup.
-
-Release **0.5.8** adds safer MSI repair and uninstall retention for newly built
-installers. It does not replace an older MSI already cached on an installed machine; see the
-[0.5.8 release notes](docs/RELEASE-0.5.8.md) for the migration and verification limits.
-Direct MSI migration from an original 0.5.5 installation updated to 0.5.7 deleted seeded
-settings, plugins and recovery data despite installing 0.5.8 successfully. Preserve the complete
-user-state directory before older-MSI maintenance; see the [migration findings](docs/MSI-MIGRATION.md).
-
-Release **0.5.7** fixes lost tabs after closing multiple windows by saving the closing window's
-own session before an update applies. It passed 171 service tests (one skipped), 67 desktop checks,
-two restart checks, and four isolated updater scenarios. Installations made with its older MSI
-retain mixed-payload repair and settings-removal risks; read the
-[installer findings](docs/RELEASE-0.5.7.md#verification-and-limits) before repair or uninstall.
-
-Release **0.5.6** adds **System / Light / Dark** under **Edit > Preferences > Display > Theme**.
-Apply updates all windows, native title bars, and WinThunar dialogs. The choice survives restart;
-Cancel preserves it, and separate appearance settings prevent another window from overwriting it.
-
-Release **0.5.5** adds updater error handling, an Interrupted Transfers
-review/retry view, conservative recovery for unavailable storage, text-content search, This PC
-filesystem search, read-only text/PDF previews with page navigation, and explicit `index:true`
-Windows Search queries with coverage warnings. Disposable tests cover real disk-full after
-main-stream writes and owned loopback-SMB interruption. It includes the unpublished 0.5.4 candidate.
-See the [reliability milestone](docs/RELIABILITY-MILESTONE.md) for results and limits.
-
-### Daily-default improvements in 0.5.3
-
-- Transfer Undo/Redo includes Replace and directory Merge. Displaced items and exact Redo data
-  are retained until the window's ten-action history expires; history still does not survive restart.
-- Native copy, stream checks, and Undo handle long Windows paths. Disposable NTFS VHD tests verify
-  cross-volume history and real disk-full allocation failures; physical removal and SMB interruption remain open.
-- Search combines words, quoted names, wildcards, file types, modified dates, and sizes:
-  `name:"annual report" type:pdf modified:last7days size:>1MB`.
-- The interface follows Windows light/dark settings and uses system resources in the command panel,
-  preview text, and drop highlight. Full screen-reader and contrast-theme review remains open.
-- Folder enumeration checks cancellation between entries; filename search streams directory entries;
-  selection totals use the listing's metadata rather than reopening selected paths.
-
-## Foundation features retained from 0.5.0
-
-- Classic menu, toolbar, location bar, side pane, detail view, and status bar
-- Places, detected drives, a This PC drive overview (Up from a drive root), and OneDrive when signed in
-- Real directory enumeration
-- Back, Forward, Up, Home, Refresh, direct-path navigation, and folder opening
-- Multiple selection and selection totals
-- Thunar-style hidden-file filtering with `View > Show Hidden Files` and `Ctrl+H`
-- Create folders and blank documents
-- Rename and Thunar-style duplicate naming (`name (copy 1)`)
-- Windows clipboard Cut, Copy, and Paste for files and folders
-- Replace, Skip, Rename, or Cancel Remaining conflict decisions
-- Delete moves to the Windows Recycle Bin; `Shift+Delete` requires permanent-delete confirmation
-- Destination-side staged copies and rollback-safe replacement, so a failed incoming transfer cannot destroy the existing item
-- Native Windows cross-volume copies that preserve file attributes, security metadata, extended attributes, and NTFS alternate data streams
-- Sequential transfer queue with byte progress, throughput, ETA, queued-job count, and active-job cancellation
-- Persistent recovery records for interrupted staged copies and replacements
-- Ten-action Undo/Redo history for create, template/archive creation, rename, ordinary copy, move, and duplicate operations, guarded by destination-state verification
-- Drag-and-drop into the current folder or a visible child folder
-- Thunar-style drop rules: move on the same volume, copy across volumes, `Ctrl` forces copy, and `Shift` forces move
-- Detailed, icon, and compact folder views (`Ctrl+2`, `Ctrl+1`, and `Ctrl+3`)
-- Browser tabs with `Ctrl+T`, `Ctrl+W`, and independent Back/Forward history
-- Split-pane browsing (`F3`) with an independent path, history, selection, and file-command target
-- Persistent custom bookmarks and restart restoration for tabs, selected tab, folders, split state, view mode, and hidden-file preference
-- Recursive active-pane search (`Ctrl+F`) with live batched results, query cancellation, hidden-file filtering, and safe junction handling
-- Windows shell icons and content thumbnails in all folder views
-- Live folder monitoring plus free-space reporting in the status bar
-- Sortable and drag-resizable Name, Size, Type, and Date columns; configurable column visibility; persistent zoom and folders-first ordering
-- Shortcuts and expandable tree side-pane modes
-- Renameable, reorderable persistent bookmarks
-- Pathbar and editable-toolbar location selector styles
-- Native Windows Properties and Open With dialogs, new windows, and Open in New Tab
-- The full Windows shell context menu, including third-party extensions and Send To, from `Show More Options` or Shift+right-click
-- Create-from-Templates, symbolic links, select-by-pattern, and invert-selection commands
-- Previewed, collision-safe bulk rename with grouped Undo/Redo
-- Preferences for thumbnails, sorting, recursive search, trash confirmation, tab restoration, and default view
-- In-app Windows Recycle Bin browsing, conflict-safe Restore, confirmed Empty Trash, mapped network locations, direct UNC connections, terminal launch, and removable-drive eject
-- Customizable toolbar visibility and persistent alternate keyboard shortcuts
-- Optional image-preview side pane, single-click activation, and per-folder view/zoom/sort memory
-- Integrated PowerShell command panel (`F4`) that follows the active folder without covering the file list
-- Manifest-based plugin discovery from bundled and per-user plugin folders, with validation diagnostics and enable/disable controls
-- Selection-aware custom actions with file patterns, file/folder targeting, confirmation prompts, and argument-list execution without a command shell
-- Atomic, junction-safe bundled archive create/extract, media-tag editing, Git status/diff/log, and Windows sharing-management integrations
-
-## Desktop integration and accessibility in 0.5.3
-
-These additions are included in 0.5.3. Notification availability and manual accessibility
-verification remain subject to the limits below.
-
-The taskbar jump list offers **New window**, **Home**, and **Downloads**. When a transfer finishes
-while its window is in the background, WinThunar sends a local Windows notification; selecting it
-opens the destination folder. If Windows notifications are unavailable or disabled, the in-app
-status and error dialogs continue to report the outcome.
-
-Git repositories show status badges in all three primary-pane layouts and the right-side
-detailed list. Badges are not populated in search results or virtual locations such as Trash. The badges are
-`✓` clean, `M` modified, `+` added, `−` deleted, `R` renamed, `?` untracked, `·` ignored, and `!`
-conflicted. Folder badges summarize their descendants. Git is optional; queries run in the
-background, refresh on navigation and every ten seconds, do not write the index, and disable
-repository fsmonitor commands. Tooltips and accessible item names include the status text.
-
-Use **F6 / Shift+F6** to move between tabs, location, side pane, file panes, and the visible
-command input; **Ctrl+Tab / Ctrl+Shift+Tab** switches folder tabs. Focus a column divider and
-use **Left / Right** to resize it. Keyboard focus selects the active split pane. The interface
-exposes file metadata and Git status to accessibility tools. Most browser chrome uses system
-color resources, but fixed colors remain in parts of the interface; high-contrast behavior
-and screen-reader use still need manual verification. See the
-[accessibility status](docs/ACCESSIBILITY.md) for implemented support and remaining checks.
+WinThunar follows Thunar's habits where Windows allows: `Ctrl+H` toggles hidden files, `F3`
+splits the view, duplicates are named `name (copy 1)`, and dragging moves on the same drive,
+copies across drives, `Ctrl` forces a copy and `Shift` forces a move. It is an independent,
+clean-room implementation built with C#, .NET 10 and WinUI 3. It is not an official Thunar or
+Xfce project and contains no code copied from Thunar.
 
 ## Installing
 
-Download `WinThunar.App-win.msi` from GitHub Releases (local release builds name it
-`WinThunar-<version>-win-x64.msi`). The target Windows 11 computer does not need a separate
-.NET installation. The installer asks:
+Download `WinThunar.App-win.msi` from the link above and run it. The installer asks:
 
 - **Just me or everyone.** Just me installs to `%LOCALAPPDATA%\WinThunar.App` without asking for
   administrator permission. Everyone installs to `C:\Program Files\WinThunar.App` for all accounts
   and needs administrator permission.
 - **Which shortcuts to create:** a desktop shortcut, a Start menu shortcut, both, or neither.
 
+The installer and app are not code-signed yet, so Windows SmartScreen may show
+**Windows protected your PC**. Choose **More info**, check that the app name matches the file
+you downloaded, then **Run anyway**. The [release notes](docs/RELEASE-0.5.15.md) list each
+download's SHA-256 digest.
+
+The portable ZIP runs without installing: extract it and start `WinThunar.exe`.
+
 WinThunar can be removed from Settings > Apps > Installed apps. For a scripted install, pass
-`DESKTOPSHORTCUT=""` or `STARTMENUSHORTCUT=""` to `msiexec` to skip a shortcut.
-
-Uninstalling removes the program and, if this copy was registered with Explorer, its "Open in
-WinThunar" and default-file-manager settings. Your settings, bookmarks, session, and personal
-plugins in `%LOCALAPPDATA%\WinThunar` are kept.
-
-The portable ZIP is still available for running WinThunar without installing it.
+`DESKTOPSHORTCUT=""` or `STARTMENUSHORTCUT=""` to `msiexec` to skip a shortcut. Uninstalling
+removes the program and any Explorer registration it made. Your settings, bookmarks, session
+and personal plugins in `%LOCALAPPDATA%\WinThunar` are kept.
 
 ## Updating
 
-The installed WinThunar checks GitHub Releases for a new version once a day, starting shortly
-after launch. A new version downloads in the background, usually as a small delta, and installs
-after you close the last WinThunar window. An "Update ready" bar offers **Restart Now** to install
-it straight away; that button waits until running transfers finish or are cancelled. When WinThunar
-is installed for everyone, installing an update needs administrator permission, so it never installs
-on close: the bar's **Install Now** button asks for permission instead. Use
-`Help > Check for Updates...` to check on demand, and `Edit > Preferences > Updates` to turn
+The installed WinThunar checks GitHub Releases for a new version once a day. A new version
+downloads in the background, usually as a small delta, and installs after you close the last
+WinThunar window. An "Update ready" bar offers **Restart Now** to install it straight away, after
+running transfers finish. When WinThunar is installed for everyone, installing an update needs
+administrator permission, so the bar offers **Install Now** instead of installing on close.
+Use `Help > Check for Updates...` to check on demand and `Edit > Preferences > Updates` to turn
 automatic checks off. Portable copies do not update themselves.
 
 ## Using WinThunar as the default file manager
 
 `Edit > Preferences > Windows Integration` can add "Open in WinThunar" to Explorer's folder menu
-and make WinThunar the handler for opening folders and drives. Both settings write only to your
-own account's registry (`HKCU\Software\Classes`), record any value they replace, and restore it
-when turned off. They are available in the installed and portable builds; MSIX packages cannot register shell
-handlers this way.
+and make WinThunar open folders and drives. Both settings write only to your own account's
+registry (`HKCU\Software\Classes`), record any value they replace, and restore it when turned
+off. Windows still opens Explorer for Win+E and for apps that call `SHOpenFolderAndSelectItems`
+directly.
 
 The same changes can be scripted, and `--unregister-shell` is the recovery path if WinThunar
 cannot start:
@@ -281,118 +94,51 @@ cannot start:
 .\WinThunar.exe --unregister-shell    # undo both
 ```
 
-Turn the setting off before moving or deleting the portable folder; the installed copy does this
-when it is uninstalled. If the registered copy has
-already been moved, launching WinThunar from its new location repairs the registration.
+Turn the setting off before moving or deleting a portable folder; the installed copy does this
+when it is uninstalled. WinThunar accepts a folder or file path, `file:` URIs, and Explorer-style
+`/select,<path>`, `/root,<path>`, `/n` and `/e` switches. A second launch opens a new window in
+the running process.
 
-WinThunar accepts a folder or file path, `file:` URIs, and Explorer-style `/select,<path>`,
-`/root,<path>`, `/n`, and `/e` switches. A second launch opens a new window in the running
-process. Windows still opens Explorer for Win+E and for apps that call
-`SHOpenFolderAndSelectItems` directly.
+When WinThunar is denied access, for example in `Program Files`, it offers to let Windows finish
+the operation, which asks for administrator permission itself. Operations finished by Windows
+are outside WinThunar's Undo history. See [file-operation behavior](docs/FILE-OPERATIONS.md)
+for links, junctions, recovery and the other details.
 
-When WinThunar is denied access (for example in `Program Files`), it offers to let the Windows copy
-engine finish the copy, move, trash, delete, new-folder, or rename, which asks for administrator
-permission itself. In **release 0.5.0**, directory links and junctions are offered to the Windows
-copy engine after confirmation; that fallback can follow the linked folder's contents as Explorer
-does. Do not treat it as a link-preserving copy.
+## Known issues
 
-Release **0.5.3** preserves supported symbolic links and NTFS junctions as links without
-traversing their targets, including during replacement and recovery. Copying symbolic links still
-requires Windows Developer Mode or the symbolic-link privilege; unsupported link types can be
-offered to Windows after confirmation. Archive creation continues to reject directory links.
+WinThunar is under active development. The ones you are most likely to meet:
 
-Operations finished by Windows are outside WinThunar's Undo history. Native replacement and merge
-transfers retain displaced content for Undo in 0.5.3; the ten-action history remains window-local.
-See [file-operation behavior](docs/FILE-OPERATIONS.md) for the full scope and limitations.
+- Long sessions of heavy browsing, searching and previewing can keep using more memory and
+  can end in an unexpected close. Both are being investigated.
+- Win+E still opens File Explorer, even when WinThunar is the default folder handler.
+- Transfer-complete notifications don't appear because of a
+  [Windows App SDK issue](https://github.com/microsoft/WindowsAppSDK/issues/6774).
+- Undo history is per window and is not kept after WinThunar closes.
 
-## Build
+The [roadmap](docs/ROADMAP.md) lists everything that remains open.
 
-Use Windows 11 with the .NET 10 SDK and Windows SDK build tools required by
-`WinThunar.csproj` (the target framework is `net10.0-windows10.0.26100.0`). The commands
-below target x64. Project platform entries for x86 and ARM64 do not imply downloadable
-releases for those architectures.
+## Help improve it
 
-```powershell
-dotnet restore .\WinThunar.csproj -r win-x64
-dotnet build .\WinThunar.csproj --configuration Debug -p:Platform=x64 --no-restore
-dotnet run --project .\WinThunar.csproj --configuration Debug -p:Platform=x64
-```
+Try it on a few sample folders and tell us what makes everyday file management easier or
+harder. [Share first-tester feedback](https://github.com/TheTriumphantFox/WinThunar/issues/new?template=tester-feedback.yml),
+or [report a bug or request a feature](https://github.com/TheTriumphantFox/WinThunar/issues).
+Useful reports include the WinThunar version, steps to reproduce, and what you expected.
+Please remove personal paths and filenames from screenshots and logs before sharing them.
 
-Run the isolated file-operation and browser-state tests:
-
-```powershell
-dotnet test .\tests\WinThunar.FileOps.Tests\WinThunar.FileOps.Tests.csproj --configuration Release
-```
-
-The source includes an isolated storage-failure and process-termination harness:
-
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-FileOperationsStress.ps1
-```
-
-It injects native copy errors and terminates its own test workers. The JSON report separates those
-checks from optional real cross-volume tests and skipped physical-storage tests. See the
-[stress-harness scope and results](docs/FILE-OPERATIONS-STRESS.md).
-
-The source also includes an isolated desktop smoke build. Its harness is excluded from normal
-application packages; it does not restore or save your normal session:
-
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-DesktopSmoke.ps1
-```
-
-The script writes a JSON report and rendered PNGs to a new temporary folder. The test-only
-code is excluded from normal builds. The relative-symbolic-link unit test explicitly skips
-when the Windows account lacks permission to create symbolic links.
-
-Developer Mode must be enabled in Windows Settings to register and launch the development package.
-
-## Windows release
-
-Install the Velopack packaging tool once:
-
-```powershell
-dotnet tool install -g vpk --version 1.2.161
-```
-
-Build a release from the main checkout; this example uses 0.5.15:
-
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.5.15
-```
-
-For a new release, choose an unused version and update all four version locations before
-building. The script refuses existing output paths. It writes a self-contained x64 folder,
-a versioned ZIP and MSI, SHA-256 checksum files, and Velopack distribution packages beneath
-`artifacts/`. **Never delete `artifacts/installer`: later versions need its earlier packages
-to build delta updates.**
-
-A build reaches installed users only after its Velopack packages are published to GitHub
-Releases. See [building and publishing releases](docs/RELEASES.md) for the version checklist,
-output filenames, upload command, and update-feed testing.
-
-Bundled plugin manifests live beside the executable in `Plugins`. Personal manifests and
-custom actions live in `%LOCALAPPDATA%\WinThunar\Plugins`, so reinstalling or replacing the
-app does not overwrite them.
+To build from source or contribute code, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Documentation
 
+- [What's new](docs/WHATS-NEW.md) and the [latest release notes](docs/RELEASE-0.5.15.md)
+- [Full feature list](docs/FEATURES.md)
 - [Browser views, tabs, split panes, and preferences](docs/BROWSER-WORKSPACE.md)
 - [Search behavior and limits](docs/SEARCH.md)
 - [File operations, Undo, and recovery](docs/FILE-OPERATIONS.md)
-- [Storage-failure and process-termination checks](docs/FILE-OPERATIONS-STRESS.md)
-- [Released features, unreleased work, and remaining gaps](docs/ROADMAP.md)
-- [Accessibility status and verification limits](docs/ACCESSIBILITY.md)
+- [Accessibility status](docs/ACCESSIBILITY.md)
+- [Roadmap and remaining gaps](docs/ROADMAP.md)
 - [Building, packaging, and publishing releases](docs/RELEASES.md)
-- [Launch copy and promotional media](docs/PROMOTION.md)
-- [First tester workflow and launch status](docs/LAUNCH.md)
-
-## Icon
-
-WinThunar's icon is an original design (a folder with a lightning bolt) and is covered by the
-project's MIT License. It is drawn by `scripts\New-AppIcons.ps1`, which writes `Assets\AppIcon.ico`
-and the MSIX logo images; change the shapes there and re-run it rather than editing the images.
 
 ## License
 
-WinThunar is available under the [MIT License](LICENSE).
+WinThunar is available under the [MIT License](LICENSE). Its icon is an original design
+covered by the same license.

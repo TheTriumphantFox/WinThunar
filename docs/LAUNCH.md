@@ -6,8 +6,13 @@ that a person tried the application or continued using it.
 
 ## Current status
 
-The initial campaign below targeted 0.5.0. [WinThunar 0.5.3](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.3)
-was published on 21 October 2026; no additional community submission is implied by that release.
+The initial campaign below targeted 0.5.0. The current release is
+[WinThunar 0.5.15](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.15), published
+24 October 2026. As of 26 October no tester reports have arrived; see the
+[26 October counts](#baseline-and-results). A second round is prepared but not posted: a
+[0.5.15 follow-up post](PROMOTION.md#follow-up-post-for-0515), a
+[Linux and Xfce post](PROMOTION.md#linux-and-xfce-communities), media recaptured from 0.5.15,
+a README rewritten for first-time visitors, and the [distribution channels](DISTRIBUTION.md).
 
 | Item | Status |
 | --- | --- |
@@ -18,6 +23,11 @@ was published on 21 October 2026; no additional community submission is implied 
 | First community introduction | [Published in r/SideProject](https://www.reddit.com/r/SideProject/comments/1x9uvud/winthunar_a_free_thunarinspired_file_manager_for/) by u/TheTriumphantFox on 19 October 2026. |
 | Windows app introduction | [Published in r/windowsapps](https://www.reddit.com/r/windowsapps/comments/1x9w8ux/winthunar_a_free_windows_11_file_manager_with/) by u/TheTriumphantFox with Developer flair on 19 October 2026; public post verified. |
 | r/Windows11 | Excluded: current promotion rules say new applicants are not being accepted. |
+| 0.5.15 follow-up post (r/windowsapps) | Drafted 26 October 2026; not posted. |
+| Linux and Xfce communities | Drafted 26 October 2026; not posted. Ask moderators first. |
+| WinGet | Manifest prepared and validated locally on 26 October 2026; not submitted. |
+| Scoop | In-repository bucket added 26 October 2026; install not yet tested. |
+| Show HN and press pitches | Held until the P0 stability runs pass. |
 | Paid promotion | Not part of this launch. |
 
 Update these statuses only after observing a successful submission or a public post URL.
@@ -130,6 +140,18 @@ GitHub release counters checked on 19 October 2026 before the first external sub
 These counters include any downloads by the maintainer or automated tools. Update packages
 and feed requests are excluded from the human-facing download totals. Store a fresh baseline
 if the actual public submission happens later.
+
+Counters summed across every release on 26 October 2026, a week after the first posts. Release
+verification downloads each public binary, so most or all of the increase may be the
+maintainer's own checks.
+
+| Asset / signal | 26 October 2026 | Change since 19 October |
+| --- | ---: | ---: |
+| MSI downloads | 2 | +2 |
+| Portable ZIP downloads | 8 | +7 |
+| Setup EXE downloads | 3 | +1 |
+| Repository stars | 1 | +1 |
+| Outside issues or tester reports | 0 | 0 |
 
 | Date | Channel and public URL | Submission/review status | Downloads since baseline | Voluntary tester reports | Useful follow-up |
 | --- | --- | --- | --- | --- | --- |

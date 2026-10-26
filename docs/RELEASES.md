@@ -18,7 +18,7 @@ migration is refused. Other installer/UAC contexts and historical failures retai
 
 ## Prerequisites and version checklist
 
-Use the main checkout on Windows with the [build prerequisites](../README.md#build).
+Use the main checkout on Windows with the [build prerequisites](../CONTRIBUTING.md#build).
 Public release packaging targets `win-x64` and uses Velopack 1.2.161:
 
 MSI packaging also requires Visual Studio's **Desktop development with C++** x64 tools and
@@ -35,7 +35,12 @@ Before a new release, select an unused three-part version and update all of thes
 1. `Version`, `AssemblyVersion`, and `FileVersion` in `WinThunar.csproj`.
 2. `Identity Version` in `Package.appxmanifest` (four numeric components).
 3. The default `$Version` in `scripts/Publish-Release.ps1`.
-4. The README release example and the current release/status references in these docs.
+4. The release example in `CONTRIBUTING.md`, the README's release-notes links, and the current
+   release/status references in these docs.
+
+After the GitHub release is public, update the WinGet manifests in `packaging/winget/` and the
+Scoop manifest in `bucket/winthunar.json` with the new version, URLs and SHA-256 digests; see
+[distribution channels](DISTRIBUTION.md).
 
 The current published version is **0.5.15**; see its
 [release notes](RELEASE-0.5.15.md). For example, a release `X.Y.Z` uses assembly/file/manifest version `X.Y.Z.0`.

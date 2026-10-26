@@ -22,6 +22,7 @@ def main():
     result = json.loads((args.captures / 'capture-result.json').read_text(encoding='utf-8'))
     if result.get('failure'):
         raise RuntimeError(result['failure'])
+    version = result['source'].removeprefix('v')
 
     fonts = Path('C:/Windows/Fonts')
     regular = lambda size: ImageFont.truetype(str(fonts / 'segoeui.ttf'), size)
@@ -65,7 +66,7 @@ def main():
         x, y = (1400 - fitted.width) // 2, 108 + (840 - fitted.height) // 2
         canvas.paste(fitted, (x, y), fitted)
         draw.text((38, 970), subtitle, font=regular(25), fill=ink)
-        draw.text((38, 1007), 'Edited walkthrough of the released 0.5.0 interface; sample files only.', font=regular(15), fill=muted)
+        draw.text((38, 1007), f'Edited walkthrough of the released {version} interface; sample files only.', font=regular(15), fill=muted)
         canvas.save(frames_dir / f'{idx:02}.png')
         frames.append(canvas)
         durations.append(seconds * 1000)
@@ -107,7 +108,7 @@ def main():
     for path in sorted(args.output.glob('*')):
         if path.is_file():
             print(f'{path.name}: {path.stat().st_size:,} bytes')
-    print('Demo duration: 25 seconds. App source: v0.5.0.')
+    print(f"Demo duration: 25 seconds. App source: {result['source']}.")
 
 
 if __name__ == '__main__':

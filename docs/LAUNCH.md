@@ -19,14 +19,14 @@ a README rewritten for first-time visitors, and the [distribution channels](DIST
 | Project introduction, screenshots, and 25-second demo | Published in PR #10. |
 | Documentation audit | Published in PR #11. |
 | GitHub tester-feedback form | Published in PR #11 and linked from the README. |
-| AlternativeTo listing | [Submitted; awaiting review](https://alternativeto.net/software/winthunar/), confirmed by the maintainer on 19 October 2026. Not yet approved. |
+| AlternativeTo listing | [Approved and public](https://alternativeto.net/software/winthunar/), confirmed by the maintainer on 26 October 2026 (submitted 19 October). |
 | First community introduction | [Published in r/SideProject](https://www.reddit.com/r/SideProject/comments/1x9uvud/winthunar_a_free_thunarinspired_file_manager_for/) by u/TheTriumphantFox on 19 October 2026. |
 | Windows app introduction | [Published in r/windowsapps](https://www.reddit.com/r/windowsapps/comments/1x9w8ux/winthunar_a_free_windows_11_file_manager_with/) by u/TheTriumphantFox with Developer flair on 19 October 2026; public post verified. |
 | r/Windows11 | Excluded: current promotion rules say new applicants are not being accepted. |
 | 0.5.15 follow-up post (r/windowsapps) | Drafted 26 October 2026; not posted. |
 | Linux and Xfce communities | Drafted 26 October 2026; not posted. Ask moderators first. |
 | WinGet | Manifest prepared and validated locally on 26 October 2026; not submitted. |
-| Scoop | In-repository bucket added 26 October 2026; install not yet tested. |
+| Scoop | In-repository bucket on `main`; install, launch and uninstall passed in the lab VM on 26 October 2026. Not yet in Scoop Extras. |
 | Show HN and press pitches | Held until the P0 stability runs pass. |
 | Paid promotion | Not part of this launch. |
 
@@ -155,6 +155,6 @@ maintainer's own checks.
 
 | Date | Channel and public URL | Submission/review status | Downloads since baseline | Voluntary tester reports | Useful follow-up |
 | --- | --- | --- | --- | --- | --- |
-| 19 October 2026 | [AlternativeTo](https://alternativeto.net/software/winthunar/) | Awaiting review; confirmed by maintainer | | | Confirm approval and public visibility before announcing the listing. |
+| 19 October 2026 | [AlternativeTo](https://alternativeto.net/software/winthunar/) | Approved; confirmed by maintainer on 26 October 2026 | | | Keep its screenshot and description current with each announcement. |
 | 19 October 2026 | [r/SideProject](https://www.reddit.com/r/SideProject/comments/1x9uvud/winthunar_a_free_thunarinspired_file_manager_for/) | Published; public post verified | | | Respond to substantive feedback. |
 | 19 October 2026 | [r/windowsapps](https://www.reddit.com/r/windowsapps/comments/1x9w8ux/winthunar_a_free_windows_11_file_manager_with/) | Published with Developer flair; author, text, and public visibility verified | | | Respond to substantive feedback; respect the one promotional post per week limit. |

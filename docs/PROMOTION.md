@@ -4,7 +4,7 @@ Prepared and reviewed 19 October 2026. The README and promotional media were pub
 GitHub through [PR #10](https://github.com/TheTriumphantFox/WinThunar/pull/10).
 The [first community introduction](https://www.reddit.com/r/SideProject/comments/1x9uvud/winthunar_a_free_thunarinspired_file_manager_for/)
 was published to r/SideProject as u/TheTriumphantFox on 19 October 2026. A [Windows app introduction](https://www.reddit.com/r/windowsapps/comments/1x9w8ux/winthunar_a_free_windows_11_file_manager_with/) was also published to r/windowsapps with Developer flair that day and verified publicly. The AlternativeTo
-listing has been [submitted and is awaiting review](https://alternativeto.net/software/winthunar/), confirmed by the maintainer on 19 October 2026. Press pitches remain drafts; no paid promotion has been purchased. See
+listing was [submitted](https://alternativeto.net/software/winthunar/) on 19 October 2026 and approved; the maintainer confirmed the approval on 26 October 2026. Press pitches remain drafts; no paid promotion has been purchased. See
 [launch status](LAUNCH.md) for confirmed submissions and the initial download baseline.
 
 This launch kit was first prepared for 0.5.0. On 26 October 2026 the media were recaptured

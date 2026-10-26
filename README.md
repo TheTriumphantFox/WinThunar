@@ -62,6 +62,14 @@ download's SHA-256 digest.
 
 The portable ZIP runs without installing: extract it and start `WinThunar.exe`.
 
+With [Scoop](https://scoop.sh), install the portable build and keep it updated with
+`scoop update`:
+
+```powershell
+scoop bucket add winthunar https://github.com/TheTriumphantFox/WinThunar
+scoop install winthunar
+```
+
 WinThunar can be removed from Settings > Apps > Installed apps. For a scripted install, pass
 `DESKTOPSHORTCUT=""` or `STARTMENUSHORTCUT=""` to `msiexec` to skip a shortcut. Uninstalling
 removes the program and any Explorer registration it made. Your settings, bookmarks, session

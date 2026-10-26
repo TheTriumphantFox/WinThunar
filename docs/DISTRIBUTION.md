@@ -7,7 +7,7 @@ each release, after the GitHub release is public.
 | Channel | Status | What people run |
 | --- | --- | --- |
 | GitHub Releases | Published | MSI or portable ZIP from the README |
-| Scoop (this repository's bucket) | Live once `bucket/winthunar.json` is on `main` | `scoop bucket add winthunar https://github.com/TheTriumphantFox/WinThunar`, then `scoop install winthunar` |
+| Scoop (this repository's bucket) | Live on `main`; install, launch and uninstall tested 26 October 2026 | `scoop bucket add winthunar https://github.com/TheTriumphantFox/WinThunar`, then `scoop install winthunar` |
 | WinGet | Manifest prepared and validated locally; not submitted | `winget install TheTriumphantFox.WinThunar` once accepted |
 | Scoop Extras | Not submitted | `scoop install extras/winthunar` |
 | Microsoft Store | Not started; needs a signed installer | Store listing |
@@ -49,12 +49,31 @@ adds a Start menu shortcut, and puts `WinThunar.exe` on the path. `checkver` and
 follow GitHub releases, so `scoop update winthunar` picks up new versions once the manifest's
 version and hash are updated here. Portable copies do not use WinThunar's own updater.
 
-The manifest is valid JSON with the published ZIP's SHA-256, but Scoop was not available to
-test an install. Check `scoop install winthunar` once after the bucket reaches `main`.
+### Scoop install test (26 October 2026)
+
+The test ran in the disposable upgrade-lab VM (Windows 11 Enterprise Evaluation, unelevated
+`WTLab` user), restored from `clean-windows-activated-before-winthunar` with temporary NAT
+networking. The VM's earlier saved state was kept first as snapshot `before-scoop-test-20261026`.
+
+| Check | Result |
+| --- | --- |
+| Install Scoop with its documented installer, then `scoop install git` | Passed |
+| `scoop bucket add winthunar https://github.com/TheTriumphantFox/WinThunar` (from `main`) | Passed |
+| `scoop install winthunar` | Installed 0.5.15; Scoop's hash check passed, and the cached ZIP's SHA-256 matches the public `WinThunar.App-win-Portable.zip` |
+| Installed files | `WinThunar.dll` version 0.5.15.0, Velopack `.portable` marker present, `winthunar` shim on the path |
+| Start menu shortcut **Scoop Apps > WinThunar** | Opened a responding **WinThunar 0.5.15** window on the user's desktop |
+| Close the window normally | Process exited |
+| `checkver.ps1` against the bucket | Reports `winthunar: 0.5.15` |
+| `scoop uninstall winthunar` | Removed the app folder, shortcut and shim; kept `%LOCALAPPDATA%\WinThunar` |
+
+The guest then shut down normally, its network adapter was set back to none, and the result is
+snapshot `scoop-0515-install-launch-uninstall-passed-20261026`. Not covered: `scoop update`
+across a version change (no later release exists yet) and the default-file-manager setting
+from a Scoop path.
 
 [Scoop Extras](https://github.com/ScoopInstaller/Extras) is the bucket most Scoop users already
 have. It takes apps that don't fit the main bucket, which is limited to well-known command-line
-tools. Submit there once an install from this repository's bucket has been checked.
+tools. The in-repository install now passes, so WinThunar can be submitted there.
 
 ## Code signing
 
@@ -92,9 +111,9 @@ has not been run with a real certificate yet; check the first signed release's f
 These list free utilities and bring steady search traffic, but editors test what they list.
 Submit after signing and the P0 stability work, so a reviewer's first run is a good one.
 
-- **AlternativeTo:** [submitted 19 October](https://alternativeto.net/software/winthunar/)
-  and still awaiting review. Check its state; if it is still pending, update the screenshot
-  to `docs/media/winthunar-split-panes.png` and the description from [PROMOTION.md](PROMOTION.md).
+- **AlternativeTo:** [approved](https://alternativeto.net/software/winthunar/), confirmed by
+  the maintainer on 26 October 2026. Update its screenshot to the 0.5.15
+  `docs/media/winthunar-split-panes.png` if it still shows the 0.5.0 capture.
 - **Softpedia:** submit through the developer/submit link on softpedia.com. Editors install
   and test the app, and may award a "100% Clean" badge.
 - **MajorGeeks:** submit through the [about and contact page](https://www.majorgeeks.com/content/page/aboutcontact_us.html).

@@ -216,6 +216,8 @@ public sealed partial class MainPage
                 firstEntriesObserved.Count + entriesObserved.Count <= historyLimit && samples.Count <= historyLimit,
                 "Endurance diagnostics remain bounded while retaining the initial weak-entry cohort", checks);
             await CaptureSmokeImageAsync(directory, "EnduranceFinal");
+            // Window capture allocates its own render surfaces; keep that apart from cleanup.
+            Sample("after-capture");
             // Distinguish pending work/finalization and UI caches from retained directory entries.
             // This collection is test diagnostics only; the application never forces collection.
             await UpdateImagePreviewAsync(null);

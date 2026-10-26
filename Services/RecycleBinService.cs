@@ -13,7 +13,12 @@ public static class RecycleBinService
         bool foldersFirst,
         CancellationToken cancellationToken)
     {
-        var sid = WindowsIdentity.GetCurrent().User?.Value;
+        string? sid;
+        using (var identity = WindowsIdentity.GetCurrent())
+        {
+            // Dispose promptly: each identity holds an open Token handle until finalized.
+            sid = identity.User?.Value;
+        }
         if (string.IsNullOrWhiteSpace(sid))
         {
             return [];

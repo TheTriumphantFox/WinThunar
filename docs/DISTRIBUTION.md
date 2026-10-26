@@ -8,7 +8,7 @@ each release, after the GitHub release is public.
 | --- | --- | --- |
 | GitHub Releases | Published | MSI or portable ZIP from the README |
 | Scoop (this repository's bucket) | Live on `main`; install, launch and uninstall tested 26 October 2026 | `scoop bucket add winthunar https://github.com/TheTriumphantFox/WinThunar`, then `scoop install winthunar` |
-| WinGet | Manifest prepared and validated locally; not submitted | `winget install TheTriumphantFox.WinThunar` once accepted |
+| WinGet | Install, match, launch and uninstall tested 26 October 2026; not submitted | `winget install TheTriumphantFox.WinThunar` once accepted |
 | Scoop Extras | Not submitted | `scoop install extras/winthunar` |
 | Microsoft Store | Not started; needs a signed installer | Store listing |
 | Code signing | Not set up; the release script accepts `-SignParams` | Removes the SmartScreen "unknown publisher" warning over time |
@@ -22,13 +22,15 @@ WinGet checks the installer's SHA-256 and a `latest` URL changes with every rele
 Details worth knowing before submitting:
 
 - The MSI hides its own Apps & Features entry (`ARPSYSTEMCOMPONENT=1`). Velopack writes the
-  visible **WinThunar** entry and updates its version as the app updates itself, so the
-  manifest matches on display name, publisher and the MSI's stable `UpgradeCode`.
+  visible **WinThunar** entry, keyed `MSI:WinThunar.App` in every release, and updates its
+  version as the app updates itself.
+- **`ProductCode` must be `MSI:WinThunar.App`, not the MSI's `{GUID}`.** WinGet finds the
+  installed app by the manifest's product code. With the MSI's own product code, which also
+  changes every release, WinGet installed WinThunar but never recognised it afterwards:
+  `winget upgrade` reported "No installed package found". The installer-level `ProductCode` and
+  the `AppsAndFeaturesEntries` entry both use the stable key.
 - The manifest declares the MSI's quiet default, a per-user install. Machine-wide installs
   through WinGet were not tested and are not offered.
-- Installing through WinGet was not tested on this machine, which already has an all-users
-  WinThunar. The winget-pkgs pull request runs its own install validation; read its result
-  before relying on the manifest.
 
 To submit, either use [wingetcreate](https://github.com/microsoft/winget-create) with a
 GitHub token:
@@ -40,7 +42,36 @@ wingetcreate submit --token <token> .\packaging\winget
 or fork [microsoft/winget-pkgs](https://github.com/microsoft/winget-pkgs), copy the three
 files to `manifests/t/TheTriumphantFox/WinThunar/0.5.15/`, and open a pull request. For later
 releases, `wingetcreate update TheTriumphantFox.WinThunar --version <version> --urls <msi url> --submit`
-rewrites the version, URL, digest and product code; copy the result back into `packaging/winget/`.
+rewrites the version, URL, digest and product code. **Set both `ProductCode` values back to
+`MSI:WinThunar.App`** before submitting, because wingetcreate reads the MSI's own `{GUID}`; then
+copy the result back into `packaging/winget/`.
+
+### WinGet install test (26 October 2026)
+
+The test ran in the disposable upgrade-lab VM, restored from
+`clean-windows-activated-before-winthunar` with temporary NAT networking. The guest's WinGet
+1.6 cannot read 1.28 manifests, so App Installer was updated to WinGet 1.29.380 from Microsoft's
+signed [winget-cli release](https://github.com/microsoft/winget-cli/releases). The maintainer
+enabled local manifests with `winget settings --enable LocalManifestFiles` in an admin terminal;
+every other step ran as the normal, unelevated user.
+
+| Check | Result |
+| --- | --- |
+| `winget install --manifest packaging\winget --silent` | Downloaded the public 0.5.15 MSI, verified its hash and installed per user; `WinThunar.dll` 0.5.15.0, Start menu and desktop shortcuts |
+| Apps & Features | Visible `MSI:WinThunar.App` entry (0.5.15, with a quiet uninstall command) plus the hidden MSI entry |
+| `winget upgrade --manifest` with the MSI `{GUID}` product code | **Failed:** "No installed package found matching input criteria" |
+| The same with product code `MSI:WinThunar.App` | Passed: "No available upgrade found" for the installed version |
+| Start menu shortcut | Opened a responding **WinThunar 0.5.15** window, which closed normally |
+| `winget uninstall --manifest --silent` | Removed the app folder, both Apps & Features entries and both shortcuts; kept `%LOCALAPPDATA%\WinThunar`; `winget list` no longer finds it |
+
+The result is snapshot `winget-0515-manifest-install-match-uninstall-passed-20261026`. Windows
+Update installed queued updates during that final shutdown, so the snapshot is not an
+update-free baseline; the clean baseline itself is unchanged.
+
+Not covered: `winget list` and `winget upgrade` against the public winget-pkgs source, which
+can only be checked once the package is published, and an upgrade across versions. Local
+manifests make `winget install` reinstall the same version rather than report it installed;
+that is how WinGet treats `--manifest` installs, not a manifest problem.
 
 ## Scoop
 

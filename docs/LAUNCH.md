@@ -25,7 +25,7 @@ a README rewritten for first-time visitors, and the [distribution channels](DIST
 | r/Windows11 | Excluded: current promotion rules say new applicants are not being accepted. |
 | 0.5.15 follow-up post (r/windowsapps) | Drafted 26 October 2026; not posted. |
 | Linux and Xfce communities | Drafted 26 October 2026; not posted. Ask moderators first. |
-| WinGet | Manifest prepared and validated locally on 26 October 2026; not submitted. |
+| WinGet | Install, match, launch and uninstall passed in the lab VM on 26 October 2026 after fixing the product code; not submitted. |
 | Scoop | In-repository bucket on `main`; install, launch and uninstall passed in the lab VM on 26 October 2026. Not yet in Scoop Extras. |
 | Show HN and press pitches | Held until the P0 stability runs pass. |
 | Paid promotion | Not part of this launch. |

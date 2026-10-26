@@ -219,6 +219,8 @@ The checklist and evidence trail that used to be here are kept in the
   [Linux and Xfce](PROMOTION.md#linux-and-xfce-communities) introductions.
 - [x] Follow up on the pending AlternativeTo review: approved, confirmed 26 October 2026.
 - [x] Test the Scoop bucket: install, launch and uninstall pass in the lab VM (26 October 2026).
+- [x] Test the WinGet manifest: install, match, launch and uninstall pass in the lab VM after
+  fixing the product code (26 October 2026).
 - [ ] Submit the prepared WinGet manifest, and the Scoop manifest to Scoop Extras; see
   [distribution channels](DISTRIBUTION.md).
 - [ ] Sign releases, so downloads stop showing SmartScreen's unknown-publisher warning.

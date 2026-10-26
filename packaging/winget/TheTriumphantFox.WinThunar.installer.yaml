@@ -12,16 +12,20 @@ InstallModes:
 - silentWithProgress
 UpgradeBehavior: install
 ReleaseDate: 2026-10-24
-# The MSI registration is hidden (ARPSYSTEMCOMPONENT=1). Velopack's visible entry
-# carries the display version and is updated in place by the app's own updater.
+# The MSI registration is hidden (ARPSYSTEMCOMPONENT=1). Velopack's visible entry,
+# keyed MSI:WinThunar.App in every release, carries the display version and is updated
+# in place by the app's own updater. WinGet only matches the installed app through it.
 AppsAndFeaturesEntries:
 - DisplayName: WinThunar
   Publisher: TheTriumphantFox
+  ProductCode: MSI:WinThunar.App
   UpgradeCode: '{31804CE9-95B4-5685-89F0-20B2157CAD52}'
 Installers:
 - Architecture: x64
   InstallerUrl: https://github.com/TheTriumphantFox/WinThunar/releases/download/v0.5.15/WinThunar.App-win.msi
   InstallerSha256: 801EDB124CC00B9F849DF82648D1C4DF1188F2E7217E1E7E45C20228DB9D3F12
-  ProductCode: '{F919B290-68C8-4C5A-B6B5-8CFD6E3299CA}'
+  # The visible entry's key, not the hidden MSI's per-release {GUID}: WinGet looks up the
+  # installed app by this value, and it stays the same from release to release.
+  ProductCode: MSI:WinThunar.App
 ManifestType: installer
 ManifestVersion: 1.28.0

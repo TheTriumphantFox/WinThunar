@@ -527,6 +527,34 @@ the 20-minute run, a two-minute run, eight 45-second full-suite runs
 That rate cannot show whether faster thumbnail completion makes this WinUI path more likely.
 It is recorded as an open native failure, not as a pass.
 
+**Access-violation follow-up, 26–27 October.** WinUI's open source identifies the null pointer.
+`CacheManager::InitCollectionsCache` dereferences `m_strongHost`, which matches `[this+0x60]` in
+the disassembly. The panel sets `m_strongHost` from a weak reference to its host list in
+`GuaranteeCache`, at the start of each virtualization pass (`CacheStrongRefs`). It clears it in
+`UnguaranteeCache` when that scope ends. The scope is not reference-counted, and collection-change
+handlers (`OnItemAdded`, `OnItemRemoved`, `OnCollectionReset`, `OnDataElementReplaced`) and
+`ScrollItemIntoView` open their own scope. So either of two things can null the host
+mid-generation: a nested call into the same panel during a virtualization pass, or a host weak
+reference that no longer resolves. The WER minidump lacks heap memory and cannot tell which.
+
+Attempts to reproduce or narrow it, all on the changed source:
+
+- 30 alternating launches each of the old and new builds (full suite plus 20 seconds of work,
+  `artifacts/stability-av-compare-20261026/`): no crash in either. One old-build launch fails a
+  timing-sensitive theme-selector check without crashing.
+- A test-only probe counts container-callback depth and records any `Entries` change made while
+  a container callback is on the stack. In 1,694 cycles it records **none**
+  (`artifacts/stability-reentrancy-probe-20261026/`).
+- Debugger breakpoints on `GuaranteeCache` for nested entry and a dead host see neither in
+  18 cycles. Overhead makes that sample too small (`artifacts/stability-guarantee-trace-20261026/`).
+- 50 launches with cdb attached, armed to write a full dump on a second-chance access violation:
+  no crash (`artifacts/stability-av-catch-20261026/`).
+- A 30-minute stress run repeating the container-binding checks before every cycle (177
+  sequences): no crash and no reentrant change (`artifacts/stability-container-stress-20261026/`).
+
+In total the access violation appears once in about 100 launches, and never in about 16,000
+steady-state cycles or the stress sequences. Its trigger is not established. It is not closed.
+
 Before closing this priority:
 
 - Preserve the verified native regression and check final build/source identity.

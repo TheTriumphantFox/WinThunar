@@ -3292,6 +3292,19 @@ public sealed partial class MainPage : Page
 
     private void FileContainer_Changing(ListViewBase sender, ContainerContentChangingEventArgs args)
     {
+#if ROADMAP_SMOKE_TEST
+        ContainerCallbackDepth++;
+        try { FileContainer_ChangingCore(args); }
+        finally { ContainerCallbackDepth--; }
+    }
+
+    // Test-only: lets the endurance harness detect collection changes that run inside this
+    // layout callback, which can only happen if the callback pumps the dispatcher.
+    [ThreadStatic] internal static int ContainerCallbackDepth;
+
+    private void FileContainer_ChangingCore(ContainerContentChangingEventArgs args)
+    {
+#endif
         var container = args.ItemContainer;
         // Native containers can outlive their managed RCW. Tag gives the tracker the
         // native lifetime; a weak-key-only table would register it again after each RCW GC.

@@ -176,6 +176,19 @@ public sealed partial class MainPage
             completedSearches++;
             phaseLog.WriteLine(JsonSerializer.Serialize(result));
         }
+        // A collection change while a container callback is still on the stack means that
+        // callback pumped the dispatcher during layout. Record each one with its managed stack.
+        var reentrantChanges = 0;
+        using var reentrancyLog = new StreamWriter(Path.Combine(directory, "endurance-reentrancy.ndjson")) { AutoFlush = true };
+        void EntriesChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs args)
+        {
+            if (ContainerCallbackDepth == 0) return;
+            reentrantChanges++;
+            if (reentrantChanges <= 50)
+                reentrancyLog.WriteLine(JsonSerializer.Serialize(new { cycle = cycles, action = args.Action.ToString(),
+                    depth = ContainerCallbackDepth, stack = Environment.StackTrace }));
+        }
+        ViewModel.Entries.CollectionChanged += EntriesChanged;
         heartbeat.Start();
         try
         {
@@ -183,8 +196,12 @@ public sealed partial class MainPage
             _showImagePreview = true;
             ApplyImagePreview();
             Sample();
+            // Diagnostic stress: repeat the container-binding checks before every cycle, reproducing
+            // the state that preceded the one first-cycle WinUI access violation.
+            var interleaveContainerChecks = Environment.GetEnvironmentVariable("WINTHUNAR_SMOKE_INTERLEAVE_CONTAINER_CHECKS") == "1";
             do
             {
+                if (interleaveContainerChecks) await CheckContainerBindingsAsync(directory, []);
                 await ViewModel.NavigateAsync(fixture);
                 ViewModel.ViewMode = BrowserViewMode.Icons;
                 ViewModel.ZoomLevel = cycles % 4 + 1;
@@ -249,6 +266,7 @@ public sealed partial class MainPage
         finally
         {
             heartbeat.Stop();
+            ViewModel.Entries.CollectionChanged -= EntriesChanged;
             File.WriteAllText(Path.Combine(directory, "endurance-result.json"), JsonSerializer.Serialize(new
             {
                 runtime = System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription,
@@ -256,7 +274,7 @@ public sealed partial class MainPage
                 requestedSeconds = seconds, elapsedSeconds = clock.Elapsed.TotalSeconds, textCount, imageCount, cycles,
                 workloadAwakeSeconds, timingBasis = "Windows unbiased interrupt time; excludes system sleep/hibernation",
                 completedSearches, totalSamples, historyLimit, requestedFocus, checkpointSkippedWrites,
-                phases, samples, ticks, maximumDispatchGapMilliseconds, maximumAwakeDispatchGapMilliseconds, thumbnailsObserved, previews, failure,
+                phases, samples, ticks, maximumDispatchGapMilliseconds, maximumAwakeDispatchGapMilliseconds, thumbnailsObserved, previews, reentrantChanges, failure,
                 limits = "Generated local UI workload in a separate test build. Dispatch gaps and memory samples are diagnostics, not latency or leak guarantees. Histories/weak references retain at most 600 records; full search/sample histories are NDJSON. No slow-network or physical-device coverage; duration is reported explicitly."
             }, new JsonSerializerOptions { WriteIndented = true }));
         }

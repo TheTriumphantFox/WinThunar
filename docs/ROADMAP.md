@@ -198,15 +198,16 @@ The checklist and evidence trail that used to be here are kept in the
 
 ### P0 — Stability under sustained use
 
-The one-hour Files and Menu workloads both pass the resource gate with no crash (26 October).
-Two native failures stay open, so P0 is not closed yet. See the
-[stability status and evidence](STABILITY.md).
+The one-hour Files and Menu workloads both pass the resource gate with no crash (27 October,
+final source, mains power). P0 stays open until the 24-hour retest of the native crash
+finishes. See the [stability status and evidence](STABILITY.md).
 
 - [ ] Close the native `0xC000027B` termination in `Microsoft.UI.Xaml.dll`. An earlier extended
   run crashed after about 21 hours; a full dump identifies COM-wrapper lock-wait/reentrant
-  dispatch. Neither one-hour gate run on the current source crashes, but the long run has not
-  been repeated. Also open: one launch of the current source hit a WinUI virtualization access
-  violation (`0xC0000005`, `ModernCollectionBasePanel`) before its workload; twelve others did not.
+  dispatch. A 24-hour soak of the final source started 27 October. The WinUI virtualization
+  access violation (`0xC0000005`, `ModernCollectionBasePanel`, about 1 in 100 launches) is
+  mitigated: each hidden file view is now unbound from the entries collection, and 100 launches
+  are clean. Its trigger is not proven.
 - [x] Bound memory and handle growth during browsing, search and previews (26 October).
   Windows.Storage's brokered `StorageFile` thumbnail and preview calls retained impersonation
   Token handles (176 → 420 in an hour). Thumbnails now come from the shell's
@@ -214,12 +215,13 @@ Two native failures stay open, so P0 is not closed yet. See the
   COM-wrapper leak ([dotnet/runtime#129191](https://github.com/dotnet/runtime/issues/129191))
   keeps its Release-only workaround until 10.0.13.
 - [x] Ship only after a one-hour focused workload and a one-hour menu-focused workload both
-  finish with no crash and memory that levels off (26 October). Files: +9 handles and
-  +1.33 MiB; Menu: +43.5 handles and +2.20 MiB, with the handle step at a standby resume.
-  Both hold about 300 MiB and zero Token handles.
-- [ ] Continue moving logic out of `MainPage.xaml.cs` where the crash and memory work touches
-  it. Typed container-name tracking and preview loading (`FilePreviewLoader`) now live in
-  their own services.
+  finish with no crash and memory that levels off (26–27 October). On the final source, on
+  mains power with no standby: Files −10 handles and −0.45 MiB; Menu −2 handles and +4.34 MiB.
+  Both hold about 325 MiB and at most one Token handle.
+- [x] Move logic out of `MainPage.xaml.cs` where the crash and memory work touches it
+  (27 October). Container-name tracking (`FileContainerNameRegistry`), preview loading
+  (`FilePreviewLoader`), shell thumbnails (`ShellThumbnailReader`) and per-view list binding
+  (`MainPageViewModel`) now live outside the page.
 
 ### P0 — Real users
 

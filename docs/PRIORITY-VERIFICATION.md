@@ -37,12 +37,17 @@ final ten minutes: at most 128 median handles, 8 MiB of median private memory an
 | Alternate, old source (`stability-pss-hour-20261026`) | 3,032 / 9,096 / 6,064 | 200 + 2 restart, exits 0 | 227 — fail | 13.91 MiB — fail | 176 → 420 |
 | Files, current source (`stability-files-hour-2-20261026`) | 4,909 / 14,727 / 9,818 | 200 + 2 restart, exits 0 | 9 — pass | 1.33 MiB — pass | ≤ 1 |
 | Menu, current source (`stability-menu-hour-20261026`) | 4,751 / 14,253 / 9,502 | 200 + 2 restart, exits 0 | 43.5 — pass | 2.20 MiB — pass | 0 |
+| Files, final source `aa44e38` (`stability-files-hour-final-20261027`) | 4,947 / 14,841 / 9,894 | 200 + 2 restart, exits 0 | −10 — pass | −0.45 MiB — pass | 0 |
+| Menu, final source `aa44e38` (`stability-menu-hour-final-20261027`) | 5,394 / 16,182 / 10,788 | 200 + 2 restart, exits 0 | −2 — pass | 4.34 MiB — pass | ≤ 1 |
 
-The Menu run was suspended twice by Modern Standby on battery. The gate counts awake time;
-its handle growth is one step at the second resume. One earlier Files launch on the current
-source ended with a WinUI access violation before its workload, and it is listed as open. Details,
-the token attribution method and the fix are in
-[STABILITY.md](STABILITY.md#token-handle-cause-and-storage-free-thumbnails-26-october).
+The 26 October Menu run was suspended twice by Modern Standby on battery. The gate counts
+awake time; its handle growth is one step at the second resume. The 27 October runs use mains
+power and a display-awake hold, with no standby. One earlier Files launch ended with a WinUI
+access violation before its workload. The final source unbinds each hidden file view from the
+entries collection, and 100 launches of it are clean
+(`stability-visible-binding-launches-20261027`). A 24-hour soak of the final source is running.
+Details, the token attribution method and the fixes are in
+[STABILITY.md](STABILITY.md#visible-only-binding-and-final-source-gates-27-october).
 
 ## Keyboard and endurance follow-up, 24 October 2026
 

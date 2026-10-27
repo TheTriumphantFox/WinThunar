@@ -1,15 +1,18 @@
-# Stability investigation, 24–26 October 2026
+# Stability investigation, 24–27 October 2026
 
 **Current status:** the remaining handle growth was Windows.Storage's brokered `StorageFile`
 calls retaining impersonation Token handles. With thumbnails and image previews moved off
 that path, **the one-hour Files and one-hour Menu workloads both pass the resource gate** with
-no crash: +9 and +43.5 median handles (limit 128), +1.33 and +2.20 MiB median private memory
-(limit 8 MiB), and zero Token handles. See
-[Token-handle cause and storage-free thumbnails](#token-handle-cause-and-storage-free-thumbnails-26-october).
-Two native items remain open. The historical `0xC000027B` failure at about 21 hours has not
-been retested on this source. One launch of the changed source hit a WinUI virtualization
-access violation (`0xC0000005`) before its workload; twelve other launches did not.
-The retained dumps and sample histories are preserved.
+no crash. On the final source, on mains power with no standby, the medians change by −10 and
+−2 handles (limit 128) and −0.45 and +4.34 MiB of private memory (limit 8 MiB), with at most
+one Token handle. See
+[Token-handle cause and storage-free thumbnails](#token-handle-cause-and-storage-free-thumbnails-26-october)
+and [Visible-only binding and final-source gates](#visible-only-binding-and-final-source-gates-27-october).
+One launch in about 100 of the earlier source hit a WinUI virtualization access violation
+(`0xC0000005`). Each hidden file view is now unbound from the entries collection. The trigger
+is unproven, but 100 launches of the changed source are clean. A 24-hour soak of the final
+source is running to retest the historical `0xC000027B` failure at about 21 hours. The
+retained dumps and sample histories are preserved.
 
 This is source work following published 0.5.15. It has not been published or applied to
 installed copies. P0 stability remains open until the longer workload and native-crash
@@ -506,8 +509,9 @@ The handle growth is a single step at the second resume, not a slope. Ten-minute
 3,380, 3,366 and 3,358 before it, then 3,408 and 3,409.5 after it. Private memory stays between
 301 and 305 MiB for the whole workload and ends at 300 MiB after cleanup. All 61 typed snapshots
 record **zero** Token handles. Evidence: `resource-gate.json`, the NDJSON histories and the
-`-observer/` snapshots. An uninterrupted Menu hour on mains power would remove the standby
-caveat; it was not run.
+`-observer/` snapshots. An uninterrupted Menu hour on mains power, which removes the standby
+caveat, passes on 27 October; see
+[Visible-only binding and final-source gates](#visible-only-binding-and-final-source-gates-27-october).
 
 The menu-focused diagnostic that preceded this work reached 857 MiB and 18,065 handles.
 Both workloads now stay near 300 MiB and 3,400 handles.
@@ -553,7 +557,46 @@ Attempts to reproduce or narrow it, all on the changed source:
   sequences): no crash and no reentrant change (`artifacts/stability-container-stress-20261026/`).
 
 In total the access violation appears once in about 100 launches, and never in about 16,000
-steady-state cycles or the stress sequences. Its trigger is not established. It is not closed.
+steady-state cycles or the stress sequences. Its trigger is not established.
+
+## Visible-only binding and final-source gates, 27 October
+
+**Defensive change.** Details, Icons and Compact used to keep their `ItemsSource` bound to
+`Entries` all the time, so one search reset ran collection-change handlers on all three
+virtualizing panels, including two hidden ones. The crash started right after a view switch
+during a reset. Each view now binds to `DetailsEntries`, `IconEntries` or `CompactEntries`,
+which return `Entries` only while that view is active. `SetViewMode` carries the selection and
+keyboard focus to the newly bound view. A hidden panel then has no items and gets no
+collection-change calls. This removes the collection-change and view-switch overlap. It is a
+mitigation, not a proven root cause.
+
+The touched code also moves out of `MainPage.xaml.cs`. Container-name tracker ownership is in
+`FileContainerNameRegistry`, preview loading in `FilePreviewLoader`, and shell thumbnail
+reading in `ShellThumbnailReader`.
+
+**Launch batch.** 100 consecutive launches of the changed source each run the full suite and
+about 20 seconds of work. All 100 exit zero with no crash
+(`artifacts/stability-visible-binding-launches-20261027/launches.ndjson`). A later full-suite
+run passes 200 desktop checks and 2 restart checks. Two earlier restart-check timeouts that
+morning also happen on the unchanged baseline (`c4a655d`). The laptop had just resumed with a
+4% battery, and the changed source passes once it is charging.
+
+**One-hour gates on the final source** (`aa44e38`), on mains power with a display-awake hold.
+In each run the largest gap between samples is the same in wall and awake time, so no
+standby occurs:
+
+| Run | Cycles / searches / previews | Checks | Handle growth | Private-memory growth | Tracker growth | Token handles |
+| --- | ---: | --- | ---: | ---: | ---: | ---: |
+| Files (`stability-files-hour-final-20261027`) | 4,947 / 14,841 / 9,894 | 200 + 2 restart, exits 0 | −10 — pass | −0.45 MiB — pass | +4 — pass | 0 |
+| Menu (`stability-menu-hour-final-20261027`) | 5,394 / 16,182 / 10,788 | 200 + 2 restart, exits 0 | −2 — pass | +4.34 MiB — pass | +14.5 — pass | ≤ 1 |
+
+Median handles stay near 3,350, and median private memory near 322 MiB (Files) and
+327–331 MiB (Menu). Both compiled-source checks match the committed files.
+
+**Day-long retest.** An 86,400-second Alternate-focus soak of the same source started at
+14:32 UTC on 27 October (`artifacts/stability-day-soak-final-20261027/`), with no debugger
+attached. That is the workload that ended with `0xC000027B` after 75,540 seconds on
+25–26 October. Its result will be recorded here. A launched soak is not a pass.
 
 Before closing this priority:
 

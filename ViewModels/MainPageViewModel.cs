@@ -151,6 +151,12 @@ public partial class MainPageViewModel : ObservableObject, IDisposable
     public Visibility CompactViewVisibility => ViewMode == BrowserViewMode.Compact
         ? Visibility.Visible
         : Visibility.Collapsed;
+    // Only the visible view's list is bound. Hidden lists sharing the live collection still
+    // process every change in their virtualizing panels; a rare WinUI panel access violation
+    // (docs/STABILITY.md) followed a view switch, so hidden lists hold no items at all.
+    public BulkObservableCollection<FileSystemEntry>? DetailsEntries => ViewMode == BrowserViewMode.Details ? Entries : null;
+    public BulkObservableCollection<FileSystemEntry>? IconEntries => ViewMode == BrowserViewMode.Icons ? Entries : null;
+    public BulkObservableCollection<FileSystemEntry>? CompactEntries => ViewMode == BrowserViewMode.Compact ? Entries : null;
     public string HomePath { get; } = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
     public double IconItemWidth => 80 + (ZoomLevel * 16);
     public double IconItemHeight => 68 + (ZoomLevel * 13);
@@ -298,6 +304,9 @@ public partial class MainPageViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(DetailsViewVisibility));
         OnPropertyChanged(nameof(IconViewVisibility));
         OnPropertyChanged(nameof(CompactViewVisibility));
+        OnPropertyChanged(nameof(DetailsEntries));
+        OnPropertyChanged(nameof(IconEntries));
+        OnPropertyChanged(nameof(CompactEntries));
         BeginLoadingImages(Entries.ToList());
     }
 

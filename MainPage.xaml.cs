@@ -5209,7 +5209,16 @@ public sealed partial class MainPage : Page
 
     private void SetViewMode(BrowserViewMode mode)
     {
+        var previousList = ActiveFileList;
+        var selected = SelectedEntries();
+        var hadFocus = XamlRoot is not null && ContainsFocus(previousList, FocusManager.GetFocusedElement(XamlRoot) as DependencyObject);
         ViewModel.ViewMode = mode;
+        // Hidden views are unbound, so carry the selection and keyboard focus to the new view.
+        if (!ReferenceEquals(previousList, ActiveFileList))
+        {
+            foreach (var entry in selected) ActiveFileList.SelectedItems.Add(entry);
+            if (hadFocus) ActiveFileList.Focus(FocusState.Keyboard);
+        }
         UpdateViewMenu();
         ViewModel.SetSelectionStatus(SelectedEntries());
         RememberCurrentFolderView();

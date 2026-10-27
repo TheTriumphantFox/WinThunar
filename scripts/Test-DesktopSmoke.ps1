@@ -42,7 +42,7 @@ function Wait-ForTestExit($TestProcess, [int]$TimeoutSeconds) {
 # Record the inputs before building; later edits cannot silently change a running test's provenance.
 $sourceFiles = @('WinThunar.csproj', 'MainPage.xaml', 'MainPage.xaml.cs', 'MainWindow.xaml.cs',
     'ViewModels/MainPageViewModel.cs', 'Models/FileSystemEntry.cs', 'Services/ShellImageService.cs',
-    'Services/FileContainerNameTracker.cs', 'Services/ShellThumbnailReader.cs', 'Services/FilePreviewLoader.cs',
+    'Services/FileContainerNameTracker.cs', 'Services/FileContainerNameRegistry.cs', 'Services/ShellThumbnailReader.cs', 'Services/FilePreviewLoader.cs',
     'tests/WinThunar.DesktopSmoke/EnduranceChecks.cs', 'tests/WinThunar.DesktopSmoke/SmokeChecks.cs',
     'tests/WinThunar.DesktopSmoke/ContainerBindingChecks.cs', 'scripts/Test-DesktopSmoke.ps1')
 [ordered]@{

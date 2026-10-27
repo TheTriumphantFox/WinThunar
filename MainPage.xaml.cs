@@ -5,7 +5,6 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Navigation;
 using System.Diagnostics;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Text.RegularExpressions;
@@ -78,8 +77,7 @@ public sealed partial class MainPage : Page
     private bool _updateBarDismissed;
     private bool _updateCheckRequested;
     private bool _disposed;
-    private readonly ConditionalWeakTable<SelectorItem, FileContainerNameTracker> _containerNames = new();
-    private readonly List<WeakReference<FileContainerNameTracker>> _containerNameTrackers = [];
+    private readonly FileContainerNameRegistry _containerNames = new();
 
     public MainPageViewModel ViewModel { get; } = new();
     public MainPageViewModel SplitViewModel { get; } = new();
@@ -255,10 +253,7 @@ public sealed partial class MainPage : Page
         }
 
         _disposed = true;
-        foreach (var reference in _containerNameTrackers)
-            if (reference.TryGetTarget(out var tracker)) tracker.Dispose();
-        _containerNameTrackers.Clear();
-        _containerNames.Clear();
+        _containerNames.Dispose();
         _searchInputDelay?.Cancel();
         _searchInputDelay?.Dispose();
         _searchInputDelay = null;
@@ -3305,21 +3300,7 @@ public sealed partial class MainPage : Page
     private void FileContainer_ChangingCore(ContainerContentChangingEventArgs args)
     {
 #endif
-        var container = args.ItemContainer;
-        // Native containers can outlive their managed RCW. Tag gives the tracker the
-        // native lifetime; a weak-key-only table would register it again after each RCW GC.
-        var tracker = container.Tag as FileContainerNameTracker ?? _containerNames.GetValue(container, item =>
-        {
-            var created = new FileContainerNameTracker(item);
-            _containerNameTrackers.Add(new(created));
-            if (_containerNameTrackers.Count > 256 && _containerNameTrackers.Count % 64 == 0)
-                _containerNameTrackers.RemoveAll(reference => !reference.TryGetTarget(out _));
-            return created;
-        });
-        // Keep the entire update path typed. A reflection binding reconnects to every
-        // recycled entry inside XAML layout, even if its initial installation was deferred.
-        tracker.SetEntry(args.InRecycleQueue ? null : args.Item as FileSystemEntry);
-        tracker.EnsureContentTracking();
+        _containerNames.Update(args);
     }
 
     private void FilePane_GotFocus(object sender, RoutedEventArgs e) => SetActivePaneForList(sender);

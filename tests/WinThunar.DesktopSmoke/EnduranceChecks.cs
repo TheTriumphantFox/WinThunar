@@ -110,8 +110,8 @@ public sealed partial class MainPage
                 firstEntriesObserved = firstEntriesObserved.Count,
                 firstEntriesAlive = firstEntriesObserved.Count(entry => entry.IsAlive),
                 observedEntriesAlive = firstEntriesObserved.Concat(entriesObserved).Count(entry => entry.IsAlive),
-                nameTrackersObserved = _containerNameTrackers.Count,
-                nameTrackersAlive = _containerNameTrackers.Count(reference => reference.TryGetTarget(out _)),
+                nameTrackersObserved = _containerNames.Trackers.Count,
+                nameTrackersAlive = _containerNames.Trackers.Count(reference => reference.TryGetTarget(out _)),
                 focusType = focused?.GetType().FullName,
                 focusName = (focused as FrameworkElement)?.Name,
                 focusInFiles = ContainsFocus(ActiveFileList, focused),
@@ -252,7 +252,7 @@ public sealed partial class MainPage
                 await Task.Delay(1000);
                 Sample($"after-collection-{round}");
             }
-            Require(_containerNameTrackers.Count(reference => reference.TryGetTarget(out _)) <= (textCount + imageCount) * 4,
+            Require(_containerNames.Trackers.Count(reference => reference.TryGetTarget(out _)) <= (textCount + imageCount) * 4,
                 "Native container name trackers remain bounded after the generated workload", checks);
             if (int.TryParse(Environment.GetEnvironmentVariable("WINTHUNAR_SMOKE_DIAGNOSTIC_HOLD_SECONDS"), out var holdSeconds) && holdSeconds is > 0 and <= 600)
             {

@@ -10,9 +10,11 @@ one Token handle. See
 and [Visible-only binding and final-source gates](#visible-only-binding-and-final-source-gates-27-october).
 One launch in about 100 of the earlier source hit a WinUI virtualization access violation
 (`0xC0000005`). Each hidden file view is now unbound from the entries collection. The trigger
-is unproven, but 100 launches of the changed source are clean. A 24-hour soak of the final
-source is running to retest the historical `0xC000027B` failure at about 21 hours. The
-retained dumps and sample histories are preserved.
+is unproven, but 100 launches of the changed source are clean. **A 24-hour soak of the final
+source completes with no crash**, past the point where the historical `0xC000027B` failure
+happened. Handles stay flat, and private memory grows 12.3 MiB over the day. Three UI-thread
+stalls of 24–53 seconds during the soak are not explained. The retained dumps and sample
+histories are preserved.
 
 This is source work following published 0.5.15. It has not been published or applied to
 installed copies. P0 stability remains open until the longer workload and native-crash
@@ -593,10 +595,41 @@ standby occurs:
 Median handles stay near 3,350, and median private memory near 322 MiB (Files) and
 327–331 MiB (Menu). Both compiled-source checks match the committed files.
 
-**Day-long retest.** An 86,400-second Alternate-focus soak of the same source started at
-14:32 UTC on 27 October (`artifacts/stability-day-soak-final-20261027/`), with no debugger
-attached. That is the workload that ended with `0xC000027B` after 75,540 seconds on
-25–26 October. Its result will be recorded here. A launched soak is not a pass.
+**Day-long retest.** An 86,400-second Alternate-focus soak of the same source runs from
+14:32 UTC on 27 October to 19:51 UTC on 28 October (`artifacts/stability-day-soak-final-20261027/`),
+with no debugger attached. That is the workload that ended with `0xC000027B` after 75,540 seconds
+on 25–26 October. **It completes with no crash.** It runs 101,401 cycles, 304,203 searches and
+202,802 previews across 86,400 awake seconds. It passes 200 desktop checks and 2 restart checks,
+both processes exit zero, and compiled-source verification passes. The laptop was in Modern
+Standby three times (18:01–22:08, 09:16–09:53 and 18:14–18:49 UTC). The workload counts only
+awake time, so 105,505 wall seconds pass in total.
+
+| Measure | 20–30 min | Last 10 min | Change |
+| --- | ---: | ---: | ---: |
+| Median handles | 3,369 | 3,368 | −1 |
+| Median private memory | 333.0 MiB | 345.2 MiB | +12.3 MiB |
+| Median live name trackers | 132 | 127 | −5 |
+
+Handles and trackers stay flat for the whole day. Token handles are at most one in all 288
+snapshots, and the most trackers alive at once is 252. Private memory rises 5.5 MiB in the
+first four hours, stays between 338 and 341 MiB from hour 4 to hour 21, then ends at 345 MiB.
+That is about 0.5 MiB an hour overall, and about 0.3 MiB an hour from hour 4 on. The
+8 MiB limit applies to the one-hour gate; no day-long limit is defined. The hour-gate evaluator
+rejects this run only for hour-specific reasons: the requested length must be 3,600 seconds,
+and one sample gap exceeds 60 seconds (see the stalls below). `day-gate.json` applies the same
+windows to the full day.
+
+**UI stalls.** The app's UI thread stalls three times: 23.6 s two minutes after a standby
+resume, 41.6 s nineteen minutes after another resume, and 53.4 s at 17:37 UTC on 28 October.
+The last one comes right after a Windows Update installation (System log, 17:36). The worst
+stall in either one-hour run is 0.3 s. The Application log records no hang or error for
+WinThunar. These are not crashes, and the cause is not established. A 50-second freeze would
+matter to a user, so it is recorded as an open question.
+
+This does not prove a root cause for `0xC000027B`. The crashing stacks ran through
+custom-property lookups for a reflection binding set in `FileContainer_Changing`. Typed
+container-name tracking removes that binding. The crash does not recur in a full day of the
+workload that produced it.
 
 Before closing this priority:
 

@@ -199,15 +199,17 @@ The checklist and evidence trail that used to be here are kept in the
 ### P0 — Stability under sustained use
 
 The one-hour Files and Menu workloads both pass the resource gate with no crash (27 October,
-final source, mains power). P0 stays open until the 24-hour retest of the native crash
-finishes. See the [stability status and evidence](STABILITY.md).
+final source, mains power), and a 24-hour soak completes with no crash (28 October). Three
+UI-thread stalls of 24–53 seconds in that soak are not yet explained. See the
+[stability status and evidence](STABILITY.md).
 
-- [ ] Close the native `0xC000027B` termination in `Microsoft.UI.Xaml.dll`. An earlier extended
-  run crashed after about 21 hours; a full dump identifies COM-wrapper lock-wait/reentrant
-  dispatch. A 24-hour soak of the final source started 27 October. The WinUI virtualization
+- [x] Close the native `0xC000027B` termination in `Microsoft.UI.Xaml.dll` (28 October). An
+  earlier extended run crashed after about 21 hours, inside a reflection binding that typed
+  container-name tracking removes. A 24-hour soak of the same workload on the final source
+  completes with no crash: handles −1, private memory +12.3 MiB. The WinUI virtualization
   access violation (`0xC0000005`, `ModernCollectionBasePanel`, about 1 in 100 launches) is
   mitigated: each hidden file view is now unbound from the entries collection, and 100 launches
-  are clean. Its trigger is not proven.
+  are clean. Neither root cause is proven.
 - [x] Bound memory and handle growth during browsing, search and previews (26 October).
   Windows.Storage's brokered `StorageFile` thumbnail and preview calls retained impersonation
   Token handles (176 → 420 in an hour). Thumbnails now come from the shell's

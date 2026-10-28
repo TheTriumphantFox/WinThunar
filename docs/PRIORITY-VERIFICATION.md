@@ -45,7 +45,10 @@ awake time; its handle growth is one step at the second resume. The 27 October r
 power and a display-awake hold, with no standby. One earlier Files launch ended with a WinUI
 access violation before its workload. The final source unbinds each hidden file view from the
 entries collection, and 100 launches of it are clean
-(`stability-visible-binding-launches-20261027`). A 24-hour soak of the final source is running.
+(`stability-visible-binding-launches-20261027`). A 24-hour Alternate soak of the final source
+(`stability-day-soak-final-20261027`) completes 101,401 cycles with no crash, 200 + 2 checks and
+both exits 0. Handles −1, private memory +12.3 MiB, Token handles ≤ 1, and three unexplained
+UI stalls of 24–53 seconds.
 Details, the token attribution method and the fixes are in
 [STABILITY.md](STABILITY.md#visible-only-binding-and-final-source-gates-27-october).
 

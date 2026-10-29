@@ -48,6 +48,14 @@ public sealed partial class MainPage
                 await FinishSmokePreferencesAsync(preferences, apply: false);
                 return;
             }
+            if (Environment.GetEnvironmentVariable("WINTHUNAR_SMOKE_ENDURANCE_ONLY") == "1")
+            {
+                // A matching, minimal workload for debugger-assisted native reproductions.
+                // Ordinary smoke runs still execute the complete regression suite below.
+                await Task.Delay(400);
+                await RunOptionalEnduranceAsync(directory, checks);
+                return;
+            }
             var fixture = Directory.CreateDirectory(Path.Combine(directory, "files")).FullName;
             File.WriteAllText(Path.Combine(fixture, "example.txt"), "Desktop smoke fixture");
             await ViewModel.NavigateAsync(fixture);
@@ -87,6 +95,7 @@ public sealed partial class MainPage
             _showTerminalPanel = true;
             ApplyTerminalPanel();
             await CheckThemePreferencesAsync(directory, checks);
+            await CheckGitStatusPreferenceAsync(checks);
             _showTerminalPanel = false;
             ApplyTerminalPanel();
             await ViewModel.SearchAsync("type:txt size:>0 modified:today");
@@ -317,6 +326,38 @@ public sealed partial class MainPage
         var provider = (Microsoft.UI.Xaml.Automation.Provider.IInvokeProvider)peer.GetPattern(Microsoft.UI.Xaml.Automation.Peers.PatternInterface.Invoke);
         provider.Invoke();
         await preferences;
+    }
+
+    private async Task CheckGitStatusPreferenceAsync(List<string> checks)
+    {
+        CheckBox FindToggle() => FindSmokeElement<CheckBox>(_preferencesDialog, box => box.Content is "Show Git status badges")
+            ?? throw new InvalidOperationException("Git status preference is missing.");
+        int Queries() => ViewModel.GitQueriesStarted + SplitViewModel.GitQueriesStarted;
+        ViewModel.Entries[0].GitStatus = GitFileStatus.Modified;
+        var preferences = ShowPreferencesAsync();
+        await Task.Delay(150);
+        Require(FindToggle().IsChecked == true, "Preferences shows Git status badges turned on by default", checks);
+        FindToggle().IsChecked = false;
+        await FinishSmokePreferencesAsync(preferences, apply: true);
+        var queries = Queries();
+        await ViewModel.NavigateAsync(ViewModel.CurrentPath, false);
+        await Task.Delay(200);
+        Require(!ViewModel.ShowGitStatus && !SplitViewModel.ShowGitStatus && Queries() == queries &&
+            ViewModel.Entries.All(entry => entry.GitStatus == GitFileStatus.None),
+            "Turning off Git status badges clears them and starts no Git query on navigation", checks);
+        preferences = ShowPreferencesAsync();
+        await Task.Delay(150);
+        FindToggle().IsChecked = true;
+        await FinishSmokePreferencesAsync(preferences, apply: true);
+        // A cancelled query can still be unwinding; navigation retries once it has.
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        while (Queries() == queries && DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(250);
+            await ViewModel.NavigateAsync(ViewModel.CurrentPath, false);
+        }
+        Require(ViewModel.ShowGitStatus && SplitViewModel.ShowGitStatus && Queries() > queries,
+            "Turning Git status badges back on queries Git again", checks);
     }
 
     private async Task CheckThemePreferencesAsync(string directory, List<string> checks)

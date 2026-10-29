@@ -198,16 +198,37 @@ The checklist and evidence trail that used to be here are kept in the
 
 ### P0 — Stability under sustained use
 
-- [ ] Find the cause of the native `0xC000027B` termination in `Microsoft.UI.Xaml.dll`.
-  The unchanged 0.5.14 source reproduces it within three minutes; the 0.5.15 focused
-  fifteen-minute run does not, but the cause has not been found, so the crash is not
-  confirmed fixed. See [the endurance evidence](PRIORITY-VERIFICATION.md#container-binding-follow-up-24-october-2026).
-- [ ] Bound memory and handle growth during browsing, search and previews. The focused 0.5.15
-  run ends at 359 MiB after cleanup against 278 MiB at startup; the menu-focused diagnostic
-  reaches 857 MiB and 18,065 handles during the workload.
-- [ ] Ship only after a one-hour focused workload and a one-hour menu-focused workload both
-  finish with no crash and memory that levels off.
-- [ ] Move logic out of `MainPage.xaml.cs` where the crash and memory work touches it.
+The one-hour Files and Menu workloads both pass the resource gate with no crash (27 October,
+final source, mains power), and a 24-hour soak completes with no crash (28 October). Its three
+UI-thread stalls of 24–53 seconds came from starting Git on the UI thread while Windows held
+the file lookup; Git status now runs in the background (28 October). See the
+[stability status and evidence](STABILITY.md).
+
+- [x] Close the native `0xC000027B` termination in `Microsoft.UI.Xaml.dll` (28 October). An
+  earlier extended run crashed after about 21 hours, inside a reflection binding that typed
+  container-name tracking removes. A 24-hour soak of the same workload on the final source
+  completes with no crash: handles −1, private memory +12.3 MiB. The WinUI virtualization
+  access violation (`0xC0000005`, `ModernCollectionBasePanel`, about 1 in 100 launches) is
+  mitigated: each hidden file view is now unbound from the entries collection, and 100 launches
+  are clean. Neither root cause is proven.
+- [x] Bound memory and handle growth during browsing, search and previews (26 October).
+  Windows.Storage's brokered `StorageFile` thumbnail and preview calls retained impersonation
+  Token handles (176 → 420 in an hour). Thumbnails now come from the shell's
+  `IShellItemImageFactory`, and previews decode from a file stream. The .NET 10.0.11
+  COM-wrapper leak ([dotnet/runtime#129191](https://github.com/dotnet/runtime/issues/129191))
+  keeps its Release-only workaround until 10.0.13.
+- [x] Ship only after a one-hour focused workload and a one-hour menu-focused workload both
+  finish with no crash and memory that levels off (26–27 October). On the final source, on
+  mains power with no standby: Files −10 handles and −0.45 MiB; Menu −2 handles and +4.34 MiB.
+  Both hold about 325 MiB and at most one Token handle.
+- [x] Move logic out of `MainPage.xaml.cs` where the crash and memory work touches it
+  (27 October). Container-name tracking (`FileContainerNameRegistry`), preview loading
+  (`FilePreviewLoader`), shell thumbnails (`ShellThumbnailReader`) and per-view list binding
+  (`MainPageViewModel`) now live outside the page.
+- [x] Keep the UI responsive when Windows delays a Git start (28 October). Dumps of two
+  53–62 second freezes show the UI thread in `Process.Start` for the Git badge query. Git
+  status now runs on the thread pool, refreshes once a minute, and can be turned off in
+  Preferences.
 
 ### P0 — Real users
 

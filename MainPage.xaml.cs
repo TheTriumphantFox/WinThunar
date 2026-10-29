@@ -22,7 +22,7 @@ public sealed partial class MainPage : Page
     private const string InternalDragFormat = "WinThunar.InternalPaths";
     private readonly FileOperationService _fileOperations = new();
     private readonly BulkRenameService _bulkRenameService = new();
-    private readonly ShellImageService _shellImageService = new();
+    private readonly FilePreviewLoader _filePreviewLoader = new();
     private readonly PluginService _pluginService = new();
     private readonly FileTransferQueue _transferQueue;
     private readonly FileOperationHistory _history = new();
@@ -77,6 +77,7 @@ public sealed partial class MainPage : Page
     private bool _updateBarDismissed;
     private bool _updateCheckRequested;
     private bool _disposed;
+    private readonly FileContainerNameRegistry _containerNames = new();
 
     public MainPageViewModel ViewModel { get; } = new();
     public MainPageViewModel SplitViewModel { get; } = new();
@@ -136,6 +137,7 @@ public sealed partial class MainPage : Page
         ViewModel.SortDescending = session.SortDescending;
         ViewModel.FoldersFirst = session.FoldersFirst;
         ViewModel.ShowThumbnails = session.ShowThumbnails;
+        ViewModel.ShowGitStatus = session.ShowGitStatus;
         ViewModel.ZoomLevel = Math.Clamp(session.ZoomLevel, 0, 4);
         ViewModel.IncludeSubfolders = session.IncludeSubfolders;
         _confirmMoveToTrash = session.ConfirmMoveToTrash;
@@ -170,6 +172,7 @@ public sealed partial class MainPage : Page
         SplitViewModel.SortDescending = ViewModel.SortDescending;
         SplitViewModel.FoldersFirst = ViewModel.FoldersFirst;
         SplitViewModel.ShowThumbnails = ViewModel.ShowThumbnails;
+        SplitViewModel.ShowGitStatus = ViewModel.ShowGitStatus;
         SplitViewModel.ZoomLevel = ViewModel.ZoomLevel;
         SplitViewModel.IncludeSubfolders = ViewModel.IncludeSubfolders;
         SplitViewModel.ShowSizeColumn = ViewModel.ShowSizeColumn;
@@ -252,6 +255,7 @@ public sealed partial class MainPage : Page
         }
 
         _disposed = true;
+        _containerNames.Dispose();
         _searchInputDelay?.Cancel();
         _searchInputDelay?.Dispose();
         _searchInputDelay = null;
@@ -2135,6 +2139,8 @@ public sealed partial class MainPage : Page
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(theme, "Color theme");
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetHelpText(theme, "Choose System, Light, or Dark. Apply changes all WinThunar windows.");
         var thumbnails = new CheckBox { Content = "Show Windows thumbnails", IsChecked = ViewModel.ShowThumbnails };
+        var gitStatus = new CheckBox { Content = "Show Git status badges", IsChecked = ViewModel.ShowGitStatus };
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetHelpText(gitStatus, "Runs Git when you open a folder and once a minute. Turn off to stop WinThunar starting Git.");
         var foldersFirst = new CheckBox { Content = "Sort folders before files", IsChecked = ViewModel.FoldersFirst };
         var recursiveSearch = new CheckBox { Content = "Include subfolders in search", IsChecked = ViewModel.IncludeSubfolders };
         var confirmTrash = new CheckBox { Content = "Confirm before moving items to the Recycle Bin", IsChecked = _confirmMoveToTrash };
@@ -2208,6 +2214,7 @@ public sealed partial class MainPage : Page
         });
         content.Children.Add(defaultView);
         content.Children.Add(thumbnails);
+        content.Children.Add(gitStatus);
         content.Children.Add(foldersFirst);
         content.Children.Add(previewImages);
         content.Children.Add(new TextBlock { Text = "Behavior", Margin = new Thickness(0, 8, 0, 0), FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
@@ -2244,6 +2251,7 @@ public sealed partial class MainPage : Page
         }
 
         ViewModel.ShowThumbnails = thumbnails.IsChecked == true;
+        ViewModel.ShowGitStatus = gitStatus.IsChecked == true;
         ViewModel.FoldersFirst = foldersFirst.IsChecked == true;
         ViewModel.IncludeSubfolders = recursiveSearch.IsChecked == true;
         _confirmMoveToTrash = confirmTrash.IsChecked == true;
@@ -2253,6 +2261,7 @@ public sealed partial class MainPage : Page
         _showImagePreview = previewImages.IsChecked == true;
         ApplyImagePreview();
         SplitViewModel.ShowThumbnails = ViewModel.ShowThumbnails;
+        SplitViewModel.ShowGitStatus = ViewModel.ShowGitStatus;
         SplitViewModel.FoldersFirst = ViewModel.FoldersFirst;
         SplitViewModel.IncludeSubfolders = ViewModel.IncludeSubfolders;
         SetViewMode(defaultView.SelectedIndex switch
@@ -3285,23 +3294,20 @@ public sealed partial class MainPage : Page
 
     private void FileContainer_Changing(ListViewBase sender, ContainerContentChangingEventArgs args)
     {
-        // Follow Content on the container rather than capturing each successive entry.
-        // The same binding survives recycling, clears when Content is null, and still
-        // observes AutomationName changes (including asynchronous Git status).
-        if (!args.InRecycleQueue && args.Item is FileSystemEntry &&
-            args.ItemContainer.GetBindingExpression(Microsoft.UI.Xaml.Automation.AutomationProperties.NameProperty) is null)
-            args.ItemContainer.SetBinding(Microsoft.UI.Xaml.Automation.AutomationProperties.NameProperty,
-                new Microsoft.UI.Xaml.Data.Binding
-                {
-                    RelativeSource = new Microsoft.UI.Xaml.Data.RelativeSource
-                    {
-                        Mode = Microsoft.UI.Xaml.Data.RelativeSourceMode.Self
-                    },
-                    Path = new PropertyPath($"Content.{nameof(FileSystemEntry.AutomationName)}"),
-                    FallbackValue = string.Empty,
-                    TargetNullValue = string.Empty,
-                    Mode = Microsoft.UI.Xaml.Data.BindingMode.OneWay
-                });
+#if ROADMAP_SMOKE_TEST
+        ContainerCallbackDepth++;
+        try { FileContainer_ChangingCore(args); }
+        finally { ContainerCallbackDepth--; }
+    }
+
+    // Test-only: lets the endurance harness detect collection changes that run inside this
+    // layout callback, which can only happen if the callback pumps the dispatcher.
+    [ThreadStatic] internal static int ContainerCallbackDepth;
+
+    private void FileContainer_ChangingCore(ContainerContentChangingEventArgs args)
+    {
+#endif
+        _containerNames.Update(args);
     }
 
     private void FilePane_GotFocus(object sender, RoutedEventArgs e) => SetActivePaneForList(sender);
@@ -3777,61 +3783,41 @@ public sealed partial class MainPage : Page
             return;
         }
 
-        var imageExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            ".avif", ".bmp", ".gif", ".heic", ".heif", ".ico", ".jpeg", ".jpg", ".png", ".tif", ".tiff", ".webp"
-        };
         try
         {
-            if (Path.GetExtension(entry.FullPath).Equals(".pdf", StringComparison.OrdinalIgnoreCase))
+            if (FilePreviewLoader.IsPdf(entry.FullPath)) PreviewStatus.Text = "Loading PDF page…";
+            switch (await _filePreviewLoader.LoadAsync(entry.FullPath, pdfPageIndex, cancellationToken))
             {
-                PreviewStatus.Text = "Loading PDF page…";
-                var page = await Task.Run(() => PdfFilePreview.ReadAsync(entry.FullPath, pdfPageIndex, cancellationToken), cancellationToken);
-                using var stream = new MemoryStream(page.Image).AsRandomAccessStream();
-                var bitmap = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage();
-                await bitmap.SetSourceAsync(stream);
-                cancellationToken.ThrowIfCancellationRequested();
-                PreviewImage.Source = bitmap;
-                PreviewImage.Visibility = Visibility.Visible;
-                Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(PreviewImage, "Selected PDF page preview");
-                _pdfPreviewEntry = entry;
-                _pdfPageIndex = page.PageIndex;
-                PdfPageNumber.Text = $"Page {page.PageIndex + 1} of {page.PageCount}";
-                PdfPreviousPage.IsEnabled = page.PageIndex > 0;
-                PdfNextPage.IsEnabled = page.PageIndex + 1 < page.PageCount;
-                PdfPageControls.Visibility = Visibility.Visible;
-                PreviewStatus.Text = "PDF preview";
-                return;
+                case PdfPagePreviewImage page:
+                    PreviewImage.Source = page.Image;
+                    PreviewImage.Visibility = Visibility.Visible;
+                    Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(PreviewImage, "Selected PDF page preview");
+                    _pdfPreviewEntry = entry;
+                    _pdfPageIndex = page.PageIndex;
+                    PdfPageNumber.Text = $"Page {page.PageIndex + 1} of {page.PageCount}";
+                    PdfPreviousPage.IsEnabled = page.PageIndex > 0;
+                    PdfNextPage.IsEnabled = page.PageIndex + 1 < page.PageCount;
+                    PdfPageControls.Visibility = Visibility.Visible;
+                    PreviewStatus.Text = "PDF preview";
+                    break;
+                case TextFilePreviewContent { Text: var text, IsDocx: var isDocx }:
+                    PreviewText.Text = text.Text;
+                    Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(PreviewText,
+                        isDocx ? "Selected DOCX body text preview" : "Selected text file preview");
+                    PreviewText.Visibility = Visibility.Visible;
+                    PreviewStatus.Text = isDocx
+                        ? (text.Truncated ? "DOCX body text • showing the first 32,768 characters." : "DOCX body text")
+                        : (text.Truncated ? "Showing the first 32,768 characters." : "Text preview");
+                    break;
+                case ImageFilePreview { Image: var image }:
+                    PreviewImage.Source = image;
+                    Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(PreviewImage, "Selected image preview");
+                    PreviewImage.Visibility = image is null ? Visibility.Collapsed : Visibility.Visible;
+                    break;
+                default:
+                    PreviewStatus.Text = "Preview is available for images, PDFs up to 64 MiB, DOCX body text up to 16 MiB, and supported text files stored on this device.";
+                    break;
             }
-            var isDocx = DocxFileContent.IsDocument(entry.FullPath);
-            var text = await Task.Run(() => isDocx ? DocxFileContent.ReadPreview(entry.FullPath, cancellationToken)
-                : TextFileContent.Supports(entry.FullPath, File.GetAttributes(entry.FullPath))
-                    ? TextFileContent.ReadPreview(entry.FullPath, cancellationToken) : null, cancellationToken);
-            cancellationToken.ThrowIfCancellationRequested();
-            if (text is not null)
-            {
-                PreviewText.Text = text.Text;
-                Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(PreviewText,
-                    isDocx ? "Selected DOCX body text preview" : "Selected text file preview");
-                PreviewText.Visibility = Visibility.Visible;
-                PreviewStatus.Text = isDocx
-                    ? (text.Truncated ? "DOCX body text • showing the first 32,768 characters." : "DOCX body text")
-                    : (text.Truncated ? "Showing the first 32,768 characters." : "Text preview");
-                return;
-            }
-            if (!imageExtensions.Contains(Path.GetExtension(entry.FullPath)))
-            {
-                PreviewStatus.Text = "Preview is available for images, PDFs up to 64 MiB, DOCX body text up to 16 MiB, and supported text files stored on this device.";
-                return;
-            }
-            var image = await _shellImageService.GetPreviewAsync(
-                entry.FullPath,
-                512,
-                cancellationToken);
-            cancellationToken.ThrowIfCancellationRequested();
-            PreviewImage.Source = image;
-            Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(PreviewImage, "Selected image preview");
-            PreviewImage.Visibility = image is null ? Visibility.Collapsed : Visibility.Visible;
         }
         catch (OperationCanceledException)
         {
@@ -5211,7 +5197,16 @@ public sealed partial class MainPage : Page
 
     private void SetViewMode(BrowserViewMode mode)
     {
+        var previousList = ActiveFileList;
+        var selected = SelectedEntries();
+        var hadFocus = XamlRoot is not null && ContainsFocus(previousList, FocusManager.GetFocusedElement(XamlRoot) as DependencyObject);
         ViewModel.ViewMode = mode;
+        // Hidden views are unbound, so carry the selection and keyboard focus to the new view.
+        if (!ReferenceEquals(previousList, ActiveFileList))
+        {
+            foreach (var entry in selected) ActiveFileList.SelectedItems.Add(entry);
+            if (hadFocus) ActiveFileList.Focus(FocusState.Keyboard);
+        }
         UpdateViewMenu();
         ViewModel.SetSelectionStatus(SelectedEntries());
         RememberCurrentFolderView();
@@ -5520,6 +5515,7 @@ public sealed partial class MainPage : Page
                 SortDescending = ViewModel.SortDescending,
                 FoldersFirst = ViewModel.FoldersFirst,
                 ShowThumbnails = ViewModel.ShowThumbnails,
+                ShowGitStatus = ViewModel.ShowGitStatus,
                 ZoomLevel = ViewModel.ZoomLevel,
                 IncludeSubfolders = ViewModel.IncludeSubfolders,
                 ConfirmMoveToTrash = _confirmMoveToTrash,

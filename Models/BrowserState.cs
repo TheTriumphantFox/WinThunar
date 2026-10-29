@@ -140,6 +140,7 @@ public sealed class AppSessionState
     public bool SortDescending { get; set; }
     public bool FoldersFirst { get; set; } = true;
     public bool ShowThumbnails { get; set; } = true;
+    public bool ShowGitStatus { get; set; } = true;
     public int ZoomLevel { get; set; } = 2;
     public bool IncludeSubfolders { get; set; } = true;
     public bool ConfirmMoveToTrash { get; set; }

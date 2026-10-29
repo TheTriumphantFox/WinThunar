@@ -249,6 +249,19 @@ public sealed class CoreBehaviorTests : IDisposable
     }
 
     [Fact]
+    public void GitStatusPreferenceDefaultsOnAndRoundTripsOff()
+    {
+        var sessionPath = Path.Combine(_root, "state", "git-session.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(sessionPath)!);
+        // Sessions saved before the preference existed keep badges on.
+        File.WriteAllText(sessionPath, """{"LastPath":null,"ShowThumbnails":true}""");
+        var sessionService = new AppSessionService(sessionPath);
+        Assert.True(sessionService.Load().ShowGitStatus);
+        sessionService.Save(new AppSessionState { ShowGitStatus = false });
+        Assert.False(sessionService.Load().ShowGitStatus);
+    }
+
+    [Fact]
     public async Task SessionAndPluginRoundTripsRemainValid()
     {
         var sessionPath = Path.Combine(_root, "state", "session.json");

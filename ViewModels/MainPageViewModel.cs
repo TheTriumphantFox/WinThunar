@@ -33,10 +33,18 @@ public partial class MainPageViewModel : ObservableObject, IDisposable
     private CancellationTokenSource? _gitCancellation;
     private bool _gitLoading;
 
+#if ROADMAP_SMOKE_TEST
+    /// <summary>Git status queries started; each can launch up to three Git processes.</summary>
+    internal int GitQueriesStarted { get; private set; }
+#endif
+
     private async Task RefreshGitStatusAsync()
     {
-        if (_disposed || _gitLoading || IsVirtualView || IsSearchMode || IsBusy || string.IsNullOrEmpty(CurrentPath)) return;
+        if (_disposed || !ShowGitStatus || _gitLoading || IsVirtualView || IsSearchMode || IsBusy || string.IsNullOrEmpty(CurrentPath)) return;
         _gitLoading = true;
+#if ROADMAP_SMOKE_TEST
+        GitQueriesStarted++;
+#endif
         var path = CurrentPath;
         using var cancellation = new CancellationTokenSource();
         _gitCancellation = cancellation;
@@ -44,7 +52,7 @@ public partial class MainPageViewModel : ObservableObject, IDisposable
         {
             var snapshot = await _gitStatus.ReadAsync(path, cancellation.Token);
             cancellation.Token.ThrowIfCancellationRequested();
-            if (_disposed || !PathEquals(path, CurrentPath) || IsVirtualView || IsSearchMode) return;
+            if (_disposed || !ShowGitStatus || !PathEquals(path, CurrentPath) || IsVirtualView || IsSearchMode) return;
             foreach (var entry in Entries) entry.GitStatus = snapshot?.ForPath(entry.FullPath, entry.IsDirectory) ?? GitFileStatus.None;
         }
         catch (OperationCanceledException) { }
@@ -53,14 +61,30 @@ public partial class MainPageViewModel : ObservableObject, IDisposable
 
     private void StartGitStatusRefresh()
     {
+        if (!ShowGitStatus) return;
         if (_gitTimer is null)
         {
             _gitTimer = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread().CreateTimer();
-            _gitTimer.Interval = TimeSpan.FromSeconds(10);
+            // Navigation, F5 and the folder watcher already refresh badges. The timer only catches
+            // commits or staging done elsewhere; each refresh starts up to three Git processes.
+            _gitTimer.Interval = TimeSpan.FromMinutes(1);
             _gitTimer.Tick += async (_, _) => await RefreshGitStatusAsync();
-            _gitTimer.Start();
         }
+        _gitTimer.Start();
         _ = RefreshGitStatusAsync();
+    }
+
+    partial void OnShowGitStatusChanged(bool value)
+    {
+        if (value)
+        {
+            StartGitStatusRefresh();
+            return;
+        }
+        // Turning badges off must stop Git process starts too, not just hide the result.
+        _gitCancellation?.Cancel();
+        _gitTimer?.Stop();
+        foreach (var entry in Entries) entry.GitStatus = GitFileStatus.None;
     }
 
     public BulkObservableCollection<FileSystemEntry> Entries { get; } = [];
@@ -111,6 +135,9 @@ public partial class MainPageViewModel : ObservableObject, IDisposable
     public partial bool ShowThumbnails { get; set; } = true;
 
     [ObservableProperty]
+    public partial bool ShowGitStatus { get; set; } = true;
+
+    [ObservableProperty]
     public partial int ZoomLevel { get; set; } = 2;
 
     [ObservableProperty]
@@ -151,6 +178,12 @@ public partial class MainPageViewModel : ObservableObject, IDisposable
     public Visibility CompactViewVisibility => ViewMode == BrowserViewMode.Compact
         ? Visibility.Visible
         : Visibility.Collapsed;
+    // Only the visible view's list is bound. Hidden lists sharing the live collection still
+    // process every change in their virtualizing panels; a rare WinUI panel access violation
+    // (docs/STABILITY.md) followed a view switch, so hidden lists hold no items at all.
+    public BulkObservableCollection<FileSystemEntry>? DetailsEntries => ViewMode == BrowserViewMode.Details ? Entries : null;
+    public BulkObservableCollection<FileSystemEntry>? IconEntries => ViewMode == BrowserViewMode.Icons ? Entries : null;
+    public BulkObservableCollection<FileSystemEntry>? CompactEntries => ViewMode == BrowserViewMode.Compact ? Entries : null;
     public string HomePath { get; } = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
     public double IconItemWidth => 80 + (ZoomLevel * 16);
     public double IconItemHeight => 68 + (ZoomLevel * 13);
@@ -298,6 +331,9 @@ public partial class MainPageViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(DetailsViewVisibility));
         OnPropertyChanged(nameof(IconViewVisibility));
         OnPropertyChanged(nameof(CompactViewVisibility));
+        OnPropertyChanged(nameof(DetailsEntries));
+        OnPropertyChanged(nameof(IconEntries));
+        OnPropertyChanged(nameof(CompactEntries));
         BeginLoadingImages(Entries.ToList());
     }
 

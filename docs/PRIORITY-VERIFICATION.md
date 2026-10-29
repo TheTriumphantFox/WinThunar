@@ -27,7 +27,7 @@ this verification pass; existing historical failures remain recorded in their or
 
 ## One-hour stability gate, 26 October 2026
 
-Source work after 0.5.15, not published. The roadmap's ship gate is one hour of the focused
+Source work after 0.5.15, published in 0.6.0. The roadmap's ship gate is one hour of the focused
 workload and one hour of the menu-focused workload, each finishing with no crash and with
 memory that levels off. The gate measures growth between the 20–30 minute window and the
 final ten minutes: at most 128 median handles, 8 MiB of median private memory and 32 trackers.
@@ -566,3 +566,22 @@ Application assemblies agree and checked test/fault hooks are absent. See
 
 Installed upgrade to 0.5.15, broader memory/runtime, manual accessibility, notifications and
 day-long/slow-network coverage remain open. Hardware/network and interactive UAC remain deferred.
+
+## 0.6.0 publication verification, 29 October 2026
+
+[0.6.0](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.6.0) is published from
+clean merged `main` (`bf7eadc`, PR #43) using `Publish-Release.ps1 -Version 0.6.0`. The release
+source passes 214 service tests, 200 desktop checks and two theme-restart checks, including
+What's New in Light and Dark. Packaged application assemblies agree, checked test hooks are
+absent, both MSI copies carry 0.6.0.0 with their policies and native guard, the 804,667-byte
+delta from 0.5.15 reconstructs all 528 entries, and 25 historical packages keep their hashes.
+All five public digests, both feeds, latest stable and the tag match. See
+`artifacts/verification-0.6.0/` and [release notes](RELEASE-0.6.0.md).
+
+Before the release, the theme-restart check hung in four of eight scripted runs. A dump shows
+the relaunch waiting without a bound on a handoff to an instance that had already exited; the
+fix and its runs are in
+[STABILITY.md](STABILITY.md#launch-hang-after-an-instance-exits-29-october).
+
+Installed upgrade to 0.6.0, manual accessibility, notifications and slow-network coverage
+remain open. Hardware/network and interactive UAC remain deferred.

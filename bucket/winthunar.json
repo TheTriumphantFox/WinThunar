@@ -1,13 +1,13 @@
 {
-    "version": "0.5.15",
+    "version": "0.6.0",
     "description": "A classic file manager experience for Windows 11, inspired by Thunar.",
     "homepage": "https://github.com/TheTriumphantFox/WinThunar",
     "license": "MIT",
     "notes": "Scoop updates this copy; WinThunar's own updater is for MSI installs.",
     "architecture": {
         "64bit": {
-            "url": "https://github.com/TheTriumphantFox/WinThunar/releases/download/v0.5.15/WinThunar.App-win-Portable.zip",
-            "hash": "5f4f898b3b73e9c68af26a9381efc1d610ebb20604452bafa63e6896350fe18c"
+            "url": "https://github.com/TheTriumphantFox/WinThunar/releases/download/v0.6.0/WinThunar.App-win-Portable.zip",
+            "hash": "d3bfdfa673328f31ab2c236226a8365cf9000201f59d23d90a296aac36219fec"
         }
     },
     "bin": "WinThunar.exe",

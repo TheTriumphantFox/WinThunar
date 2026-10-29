@@ -2,7 +2,7 @@
 
 Source/smoke status updated on 24 October 2026. This is a source and smoke-check
 status document, not a claim of full screen-reader compatibility or accessibility conformance.
-The latest recorded published application is 0.5.15; the support below is included in the release unless
+The latest recorded published application is 0.6.0; the support below is included in the release unless
 marked unreleased, subject to the verification limits here.
 See the [release/source status](ROADMAP.md#release-and-source-status).
 

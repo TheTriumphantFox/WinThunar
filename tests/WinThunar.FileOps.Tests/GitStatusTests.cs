@@ -44,6 +44,26 @@ public sealed class GitStatusTests
     }
 
     [Fact]
+    public async Task SlowProcessStartDoesNotBlockTheCaller()
+    {
+        // Windows can hold CreateProcess's PATH search for a minute; the UI thread must not wait on it.
+        var callerThread = Environment.CurrentManagedThreadId;
+        var startThread = 0;
+        var service = new GitStatusService(_ =>
+        {
+            startThread = Environment.CurrentManagedThreadId;
+            Thread.Sleep(1500);
+            throw new System.ComponentModel.Win32Exception(2);
+        });
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        var read = service.ReadAsync(Path.GetTempPath());
+        Assert.True(clock.ElapsedMilliseconds < 500, $"ReadAsync blocked its caller for {clock.ElapsedMilliseconds} ms.");
+        Assert.Null(await read);
+        Assert.NotEqual(0, startThread);
+        Assert.NotEqual(callerThread, startThread);
+    }
+
+    [Fact]
     public void ParsesNulDelimitedNamesRenamesAndConflicts()
     {
         var paths = GitStatusService.Parse("clean.txt\0old name.txt\0", " M space name.txt\0R  new name.txt\0old name.txt\0?? untracked\nname\0UU conflict\0!! ignored/\0");

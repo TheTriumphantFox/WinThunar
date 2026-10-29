@@ -31,9 +31,18 @@ public sealed record GitStatusSnapshot(string Root, IReadOnlyDictionary<string, 
 }
 
 /// <summary>Read-only Git commands, without a command shell, with cancellation and a time limit.</summary>
-public sealed class GitStatusService
+public sealed class GitStatusService(Func<ProcessStartInfo, Process>? startProcess = null)
 {
-    public async Task<GitStatusSnapshot?> ReadAsync(string directory, CancellationToken cancellationToken = default)
+    private readonly Func<ProcessStartInfo, Process> _startProcess = startProcess ?? (start => Process.Start(start)!);
+
+    /// <summary>
+    /// Runs entirely on the thread pool. Starting Git searches PATH, and killing its process tree
+    /// opens every process on the system; Windows can hold either for a minute (docs/STABILITY.md).
+    /// </summary>
+    public Task<GitStatusSnapshot?> ReadAsync(string directory, CancellationToken cancellationToken = default) =>
+        Task.Run(() => ReadCoreAsync(directory, cancellationToken), CancellationToken.None);
+
+    private async Task<GitStatusSnapshot?> ReadCoreAsync(string directory, CancellationToken cancellationToken)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(TimeSpan.FromSeconds(8));
@@ -80,7 +89,7 @@ public sealed class GitStatusService
         return result;
     }
 
-    private static async Task<string?> RunAsync(string directory, string[] arguments, CancellationToken token)
+    private async Task<string?> RunAsync(string directory, string[] arguments, CancellationToken token)
     {
         var start = new ProcessStartInfo("git") { WorkingDirectory = directory, UseShellExecute = false,
             CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true,
@@ -93,7 +102,7 @@ public sealed class GitStatusService
         foreach (var key in start.Environment.Keys.Where(key => key.StartsWith("GIT_", StringComparison.OrdinalIgnoreCase)).ToArray())
             start.Environment.Remove(key);
         start.Environment["GIT_TERMINAL_PROMPT"] = "0";
-        using var process = Process.Start(start)!;
+        using var process = _startProcess(start);
         try
         {
             var output = process.StandardOutput.ReadToEndAsync(token);

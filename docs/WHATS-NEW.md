@@ -3,6 +3,13 @@
 Release-by-release summaries moved here from the README on 26 October 2026. Each release
 also has its own notes in this folder; the [roadmap](ROADMAP.md) lists what remains open.
 
+## 0.6.0
+
+WinThunar stays steady through long sessions: a full day of browsing, searching and previewing
+finishes without a crash, with memory and handles levelling off. Git status badges run in the
+background, so a slow Git start no longer freezes the window, and **Show Git status badges** in
+Preferences turns Git off entirely. See the [0.6.0 release notes](RELEASE-0.6.0.md).
+
 ## Published in 0.5.15
 
 File rows reuse their accessible-name bindings across browsing and search, preserving current

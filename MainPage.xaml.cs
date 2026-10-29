@@ -2332,6 +2332,11 @@ public sealed partial class MainPage : Page
             IsTextSelectionEnabled = true
         });
 
+        AddHeading("Version 0.6.0 — stability under sustained use");
+        AddParagraph("WinThunar stays steady through long sessions. A full day of continuous browsing, searching and previewing finishes without a crash, and memory and handle use level off instead of climbing.");
+        AddParagraph("Thumbnails and image previews load without holding Windows security handles open, and file views you are not looking at no longer update in the background.");
+        AddParagraph("Git status badges no longer freeze the window when Windows is slow to start Git. Badges refresh in the background when you open a folder, when its files change and once a minute. Turn off Show Git status badges in Preferences to stop WinThunar running Git.");
+        AddParagraph("Opening WinThunar again right after closing it, or choosing Restart Now after an update, no longer leaves the new launch waiting without a window.");
         AddHeading("Version 0.5.15 — file-row accessibility and stability follow-up");
         AddParagraph("File rows reuse their accessible-name bindings as you browse and search, keeping names, metadata and Git status current when Windows recycles a row.");
         AddHeading("Version 0.5.14 — keyboard and navigation fixes");

@@ -47,6 +47,7 @@ public partial class App : Application
         // Persist first: a failed save leaves both the visible and stored choice unchanged.
         _appearanceStore.Save(new AppearanceSettings { Theme = preference });
         ThemePreference = preference;
+        SystemColorsTheme.Apply(preference == AppThemePreference.SystemColors);
         foreach (var window in OpenWindows.OfType<MainWindow>()) window.ApplyTheme(preference);
         ThemeChanged?.Invoke(null, EventArgs.Empty);
     }
@@ -110,6 +111,7 @@ public partial class App : Application
         _appearanceStore = new AppearanceSettingsStore();
 #endif
         ThemePreference = _appearanceStore.Load().Theme;
+        SystemColorsTheme.Apply(ThemePreference == AppThemePreference.SystemColors);
         Updates = new UpdateService();
         TaskbarService.Initialize();
         Window = OpenWindow(_launchRequest);

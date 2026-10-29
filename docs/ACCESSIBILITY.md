@@ -75,6 +75,11 @@ Desktop checks exercise real Apply/Cancel buttons, new/existing windows, stale d
 saves, persistence and an isolated-process restart. The light/dark browser and Preferences renders
 were inspected. This does not replace manual contrast-theme or screen-reader verification.
 
+**Since 0.6.1:** the selector adds a fourth choice, **System colors**. It follows the
+Windows light/dark setting like System, adds the Mica backdrop and tints selected rows, tree items
+and the selected tab with the Windows accent color. Selection tints stay at 16–26% opacity so row
+text keeps its normal contrast. High Contrast keeps its system colors and solid surfaces.
+
 ## Automated desktop smoke coverage
 
 The source checkout includes the following command. The harness is committed to GitHub

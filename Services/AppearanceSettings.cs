@@ -7,7 +7,9 @@ public enum AppThemePreference
 {
     System,
     Light,
-    Dark
+    Dark,
+    /// <summary>Follows Windows light or dark, with a Mica backdrop and the Windows accent color.</summary>
+    SystemColors
 }
 
 public sealed class AppearanceSettings

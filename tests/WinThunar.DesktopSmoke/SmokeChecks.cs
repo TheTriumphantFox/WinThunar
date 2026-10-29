@@ -2,6 +2,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Text.Json;
@@ -365,14 +366,14 @@ public sealed partial class MainPage
         var cancelled = ShowPreferencesAsync();
         await Task.Delay(150);
         var selector = FindThemeSelector();
-        Require(selector.Items.Count == 3 && selector.SelectedIndex == 0, "Preferences exposes accessible System, Light and Dark theme choices", checks);
+        Require(selector.Items.Count == 4 && selector.SelectedIndex == 0, "Preferences exposes accessible System, Light, Dark and System colors theme choices", checks);
         selector.SelectedIndex = 2;
         await FinishSmokePreferencesAsync(cancelled, apply: false);
         Require(App.ThemePreference == AppThemePreference.System, "Cancel leaves the color theme unchanged", checks);
         MainWindow? otherWindow = null;
         try
         {
-            foreach (var theme in new[] { AppThemePreference.Light, AppThemePreference.Dark, AppThemePreference.System })
+            foreach (var theme in new[] { AppThemePreference.Light, AppThemePreference.Dark, AppThemePreference.SystemColors, AppThemePreference.System })
             {
                 var preferences = ShowPreferencesAsync();
                 await Task.Delay(150);
@@ -405,12 +406,33 @@ public sealed partial class MainPage
                 }
                 Require(otherWindow.Page?.ActualTheme == expected && otherWindow.AppWindow.TitleBar.PreferredTheme == titleTheme,
                     $"{theme} applies to both new and existing additional windows", checks);
+                var systemColors = theme == AppThemePreference.SystemColors;
+                var surfaceWindows = new[] { (MainWindow)App.Window, otherWindow };
+                var surfacesMatch = surfaceWindows.All(window => systemColors ? UsesSystemColors(window) : UsesSolidSurfaces(window));
+                var surfaceCheck = systemColors ? "System colors shows Mica through translucent surfaces and accent-tinted selections in every window"
+                    : $"{theme} keeps solid surfaces and default selections in every window";
+                Require(surfacesMatch, surfacesMatch ? surfaceCheck : $"{surfaceCheck}: {string.Join("; ", surfaceWindows.Select(DescribeSurfaces))}", checks);
+                var selectionBrush = SystemColorsTheme.ControlBrush(ActualTheme == ElementTheme.Light ? "Light" : "Default", "ListViewItemBackgroundSelected");
+                Require(FileList.ContainerFromIndex(0) is ListViewItem row &&
+                    FindSmokeElement<Microsoft.UI.Xaml.Controls.Primitives.ListViewItemPresenter>(row, _ => true) is { } presenter &&
+                    ReferenceEquals(presenter.SelectedBackground, selectionBrush),
+                    $"File rows in {theme} draw their selection with the shared selection brush", checks);
+                if (systemColors)
+                {
+                    FileList.SelectedIndex = 0;
+                    UpdateLayout();
+                    await Task.Delay(150);
+                    await CaptureSmokeImageAsync(directory, "SystemColorsSelection");
+                    FileList.SelectedIndex = -1;
+                }
                 if (theme != AppThemePreference.System)
                 {
                     await CaptureSmokeImageAsync(directory, theme.ToString());
                     var whatsNew = CreateWhatsNewDialog();
                     var showingWhatsNew = whatsNew.ShowAsync();
                     await Task.Delay(150);
+                    Require(FindSmokeText(whatsNew.Content as DependencyObject, "Version 0.6.1 — System colors theme") is not null,
+                        $"What's New describes the 0.6.1 System colors release in {theme}", checks);
                     Require(FindSmokeText(whatsNew.Content as DependencyObject, "Version 0.6.0 — stability under sustained use") is not null,
                         $"What's New describes the 0.6.0 stability release in {theme}", checks);
                     Require(FindSmokeText(whatsNew.Content as DependencyObject, "Version 0.5.15 — file-row accessibility and stability follow-up") is not null,
@@ -445,6 +467,32 @@ public sealed partial class MainPage
         }
         finally { otherWindow?.Close(); }
     }
+
+    private static bool UsesSystemColors(MainWindow window) =>
+        window.SystemBackdrop is MicaBackdrop &&
+        window.Page is { Background: SolidColorBrush { Color.A: 0 } } page &&
+        page.PrimaryPaneBorder.Child is Grid { Background: SolidColorBrush { Color.A: > 0 and < 0xFF } } &&
+        LightSelectionBrush() is { Opacity: < 1 } selected &&
+        selected.Color == new Windows.UI.ViewManagement.UISettings().GetColorValue(Windows.UI.ViewManagement.UIColorType.AccentDark1);
+
+    private static bool UsesSolidSurfaces(MainWindow window) =>
+        window.SystemBackdrop is null &&
+        window.Page is { Background: SolidColorBrush { Color.A: 0xFF } } page &&
+        page.PrimaryPaneBorder.Child is Grid { Background: SolidColorBrush { Color.A: 0xFF } } &&
+        LightSelectionBrush() is { Opacity: 1, Color: { A: 0x09, R: 0, G: 0, B: 0 } };
+
+    private static SolidColorBrush LightSelectionBrush() => SystemColorsTheme.ControlBrush("Light", "ListViewItemBackgroundSelected");
+
+    private static string DescribeSurfaces(MainWindow window) =>
+        $"backdrop {window.SystemBackdrop?.GetType().Name ?? "none"}, page {DescribeBrush(window.Page?.Background)}, " +
+        $"pane {DescribeBrush((window.Page?.PrimaryPaneBorder.Child as Grid)?.Background)}, selected {DescribeBrush(LightSelectionBrush())}";
+
+    private static string DescribeBrush(Brush? brush) => brush switch
+    {
+        null => "none",
+        SolidColorBrush solid => $"{solid.Color} @{solid.Opacity:0.##}",
+        _ => brush.GetType().Name
+    };
 
     private static T? FindSmokeElement<T>(DependencyObject? root, Func<T, bool> predicate) where T : DependencyObject
     {

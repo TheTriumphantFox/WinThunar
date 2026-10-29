@@ -4,15 +4,17 @@ Prepared and reviewed 19 October 2026. The README and promotional media were pub
 GitHub through [PR #10](https://github.com/TheTriumphantFox/WinThunar/pull/10).
 The [first community introduction](https://www.reddit.com/r/SideProject/comments/1x9uvud/winthunar_a_free_thunarinspired_file_manager_for/)
 was published to r/SideProject as u/TheTriumphantFox on 19 October 2026. A [Windows app introduction](https://www.reddit.com/r/windowsapps/comments/1x9w8ux/winthunar_a_free_windows_11_file_manager_with/) was also published to r/windowsapps with Developer flair that day and verified publicly. The AlternativeTo
-listing has been [submitted and is awaiting review](https://alternativeto.net/software/winthunar/), confirmed by the maintainer on 19 October 2026. Press pitches remain drafts; no paid promotion has been purchased. See
+listing was [submitted](https://alternativeto.net/software/winthunar/) on 19 October 2026 and approved; the maintainer confirmed the approval on 26 October 2026. Press pitches remain drafts; no paid promotion has been purchased. See
 [launch status](LAUNCH.md) for confirmed submissions and the initial download baseline.
 
-This launch kit was first prepared for 0.5.0. On 26 October 2026 the media were recaptured
-from [0.5.15](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.15), the current
-public release (24 October 2026), and the copy below was updated for it. The
-[0.5.15 follow-up post](#follow-up-post-for-0515) and the [Linux and Xfce post](#linux-and-xfce-communities)
-are drafts; neither has been posted. See [distribution channels](DISTRIBUTION.md) for WinGet,
-Scoop, code signing and download-site submissions.
+This launch kit was first prepared for 0.5.0. On 26 October 2026 the media were recaptured from
+[0.5.15](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.15). The current
+public release is [0.6.0](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.6.0)
+(29 October 2026), which closes the stability work; its only visible change is a **Show Git
+status badges** preference, so the 0.5.15 media still show the app accurately. The copy below
+is updated for 0.6.0. The [0.6.0 follow-up post](#follow-up-post-for-060) and the [Linux and
+Xfce post](#linux-and-xfce-communities) are drafts; neither has been posted. See [distribution
+channels](DISTRIBUTION.md) for WinGet, Scoop, code signing and download-site submissions.
 
 ## Positioning
 
@@ -83,37 +85,41 @@ https://github.com/TheTriumphantFox/WinThunar
 
 Attach the demo or the social image. Use your own voice when introducing why you built it.
 
-## Follow-up post for 0.5.15
+## Follow-up post for 0.6.0
 
-Draft for r/windowsapps, which allows one promotional post per week; the first post was on
-19 October. It is an update for people who saw that post, so lead with what changed. Check the
-community's current rules and use the Developer flair again.
+Draft for r/windowsapps, which allows one promotional post per week; the first post was on 19
+October about 0.5.0. It is an update for people who saw that post, so lead with what changed.
+Check the community's current rules and use the Developer flair again.
 
-**Title:** WinThunar 0.5.15: search filters, document previews and Undo for every transfer in the Thunar-style file manager
+**Title:** WinThunar 0.6.0: a day-long stability soak, search filters, document previews and Undo for every transfer
 
 **Body:**
 
-A week ago I posted WinThunar, a free, open-source Windows 11 file manager with a classic
+On 19 October I posted WinThunar, a free, open-source Windows 11 file manager with a classic
 Thunar-style layout. Since then:
 
-- Search filters: `name:"annual report" type:pdf modified:last7days size:>1MB`, plus
-  `content:` search inside text files and Word documents, without Office or Windows indexing.
+- Stability: 0.6.0 runs a full day of continuous browsing, searching and previewing without a
+  crash, and memory and handle use level off instead of climbing.
+- Search filters: `name:"annual report" type:pdf modified:last7days size:>1MB`, plus `content:`
+  search inside text files and Word documents, without Office or Windows indexing.
 - A preview pane for images, text, PDFs and Word documents.
 - Undo now covers Replace and folder Merge, not just ordinary copies and moves.
-- Git status badges on files and folders in repositories.
+- Git status badges on files and folders in repositories, refreshed in the background; you can
+  turn them off in Preferences.
 - System, light and dark themes, a taskbar jump list, and keyboard navigation between every
   part of the window with `F6`.
 - Restarting to install an update keeps your tabs when tab restoration is on.
 
 Downloads (MSI or portable ZIP, Windows 11 x64): https://github.com/TheTriumphantFox/WinThunar
 
-It isn't code-signed yet, so SmartScreen will ask you to confirm the first run. Known issue:
-long, heavy sessions can grow memory and end in an unexpected close; I'm working on it.
+It isn't code-signed yet, so SmartScreen will ask you to confirm the first run. Scoop users can
+install it from the project's own bucket; the README has the two commands.
 
 What would stop you using this as your everyday file manager?
 
 **Posting note:** Attach `media/winthunar-demo.gif` or the split-pane screenshot. Add the AI
-disclosure the community requires, in your own words.
+disclosure the community requires, in your own words. The stability claim rests on the 24-hour
+soak and one-hour gates in [STABILITY.md](STABILITY.md); don't stretch it to "never crashes".
 
 ## Linux and Xfce communities
 
@@ -159,12 +165,14 @@ split panes, bulk rename previews, and an integrated PowerShell panel. The build
 and doesn't require a separate .NET installation.
 
 I'd particularly like feedback on the file-management workflow and installation experience.
-It remains under development: long sessions of heavy browsing and searching can keep using
-more memory and can end in an unexpected close, which I'm investigating, and operations
-handed to Windows aren't included in its Undo history.
+It remains under development. Version 0.6.0 completed a 24-hour soak of continuous browsing,
+searching and previewing with no crash and with memory levelling off; operations handed to
+Windows aren't included in its Undo history, and the builds aren't code-signed yet.
 
-**Hold this submission** until the roadmap's P0 stability runs pass. Show HN can be used once,
-and many readers will try the app straight away.
+The roadmap's P0 stability work passed and shipped in 0.6.0 (29 October 2026), so this is no
+longer held for stability. Show HN can be used once, and many readers will try the app straight
+away: submit when the maintainer can answer questions for the following day, and consider
+signing first so SmartScreen doesn't greet every visitor.
 
 **Before submitting:** The maintainer should add a truthful sentence explaining the motivation
 for building it and be available to answer questions. Follow the [Show HN guidelines](https://news.ycombinator.com/showhn.html).
@@ -233,8 +241,8 @@ No coverage or endorsement is implied.
 3. Respond to useful reports and address installation or file-operation problems.
 4. Make a Show HN submission when the maintainer can answer questions. Send individual
    pitches to relevant Windows utility writers or creators.
-5. Submit the prepared WinGet manifest, check the Scoop bucket, and set up code signing; see
-   [distribution channels](DISTRIBUTION.md). Microsoft Store submission needs a signed
+5. Submit the WinGet manifest and the Scoop manifest to Scoop Extras (both install tests
+   passed on 26 October), and set up code signing; see [distribution channels](DISTRIBUTION.md). Microsoft Store submission needs a signed
    installer and its own policy review; it is not available yet.
 
 As checked on 19 October 2026, [r/Windows11's current rules](https://www.reddit.com/r/Windows11/about/rules.json)

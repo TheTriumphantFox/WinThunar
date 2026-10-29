@@ -244,13 +244,17 @@ the file lookup; Git status now runs in the background (28 October). See the
 - [x] Recapture the screenshots and demo from the current release, rewrite the README for
   first-time visitors, and update the stale release references in [PROMOTION.md](PROMOTION.md)
   and [LAUNCH.md](LAUNCH.md) (26 October 2026).
-- [ ] Post the prepared [0.5.15 follow-up](PROMOTION.md#follow-up-post-for-0515) and
+- [ ] Post the prepared [0.6.0 follow-up](PROMOTION.md#follow-up-post-for-060) and
   [Linux and Xfce](PROMOTION.md#linux-and-xfce-communities) introductions.
-- [ ] Follow up on the pending AlternativeTo review.
-- [ ] Submit the prepared WinGet manifest and test the Scoop bucket; see
+- [x] Follow up on the pending AlternativeTo review: approved, confirmed 26 October 2026.
+- [x] Test the Scoop bucket: install, launch and uninstall pass in the lab VM (26 October 2026).
+- [x] Test the WinGet manifest: install, match, launch and uninstall pass in the lab VM after
+  fixing the product code (26 October 2026).
+- [ ] Submit the prepared WinGet manifest, and the Scoop manifest to Scoop Extras; see
   [distribution channels](DISTRIBUTION.md).
 - [ ] Sign releases, so downloads stop showing SmartScreen's unknown-publisher warning.
-- [ ] Hold Show HN, press pitches and download-site submissions until the stability P0 passes.
+- [x] Hold Show HN, press pitches and download-site submissions until the stability P0 passes
+  (passed and shipped in 0.6.0 on 29 October 2026; they are no longer held).
 - [ ] Ask five people directly to use WinThunar as their file manager for a day, and collect
   their reports through the tester-feedback form. Those reports set the P1 order.
 

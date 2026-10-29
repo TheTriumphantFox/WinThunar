@@ -1,8 +1,10 @@
 # WinThunar 0.6.0
 
-Prepared 29 October 2026 for Windows 11 x64 from `main` after PR #41. Project, assembly/file,
-manifest and release-script versions are aligned at 0.6.0 (four-part version 0.6.0.0).
-Publication details are added once the GitHub release is live.
+Published [29 October 2026](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.6.0)
+for Windows 11 x64 from source `bf7eadccfd3fd3ec4a25451d8ef4f3932b746666` (PR #43). All five
+public binary digests, both updater feeds and the source tag match the verified build. Project,
+assembly/file, manifest and release-script versions are aligned at 0.6.0 (four-part version
+0.6.0.0).
 
 ## Changes
 
@@ -54,6 +56,38 @@ compiled-source verification passing. Before the startup fix, the theme restart 
 of eight scripted runs; a dump of one shows the launch waiting on the handoff to an instance that
 had already closed. The five passing restarts take about 2 seconds each, so these runs do not
 show which exit of the bounded wait they took.
+
+## Package and publication verification
+
+The release build ran from clean merged `main` using `Publish-Release.ps1 -Version 0.6.0`.
+Application assemblies match across the versioned ZIP, public portable ZIP and full package,
+and checked smoke, fault and Git-preference test hooks are absent. Both MSI copies match, carry
+version 0.6.0.0, retain scope/shortcut choices and repair/migration safeguards, and embed the
+native guard from the release build.
+
+The **804,667-byte** 0.5.15-to-0.6.0 delta reconstructs all **528 archive entries** with
+matching names, lengths and SHA-256 digests. All **25 historical update packages** retain their
+hashes. All five public binary sizes and SHA-256 digests match the verified build. The modern
+feed offers matching 0.6.0 full/delta entries, the compatibility feed offers the matching full
+package, latest stable resolves to 0.6.0 and the tag points to the source commit above.
+
+On `main` the service suite passes 214 tests. Its first run there failed one assertion in the
+new Git regression test: it required the slow process start to run on a different thread than
+the test, but the test's own thread-pool thread can pick that work up after yielding. The check
+that the call returns at once is the real test. The thread comparison is removed after the
+release (application packages are unaffected), and the corrected test passes 25 consecutive
+runs.
+
+Evidence is in `artifacts/verification-0.6.0/`. These are source/package checks; an installed
+upgrade to 0.6.0 remains unverified.
+
+| GitHub binary | Bytes | SHA-256 |
+| --- | ---: | --- |
+| `WinThunar.App-win.msi` | 93,454,336 | `e951ba8be12f36b7360b432cb90f4c08dbe44b689f0e8392f40e0def7d7e1265` |
+| `WinThunar.App-win-Setup.exe` | 119,523,758 | `0a56a13a0fa810f61aed095c74a27c94ba39d410ce107034fda6694d35149a84` |
+| `WinThunar.App-0.6.0-delta.nupkg` | 804,667 | `347985687db9293e4e467027947f7ae657769b5118aebb1ec738b4b8eb6d116f` |
+| `WinThunar.App-win-Portable.zip` | 111,975,633 | `d3bfdfa673328f31ab2c236226a8365cf9000201f59d23d90a296aac36219fec` |
+| `WinThunar.App-0.6.0-full.nupkg` | 111,992,238 | `c974d0c89dec4a4e366de2c8192a492f3657dff7d5eea48ebef38d3e73ed999e` |
 
 ## Limits
 

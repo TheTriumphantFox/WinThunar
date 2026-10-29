@@ -2,11 +2,19 @@
 
 ## Release and source status
 
-Checked 24 October 2026. The latest published application is
-[0.5.15](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.15), published 24 October 2026.
-The changes are merged into `main` through PR #37 (source `5e01f89`), and the GitHub updater feed
-offers 0.5.15. Documentation-only commits do not distribute an application version.
-See [release notes](RELEASE-0.5.15.md) for package verification and remaining limits.
+Checked 29 October 2026. The latest published application is
+[0.6.0](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.6.0), published 29
+October 2026. The changes are merged into `main` through PR #43 (source `bf7eadc`), and the
+GitHub updater feed offers 0.6.0. Documentation-only commits do not distribute an application
+version. See [release notes](RELEASE-0.6.0.md) for package verification and remaining limits.
+
+Release **[0.6.0](RELEASE-0.6.0.md)** closes the P0 stability work below: no native crash in a
+24-hour soak, memory and handles that level off, Git status in the background with a preference
+to turn it off, and a relaunch that no longer waits on a closing instance. The release source
+passes 214 service tests, 200 desktop checks and two restart checks. Five public binary
+digests, both MSI policies and embedded guard, source tag/feeds, all 528 reconstructed delta
+entries and 25 historical packages are verified. Installed upgrade to this version and broader
+manual/network coverage remain unverified.
 
 Release **[0.5.15](RELEASE-0.5.15.md)** reuses file-container accessible-name bindings and adds
 native content-transition regressions and isolated test diagnostics. The versioned source
@@ -119,7 +127,7 @@ below are now in published 0.5.3; test harnesses are source tools excluded from 
 - [x] Storage-error/process-termination stress harness and recovery fixes for overlapping history records and concurrent restart recovery.
 - [x] Disposable NTFS VHD verification of cross-volume history and actual disk-full allocation failures; native long-path copy/stream/history fixes.
 
-Installed copies can discover 0.5.15 through GitHub Releases. See [release publishing](RELEASES.md)
+Installed copies can discover 0.6.0 through GitHub Releases. See [release publishing](RELEASES.md)
 and [accessibility status](ACCESSIBILITY.md) for package behavior and remaining checks.
 
 ## 1. Browser foundation

@@ -1,6 +1,6 @@
 # Distribution channels
 
-Prepared 26 October 2026 for **0.5.15**. GitHub Releases remains the source of every download;
+Prepared 26 October 2026; manifests updated 29 October 2026 for **0.6.0**. GitHub Releases remains the source of every download;
 these channels point people at the same files. Update the version, URLs and digests here with
 each release, after the GitHub release is public.
 
@@ -15,7 +15,7 @@ each release, after the GitHub release is public.
 
 ## WinGet
 
-The manifests in `packaging/winget/` describe 0.5.15's MSI and pass `winget validate`
+The manifests in `packaging/winget/` describe 0.6.0's MSI and pass `winget validate`
 (WinGet 1.29). They use the versioned release URL rather than `latest/download`, because
 WinGet checks the installer's SHA-256 and a `latest` URL changes with every release.
 
@@ -38,7 +38,7 @@ wingetcreate submit --token <token> .\packaging\winget
 ```
 
 or fork [microsoft/winget-pkgs](https://github.com/microsoft/winget-pkgs), copy the three
-files to `manifests/t/TheTriumphantFox/WinThunar/0.5.15/`, and open a pull request. For later
+files to `manifests/t/TheTriumphantFox/WinThunar/0.6.0/`, and open a pull request. For later
 releases, `wingetcreate update TheTriumphantFox.WinThunar --version <version> --urls <msi url> --submit`
 rewrites the version, URL, digest and product code; copy the result back into `packaging/winget/`.
 

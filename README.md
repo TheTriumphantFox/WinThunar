@@ -57,7 +57,7 @@ Download `WinThunar.App-win.msi` from the link above and run it. The installer a
 
 The installer and app are not code-signed yet, so Windows SmartScreen may show
 **Windows protected your PC**. Choose **More info**, check that the app name matches the file
-you downloaded, then **Run anyway**. The [release notes](docs/RELEASE-0.5.15.md) list each
+you downloaded, then **Run anyway**. The [release notes](docs/RELEASE-0.6.0.md) list each
 download's SHA-256 digest.
 
 The portable ZIP runs without installing: extract it and start `WinThunar.exe`.
@@ -129,7 +129,7 @@ To build from source or contribute code, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Documentation
 
-- [What's new](docs/WHATS-NEW.md) and the [latest release notes](docs/RELEASE-0.5.15.md)
+- [What's new](docs/WHATS-NEW.md) and the [latest release notes](docs/RELEASE-0.6.0.md)
 - [Full feature list](docs/FEATURES.md)
 - [Browser views, tabs, split panes, and preferences](docs/BROWSER-WORKSPACE.md)
 - [Search behavior and limits](docs/SEARCH.md)

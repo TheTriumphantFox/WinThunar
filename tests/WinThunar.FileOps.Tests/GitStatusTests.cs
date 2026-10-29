@@ -47,11 +47,11 @@ public sealed class GitStatusTests
     public async Task SlowProcessStartDoesNotBlockTheCaller()
     {
         // Windows can hold CreateProcess's PATH search for a minute; the UI thread must not wait on it.
-        var callerThread = Environment.CurrentManagedThreadId;
-        var startThread = 0;
+        // The returned-in-time check is the test: the caller's thread may itself run the start later.
+        var started = false;
         var service = new GitStatusService(_ =>
         {
-            startThread = Environment.CurrentManagedThreadId;
+            started = true;
             Thread.Sleep(1500);
             throw new System.ComponentModel.Win32Exception(2);
         });
@@ -59,8 +59,7 @@ public sealed class GitStatusTests
         var read = service.ReadAsync(Path.GetTempPath());
         Assert.True(clock.ElapsedMilliseconds < 500, $"ReadAsync blocked its caller for {clock.ElapsedMilliseconds} ms.");
         Assert.Null(await read);
-        Assert.NotEqual(0, startThread);
-        Assert.NotEqual(callerThread, startThread);
+        Assert.True(started);
     }
 
     [Fact]

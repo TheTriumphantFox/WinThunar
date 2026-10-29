@@ -18,8 +18,7 @@ runs entirely on the thread pool, refreshes once a minute instead of every 10 se
 be turned off in Preferences. See [UI freezes from Git process
 starts](#ui-freezes-from-git-process-starts-28-october).
 
-This is source work following published 0.5.15. It has not been published or applied to
-installed copies.
+This work is published in [0.6.0](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.6.0) (29 October 2026).
 
 ## Confirmed retained-memory cause
 

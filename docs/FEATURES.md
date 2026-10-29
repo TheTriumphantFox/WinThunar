@@ -75,9 +75,10 @@ Git repositories show status badges in all three primary-pane layouts and the ri
 detailed list. Badges are not populated in search results or virtual locations such as Trash. The badges are
 `✓` clean, `M` modified, `+` added, `−` deleted, `R` renamed, `?` untracked, `·` ignored, and `!`
 conflicted. Folder badges summarize their descendants. Git is optional; queries run in the
-background, refresh on navigation, on changes in the open folder and every two hours, do not
+background, refresh on navigation, on changes in the open folder and once a minute, do not
 write the index, and disable repository fsmonitor commands. Tooltips and accessible item names
-include the status text.
+include the status text. Turning off **Show Git status badges** in Preferences stops WinThunar
+starting Git at all.
 
 Use **F6 / Shift+F6** to move between tabs, location, side pane, file panes, and the visible
 command input; **Ctrl+Tab / Ctrl+Shift+Tab** switches folder tabs. Focus a column divider and

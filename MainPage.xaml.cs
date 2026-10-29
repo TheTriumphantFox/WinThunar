@@ -137,6 +137,7 @@ public sealed partial class MainPage : Page
         ViewModel.SortDescending = session.SortDescending;
         ViewModel.FoldersFirst = session.FoldersFirst;
         ViewModel.ShowThumbnails = session.ShowThumbnails;
+        ViewModel.ShowGitStatus = session.ShowGitStatus;
         ViewModel.ZoomLevel = Math.Clamp(session.ZoomLevel, 0, 4);
         ViewModel.IncludeSubfolders = session.IncludeSubfolders;
         _confirmMoveToTrash = session.ConfirmMoveToTrash;
@@ -171,6 +172,7 @@ public sealed partial class MainPage : Page
         SplitViewModel.SortDescending = ViewModel.SortDescending;
         SplitViewModel.FoldersFirst = ViewModel.FoldersFirst;
         SplitViewModel.ShowThumbnails = ViewModel.ShowThumbnails;
+        SplitViewModel.ShowGitStatus = ViewModel.ShowGitStatus;
         SplitViewModel.ZoomLevel = ViewModel.ZoomLevel;
         SplitViewModel.IncludeSubfolders = ViewModel.IncludeSubfolders;
         SplitViewModel.ShowSizeColumn = ViewModel.ShowSizeColumn;
@@ -2137,6 +2139,8 @@ public sealed partial class MainPage : Page
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(theme, "Color theme");
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetHelpText(theme, "Choose System, Light, or Dark. Apply changes all WinThunar windows.");
         var thumbnails = new CheckBox { Content = "Show Windows thumbnails", IsChecked = ViewModel.ShowThumbnails };
+        var gitStatus = new CheckBox { Content = "Show Git status badges", IsChecked = ViewModel.ShowGitStatus };
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetHelpText(gitStatus, "Runs Git when you open a folder and once a minute. Turn off to stop WinThunar starting Git.");
         var foldersFirst = new CheckBox { Content = "Sort folders before files", IsChecked = ViewModel.FoldersFirst };
         var recursiveSearch = new CheckBox { Content = "Include subfolders in search", IsChecked = ViewModel.IncludeSubfolders };
         var confirmTrash = new CheckBox { Content = "Confirm before moving items to the Recycle Bin", IsChecked = _confirmMoveToTrash };
@@ -2210,6 +2214,7 @@ public sealed partial class MainPage : Page
         });
         content.Children.Add(defaultView);
         content.Children.Add(thumbnails);
+        content.Children.Add(gitStatus);
         content.Children.Add(foldersFirst);
         content.Children.Add(previewImages);
         content.Children.Add(new TextBlock { Text = "Behavior", Margin = new Thickness(0, 8, 0, 0), FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
@@ -2246,6 +2251,7 @@ public sealed partial class MainPage : Page
         }
 
         ViewModel.ShowThumbnails = thumbnails.IsChecked == true;
+        ViewModel.ShowGitStatus = gitStatus.IsChecked == true;
         ViewModel.FoldersFirst = foldersFirst.IsChecked == true;
         ViewModel.IncludeSubfolders = recursiveSearch.IsChecked == true;
         _confirmMoveToTrash = confirmTrash.IsChecked == true;
@@ -2255,6 +2261,7 @@ public sealed partial class MainPage : Page
         _showImagePreview = previewImages.IsChecked == true;
         ApplyImagePreview();
         SplitViewModel.ShowThumbnails = ViewModel.ShowThumbnails;
+        SplitViewModel.ShowGitStatus = ViewModel.ShowGitStatus;
         SplitViewModel.FoldersFirst = ViewModel.FoldersFirst;
         SplitViewModel.IncludeSubfolders = ViewModel.IncludeSubfolders;
         SetViewMode(defaultView.SelectedIndex switch
@@ -5508,6 +5515,7 @@ public sealed partial class MainPage : Page
                 SortDescending = ViewModel.SortDescending,
                 FoldersFirst = ViewModel.FoldersFirst,
                 ShowThumbnails = ViewModel.ShowThumbnails,
+                ShowGitStatus = ViewModel.ShowGitStatus,
                 ZoomLevel = ViewModel.ZoomLevel,
                 IncludeSubfolders = ViewModel.IncludeSubfolders,
                 ConfirmMoveToTrash = _confirmMoveToTrash,

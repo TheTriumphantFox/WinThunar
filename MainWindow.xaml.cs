@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using WinThunar.Services;
 
 // To learn more about WinUI, the WinUI project structure,
@@ -49,6 +50,8 @@ public sealed partial class MainWindow : Window
 
     internal void ApplyTheme(AppThemePreference preference)
     {
+        var mica = preference == AppThemePreference.SystemColors;
+        if (mica != (SystemBackdrop is MicaBackdrop)) SystemBackdrop = mica ? new MicaBackdrop() : null;
         RootFrame.RequestedTheme = App.GetElementTheme(preference);
         AppWindow.TitleBar.PreferredTheme = preference switch
         {

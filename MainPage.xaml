@@ -6,7 +6,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:models="using:WinThunar.Models"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    Background="{ThemeResource SystemControlBackgroundAltHighBrush}"
+    Background="{ThemeResource WinThunarBackdropBrush}"
     Loaded="Page_Loaded"
     Unloaded="Page_Unloaded"
     mc:Ignorable="d">
@@ -75,7 +75,7 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <MenuBar Background="{ThemeResource SystemControlBackgroundAltHighBrush}">
+        <MenuBar Background="{ThemeResource WinThunarBackdropBrush}">
             <MenuBarItem x:Name="FileMenuBarItem" Title="File" AccessKey="F" PointerEntered="FileMenu_PointerEntered" GettingFocus="FileMenu_GettingFocus" AccessKeyInvoked="FileMenu_AccessKeyInvoked">
                 <MenuFlyoutItem x:Name="FileOpenMenuItem" Text="Open" Click="Open_Click" Visibility="Collapsed" />
                 <MenuFlyoutItem x:Name="FileOpenWithMenuItem" Text="Open With..." Click="OpenWith_Click" Visibility="Collapsed" />
@@ -288,7 +288,7 @@
             </MenuBarItem>
         </MenuBar>
 
-        <Border Grid.Row="1" Padding="6,4" Background="{ThemeResource SystemControlBackgroundAltHighBrush}">
+        <Border Grid.Row="1" Padding="6,4" Background="{ThemeResource WinThunarBackdropBrush}">
             <StackPanel x:Name="ToolbarPanel" Orientation="Horizontal" Spacing="2">
                 <Button x:Name="BackToolbarButton" AutomationProperties.Name="Back" Tag="Back" Click="Back_Click" ContextRequested="NavigationButton_ContextRequested" Background="Transparent" BorderThickness="0" Padding="8,5">
                     <StackPanel Orientation="Horizontal" Spacing="6">
@@ -333,7 +333,7 @@
             </StackPanel>
         </Border>
 
-        <Grid x:Name="LocationBar" Grid.Row="2" Padding="8,4,8,8" ColumnSpacing="6" Background="{ThemeResource SystemControlBackgroundAltHighBrush}">
+        <Grid x:Name="LocationBar" Grid.Row="2" Padding="8,4,8,8" ColumnSpacing="6" Background="{ThemeResource WinThunarBackdropBrush}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
@@ -390,8 +390,8 @@
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <Grid Background="{ThemeResource SystemControlBackgroundAltHighBrush}">
-            <ScrollViewer x:Name="ShortcutsSidePane" Background="{ThemeResource SystemControlBackgroundAltHighBrush}">
+            <Grid Background="{ThemeResource WinThunarBackdropBrush}">
+            <ScrollViewer x:Name="ShortcutsSidePane" Background="{ThemeResource WinThunarBackdropBrush}">
                 <StackPanel Padding="6,8">
                     <TextBlock Text="DEVICES" Margin="8,6,8,4" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" />
                     <ListView x:Name="DevicesList" AutomationProperties.Name="Devices" ItemsSource="{x:Bind ViewModel.Devices}" IsItemClickEnabled="True" ItemClick="Location_ItemClick" SelectionMode="None"
@@ -484,13 +484,13 @@
                     BorderBrush="{ThemeResource SystemControlHighlightAccentBrush}"
                     BorderThickness="0"
                     PointerPressed="PrimaryPane_PointerPressed">
-                <Grid Background="{ThemeResource SystemControlBackgroundAltHighBrush}">
+                <Grid Background="{ThemeResource WinThunarLayerBrush}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="32" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
 
-                <Grid x:Name="DetailsHeader" ContextRequested="DetailsHeader_ContextRequested" Visibility="{x:Bind ViewModel.DetailsViewVisibility, Mode=OneWay}" Padding="12,0" Background="{ThemeResource SystemControlBackgroundAltHighBrush}" BorderBrush="{ThemeResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="0,0,0,1">
+                <Grid x:Name="DetailsHeader" ContextRequested="DetailsHeader_ContextRequested" Visibility="{x:Bind ViewModel.DetailsViewVisibility, Mode=OneWay}" Padding="12,0" Background="{ThemeResource WinThunarBackdropBrush}" BorderBrush="{ThemeResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="0,0,0,1">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" MinWidth="100" />
                         <ColumnDefinition x:Name="NameSizeGripColumn" Width="7" />
@@ -501,11 +501,11 @@
                         <ColumnDefinition x:Name="ModifiedColumn" Width="160" />
                     </Grid.ColumnDefinitions>
                     <Button Padding="0" HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0" Click="SortName_Click"><TextBlock Text="Name" FontWeight="SemiBold" /></Button>
-                    <Thumb x:Name="NameSizeColumnGrip" Grid.Column="1" Background="{ThemeResource SystemControlBackgroundAltHighBrush}" BorderBrush="{ThemeResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="0,0,1,0" AutomationProperties.Name="Resize Name and Size columns" IsTabStop="True" KeyDown="ColumnGrip_KeyDown" DragStarted="ColumnGrip_DragStarted" DragDelta="ColumnGrip_DragDelta" DragCompleted="ColumnGrip_DragCompleted" ToolTipService.ToolTip="Drag to resize columns" />
+                    <Thumb x:Name="NameSizeColumnGrip" Grid.Column="1" Background="{ThemeResource WinThunarBackdropBrush}" BorderBrush="{ThemeResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="0,0,1,0" AutomationProperties.Name="Resize Name and Size columns" IsTabStop="True" KeyDown="ColumnGrip_KeyDown" DragStarted="ColumnGrip_DragStarted" DragDelta="ColumnGrip_DragDelta" DragCompleted="ColumnGrip_DragCompleted" ToolTipService.ToolTip="Drag to resize columns" />
                     <Button Grid.Column="2" Padding="0" HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0" Click="SortSize_Click"><TextBlock Text="Size" FontWeight="SemiBold" /></Button>
-                    <Thumb x:Name="SizeTypeColumnGrip" Grid.Column="3" Background="{ThemeResource SystemControlBackgroundAltHighBrush}" BorderBrush="{ThemeResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="0,0,1,0" AutomationProperties.Name="Resize Size and Type columns" IsTabStop="True" KeyDown="ColumnGrip_KeyDown" DragStarted="ColumnGrip_DragStarted" DragDelta="ColumnGrip_DragDelta" DragCompleted="ColumnGrip_DragCompleted" ToolTipService.ToolTip="Drag to resize columns" />
+                    <Thumb x:Name="SizeTypeColumnGrip" Grid.Column="3" Background="{ThemeResource WinThunarBackdropBrush}" BorderBrush="{ThemeResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="0,0,1,0" AutomationProperties.Name="Resize Size and Type columns" IsTabStop="True" KeyDown="ColumnGrip_KeyDown" DragStarted="ColumnGrip_DragStarted" DragDelta="ColumnGrip_DragDelta" DragCompleted="ColumnGrip_DragCompleted" ToolTipService.ToolTip="Drag to resize columns" />
                     <Button Grid.Column="4" Padding="0" HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0" Click="SortType_Click"><TextBlock Text="Type" FontWeight="SemiBold" /></Button>
-                    <Thumb x:Name="TypeModifiedColumnGrip" Grid.Column="5" Background="{ThemeResource SystemControlBackgroundAltHighBrush}" BorderBrush="{ThemeResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="0,0,1,0" AutomationProperties.Name="Resize Type and Date Modified columns" IsTabStop="True" KeyDown="ColumnGrip_KeyDown" DragStarted="ColumnGrip_DragStarted" DragDelta="ColumnGrip_DragDelta" DragCompleted="ColumnGrip_DragCompleted" ToolTipService.ToolTip="Drag to resize columns" />
+                    <Thumb x:Name="TypeModifiedColumnGrip" Grid.Column="5" Background="{ThemeResource WinThunarBackdropBrush}" BorderBrush="{ThemeResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="0,0,1,0" AutomationProperties.Name="Resize Type and Date Modified columns" IsTabStop="True" KeyDown="ColumnGrip_KeyDown" DragStarted="ColumnGrip_DragStarted" DragDelta="ColumnGrip_DragDelta" DragCompleted="ColumnGrip_DragCompleted" ToolTipService.ToolTip="Drag to resize columns" />
                     <Button Grid.Column="6" Padding="0" HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0" Click="SortModified_Click"><TextBlock Text="Date Modified" FontWeight="SemiBold" /></Button>
                 </Grid>
 
@@ -700,14 +700,14 @@
                     BorderThickness="0"
                     Visibility="Collapsed"
                     PointerPressed="SecondaryPane_PointerPressed">
-                    <Grid Background="{ThemeResource SystemControlBackgroundAltHighBrush}">
+                    <Grid Background="{ThemeResource WinThunarLayerBrush}">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="32" />
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
 
-                        <Grid Padding="6,4" ColumnSpacing="4" Background="{ThemeResource SystemControlBackgroundAltHighBrush}">
+                        <Grid Padding="6,4" ColumnSpacing="4" Background="{ThemeResource WinThunarBackdropBrush}">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="Auto" />
@@ -726,7 +726,7 @@
                             <Button Grid.Column="4" Content="Go" AutomationProperties.Name="Open entered split pane folder" Click="SplitGo_Click" />
                         </Grid>
 
-                        <Grid x:Name="SplitDetailsHeader" Grid.Row="1" ContextRequested="DetailsHeader_ContextRequested" Padding="10,0" Background="{ThemeResource SystemControlBackgroundAltHighBrush}" BorderBrush="{ThemeResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="0,0,0,1">
+                        <Grid x:Name="SplitDetailsHeader" Grid.Row="1" ContextRequested="DetailsHeader_ContextRequested" Padding="10,0" Background="{ThemeResource WinThunarBackdropBrush}" BorderBrush="{ThemeResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="0,0,0,1">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" MinWidth="80" />
                                 <ColumnDefinition x:Name="SplitNameSizeGripColumn" Width="7" />
@@ -735,9 +735,9 @@
                                 <ColumnDefinition x:Name="SplitTypeColumn" Width="105" />
                             </Grid.ColumnDefinitions>
                             <TextBlock Text="Name" VerticalAlignment="Center" FontWeight="SemiBold" />
-                            <Thumb x:Name="SplitNameSizeColumnGrip" Grid.Column="1" Background="{ThemeResource SystemControlBackgroundAltHighBrush}" BorderBrush="{ThemeResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="0,0,1,0" AutomationProperties.Name="Resize split Name and Size columns" IsTabStop="True" KeyDown="ColumnGrip_KeyDown" DragStarted="ColumnGrip_DragStarted" DragDelta="ColumnGrip_DragDelta" DragCompleted="ColumnGrip_DragCompleted" ToolTipService.ToolTip="Drag to resize columns" />
+                            <Thumb x:Name="SplitNameSizeColumnGrip" Grid.Column="1" Background="{ThemeResource WinThunarBackdropBrush}" BorderBrush="{ThemeResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="0,0,1,0" AutomationProperties.Name="Resize split Name and Size columns" IsTabStop="True" KeyDown="ColumnGrip_KeyDown" DragStarted="ColumnGrip_DragStarted" DragDelta="ColumnGrip_DragDelta" DragCompleted="ColumnGrip_DragCompleted" ToolTipService.ToolTip="Drag to resize columns" />
                             <TextBlock Grid.Column="2" Text="Size" VerticalAlignment="Center" FontWeight="SemiBold" />
-                            <Thumb x:Name="SplitSizeTypeColumnGrip" Grid.Column="3" Background="{ThemeResource SystemControlBackgroundAltHighBrush}" BorderBrush="{ThemeResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="0,0,1,0" AutomationProperties.Name="Resize split Size and Type columns" IsTabStop="True" KeyDown="ColumnGrip_KeyDown" DragStarted="ColumnGrip_DragStarted" DragDelta="ColumnGrip_DragDelta" DragCompleted="ColumnGrip_DragCompleted" ToolTipService.ToolTip="Drag to resize columns" />
+                            <Thumb x:Name="SplitSizeTypeColumnGrip" Grid.Column="3" Background="{ThemeResource WinThunarBackdropBrush}" BorderBrush="{ThemeResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="0,0,1,0" AutomationProperties.Name="Resize split Size and Type columns" IsTabStop="True" KeyDown="ColumnGrip_KeyDown" DragStarted="ColumnGrip_DragStarted" DragDelta="ColumnGrip_DragDelta" DragCompleted="ColumnGrip_DragCompleted" ToolTipService.ToolTip="Drag to resize columns" />
                             <TextBlock Grid.Column="4" Text="Type" VerticalAlignment="Center" FontWeight="SemiBold" />
                         </Grid>
 
@@ -817,7 +817,7 @@
                     x:Name="ImagePreviewPane"
                     Grid.Column="3"
                     Padding="12"
-                    Background="{ThemeResource SystemControlBackgroundAltHighBrush}"
+                    Background="{ThemeResource WinThunarLayerBrush}"
                     BorderBrush="{ThemeResource SystemControlForegroundBaseMediumLowBrush}"
                     BorderThickness="1,0,0,0"
                     Visibility="Collapsed">
@@ -855,7 +855,7 @@
             Grid.Row="5"
             Height="230"
             Padding="8"
-            Background="{ThemeResource SystemControlBackgroundAltHighBrush}"
+            Background="{ThemeResource WinThunarLayerBrush}"
             BorderBrush="{ThemeResource SystemControlForegroundBaseMediumLowBrush}"
             BorderThickness="1,1,0,0"
             Visibility="Collapsed">
@@ -880,7 +880,7 @@
                     AcceptsReturn="True"
                     TextWrapping="Wrap"
                     FontFamily="Consolas"
-                    Background="{ThemeResource SystemControlBackgroundAltHighBrush}"
+                    Background="{ThemeResource WinThunarBackdropBrush}"
                     Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}"
                     ScrollViewer.VerticalScrollBarVisibility="Auto" />
                 <Grid Grid.Row="2" ColumnSpacing="6">
@@ -899,7 +899,7 @@
         <Border
             Grid.Row="6"
             Padding="10,7"
-            Background="{ThemeResource SystemControlBackgroundAltHighBrush}"
+            Background="{ThemeResource WinThunarBackdropBrush}"
             BorderBrush="{ThemeResource SystemControlForegroundBaseMediumLowBrush}"
             BorderThickness="0,1,0,0"
             Visibility="{x:Bind ViewModel.TransferPanelVisibility, Mode=OneWay}">
@@ -944,7 +944,7 @@
                     <Button x:Name="RestartToUpdateButton" Content="Restart Now" Click="RestartToUpdate_Click" />
                 </InfoBar.ActionButton>
             </InfoBar>
-            <Border Padding="8,5" Background="{ThemeResource SystemControlBackgroundAltHighBrush}" BorderBrush="{ThemeResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="0,1,0,0">
+            <Border Padding="8,5" Background="{ThemeResource WinThunarBackdropBrush}" BorderBrush="{ThemeResource SystemControlForegroundBaseMediumLowBrush}" BorderThickness="0,1,0,0">
                 <TextBlock x:Name="StatusAnnouncement" AutomationProperties.LiveSetting="Polite" Text="{x:Bind ViewModel.StatusText, Mode=OneWay}" />
             </Border>
         </StackPanel>

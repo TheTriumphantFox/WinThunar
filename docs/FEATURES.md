@@ -57,7 +57,9 @@ latest changes see [What's new](WHATS-NEW.md).
 - Search combines words, quoted names, wildcards, file types, modified dates, and sizes:
   `name:"annual report" type:pdf modified:last7days size:>1MB`.
 - The interface follows Windows light/dark settings and uses system resources in the command panel,
-  preview text, and drop highlight. Full screen-reader and contrast-theme review remains open.
+  preview text, and drop highlight. The **System colors** theme adds the Windows 11 Mica backdrop and
+  tints selections, the folder tree and the selected tab with the Windows accent color, following
+  accent changes live. Full screen-reader and contrast-theme review remains open.
 - Folder enumeration checks cancellation between entries; filename search streams directory entries;
   selection totals use the listing's metadata rather than reopening selected paths.
 

@@ -3,6 +3,13 @@
 Release-by-release summaries moved here from the README on 26 October 2026. Each release
 also has its own notes in this folder; the [roadmap](ROADMAP.md) lists what remains open.
 
+## 0.6.1
+
+**System colors** joins System, Light and Dark under **Edit > Preferences > Display > Theme**. It
+follows the Windows light/dark setting, shows the Windows 11 Mica backdrop behind the window's
+chrome, and tints selected files, tree folders and the selected tab with the Windows accent color.
+See the [0.6.1 release notes](RELEASE-0.6.1.md).
+
 ## Published in 0.6.0
 
 WinThunar stays steady through long sessions: a full day of browsing, searching and previewing

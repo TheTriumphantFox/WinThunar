@@ -35,7 +35,7 @@ or [open the animated walkthrough (GIF)](docs/media/winthunar-demo.gif).
 
 It also has tabs (`Ctrl+T`), detail, icon and compact views (`Ctrl+1`–`Ctrl+3`), thumbnails
 and an image/text/PDF preview pane, Git status badges, the full Windows context menu, archive
-create and extract, Recycle Bin browsing, network shares, light and dark themes, and plugins
+create and extract, Recycle Bin browsing, network shares, light, dark and Mica system-color themes, and plugins
 for custom actions. See the [full feature list](docs/FEATURES.md).
 
 ### Coming from Linux?

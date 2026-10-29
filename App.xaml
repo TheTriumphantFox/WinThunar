@@ -10,6 +10,24 @@
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
                 <!-- Other merged dictionaries here -->
             </ResourceDictionary.MergedDictionaries>
+            <!-- Window surfaces, which SystemColorsTheme recolors in place so Mica shows through. They repeat
+                 SystemControlBackgroundAltHighBrush as literals: a StaticResource alias here resolves once,
+                 against the Windows theme. WinUI keys the dark dictionary "Default". Re-check the colors on
+                 Windows App SDK upgrades; see CONTRIBUTING.md. -->
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="WinThunarBackdropBrush" Color="#FFFFFFFF" />
+                    <SolidColorBrush x:Key="WinThunarLayerBrush" Color="#FFFFFFFF" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Default">
+                    <SolidColorBrush x:Key="WinThunarBackdropBrush" Color="#FF000000" />
+                    <SolidColorBrush x:Key="WinThunarLayerBrush" Color="#FF000000" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="HighContrast">
+                    <SolidColorBrush x:Key="WinThunarBackdropBrush" Color="{ThemeResource SystemColorButtonFaceColor}" />
+                    <SolidColorBrush x:Key="WinThunarLayerBrush" Color="{ThemeResource SystemColorButtonFaceColor}" />
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
             <Style x:Key="SecondaryTextStyle" TargetType="TextBlock">
                 <Setter Property="Foreground" Value="{ThemeResource SystemControlForegroundBaseMediumBrush}" />
             </Style>

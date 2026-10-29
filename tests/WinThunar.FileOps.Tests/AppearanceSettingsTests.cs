@@ -12,6 +12,7 @@ public sealed class AppearanceSettingsTests : IDisposable
     [InlineData(AppThemePreference.System)]
     [InlineData(AppThemePreference.Light)]
     [InlineData(AppThemePreference.Dark)]
+    [InlineData(AppThemePreference.SystemColors)]
     public void ThemeSurvivesReloadWithoutChangingWindowSession(AppThemePreference theme)
     {
         var store = new AppearanceSettingsStore(SettingsPath);

@@ -103,6 +103,11 @@ public sealed partial class MainPage : Page
         _transferQueue.StateChanged += TransferQueue_StateChanged;
         _history.Changed += History_Changed;
         InitializeComponent();
+        foreach (var element in new FrameworkElement[] { FileList, IconFileList, CompactFileList, SecondaryFileList, DirectoryTree, BrowserTabs })
+        {
+            SystemColorsTheme.Attach(element);
+        }
+
         AddHandler(KeyDownEvent, new KeyEventHandler(Page_KeyDown), true);
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
         SplitViewModel.PropertyChanged += SplitViewModel_PropertyChanged;
@@ -2132,12 +2137,12 @@ public sealed partial class MainPage : Page
         var theme = new ComboBox
         {
             Header = "Theme",
-            ItemsSource = new[] { "System", "Light", "Dark" },
+            ItemsSource = new[] { "System", "Light", "Dark", "System colors" },
             SelectedIndex = (int)originalTheme,
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(theme, "Color theme");
-        Microsoft.UI.Xaml.Automation.AutomationProperties.SetHelpText(theme, "Choose System, Light, or Dark. Apply changes all WinThunar windows.");
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetHelpText(theme, "Choose System, Light, Dark, or System colors. Apply changes all WinThunar windows.");
         var thumbnails = new CheckBox { Content = "Show Windows thumbnails", IsChecked = ViewModel.ShowThumbnails };
         var gitStatus = new CheckBox { Content = "Show Git status badges", IsChecked = ViewModel.ShowGitStatus };
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetHelpText(gitStatus, "Runs Git when you open a folder and once a minute. Turn off to stop WinThunar starting Git.");
@@ -2208,7 +2213,7 @@ public sealed partial class MainPage : Page
         content.Children.Add(theme);
         content.Children.Add(new TextBlock
         {
-            Text = "System follows your Windows app color setting. Applies to all WinThunar windows.",
+            Text = "System follows your Windows app color setting. System colors also uses the Mica backdrop and your Windows accent color. Applies to all WinThunar windows.",
             TextWrapping = TextWrapping.Wrap,
             MaxWidth = 430
         });
@@ -2332,6 +2337,9 @@ public sealed partial class MainPage : Page
             IsTextSelectionEnabled = true
         });
 
+        AddHeading("Version 0.6.1 — System colors theme");
+        AddParagraph("Preferences has a fourth color theme, System colors. It follows your Windows light or dark setting, shows the Windows 11 Mica backdrop behind the toolbar and side pane, and tints selected files, folders in the tree and the selected tab with your Windows accent color.");
+        AddParagraph("System, Light and Dark look as before. Windows High Contrast keeps its own colors in every theme.");
         AddHeading("Version 0.6.0 — stability under sustained use");
         AddParagraph("WinThunar stays steady through long sessions. A full day of continuous browsing, searching and previewing finishes without a crash, and memory and handle use level off instead of climbing.");
         AddParagraph("Thumbnails and image previews load without holding Windows security handles open, and file views you are not looking at no longer update in the background.");

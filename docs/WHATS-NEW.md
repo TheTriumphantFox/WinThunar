@@ -3,12 +3,13 @@
 Release-by-release summaries moved here from the README on 26 October 2026. Each release
 also has its own notes in this folder; the [roadmap](ROADMAP.md) lists what remains open.
 
-## 0.6.1
+## Published in 0.6.1
 
 **System colors** joins System, Light and Dark under **Edit > Preferences > Display > Theme**. It
 follows the Windows light/dark setting, shows the Windows 11 Mica backdrop behind the window's
 chrome, and tints selected files, tree folders and the selected tab with the Windows accent color.
 See the [0.6.1 release notes](RELEASE-0.6.1.md).
+The public packages, source tag and GitHub update feed are verified.
 
 ## Published in 0.6.0
 
@@ -74,11 +75,11 @@ installer; use the latest MSI to get these safeguards. See the
 ## Release and source status
 
 The latest published application release is
-**[0.6.0](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.6.0)** (29 October
-2026), from source `bf7eadc` (PR #43). Its changes are merged into `main`, and the GitHub
-updater feed offers 0.6.0 to installed copies. Use **Help > Check for Updates...** to check
+**[0.6.1](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.6.1)** (29 October
+2026), from source `19a55e2` (PR #46). Its changes are merged into `main`, and the GitHub
+updater feed offers 0.6.1 to installed copies. Use **Help > Check for Updates...** to check
 immediately; portable copies are updated manually. Documentation-only updates do not update the
-app. See the [0.6.0 release notes](RELEASE-0.6.0.md) for verified packages and remaining
+app. See the [0.6.1 release notes](RELEASE-0.6.1.md) for verified packages and remaining
 limits.
 The version string alone does not establish that a local build matches published binaries.
 

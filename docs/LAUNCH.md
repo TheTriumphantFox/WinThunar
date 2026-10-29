@@ -6,13 +6,15 @@ that a person tried the application or continued using it.
 
 ## Current status
 
-The initial campaign below targeted 0.5.0. The current release is
-[WinThunar 0.5.15](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.15), published
-24 October 2026. As of 26 October no tester reports have arrived; see the
-[26 October counts](#baseline-and-results). A second round is prepared but not posted: a
-[0.5.15 follow-up post](PROMOTION.md#follow-up-post-for-0515), a
-[Linux and Xfce post](PROMOTION.md#linux-and-xfce-communities), media recaptured from 0.5.15,
-a README rewritten for first-time visitors, and the [distribution channels](DISTRIBUTION.md).
+The initial campaign below targeted 0.5.0. The current release is [WinThunar
+0.6.0](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.6.0), published 29 October
+2026. It closes the roadmap's P0 stability work, which was the hold on Show HN and press
+pitches. As of 29 October no outside tester reports have arrived; see the [29 October
+counts](#baseline-and-results). A second round is prepared but not posted: a [0.6.0 follow-up
+post](PROMOTION.md#follow-up-post-for-060), a [Linux and Xfce
+post](PROMOTION.md#linux-and-xfce-communities), media recaptured from 0.5.15 (still accurate
+for 0.6.0), a README rewritten for first-time visitors, and the [distribution
+channels](DISTRIBUTION.md).
 
 | Item | Status |
 | --- | --- |
@@ -23,11 +25,11 @@ a README rewritten for first-time visitors, and the [distribution channels](DIST
 | First community introduction | [Published in r/SideProject](https://www.reddit.com/r/SideProject/comments/1x9uvud/winthunar_a_free_thunarinspired_file_manager_for/) by u/TheTriumphantFox on 19 October 2026. |
 | Windows app introduction | [Published in r/windowsapps](https://www.reddit.com/r/windowsapps/comments/1x9w8ux/winthunar_a_free_windows_11_file_manager_with/) by u/TheTriumphantFox with Developer flair on 19 October 2026; public post verified. |
 | r/Windows11 | Excluded: current promotion rules say new applicants are not being accepted. |
-| 0.5.15 follow-up post (r/windowsapps) | Drafted 26 October 2026; not posted. |
+| 0.6.0 follow-up post (r/windowsapps) | Drafted 26 October 2026 for 0.5.15 and updated for 0.6.0 on 29 October; not posted. |
 | Linux and Xfce communities | Drafted 26 October 2026; not posted. Ask moderators first. |
 | WinGet | Install, match, launch and uninstall passed in the lab VM on 26 October 2026 after fixing the product code; not submitted. |
 | Scoop | In-repository bucket on `main`; install, launch and uninstall passed in the lab VM on 26 October 2026. Not yet in Scoop Extras. |
-| Show HN and press pitches | Held until the P0 stability runs pass. |
+| Show HN and press pitches | No longer held: the P0 stability work shipped in 0.6.0 on 29 October 2026. Not submitted. |
 | Paid promotion | Not part of this launch. |
 
 Update these statuses only after observing a successful submission or a public post URL.
@@ -151,6 +153,18 @@ maintainer's own checks.
 | Portable ZIP downloads | 8 | +7 |
 | Setup EXE downloads | 3 | +1 |
 | Repository stars | 1 | +1 |
+| Outside issues or tester reports | 0 | 0 |
+
+Counters summed across every release on 29 October 2026, the day 0.6.0 was published. The WinGet
+and Scoop install tests on 26 October downloaded the MSI and portable ZIP in the lab VM, so part
+of the increase is the maintainer's own testing; the source of the Setup EXE downloads is unknown.
+
+| Asset / signal | 29 October 2026 | Change since 26 October |
+| --- | ---: | ---: |
+| MSI downloads | 8 | +6 |
+| Portable ZIP downloads | 9 | +1 |
+| Setup EXE downloads | 17 | +14 |
+| Repository stars | 1 | 0 |
 | Outside issues or tester reports | 0 | 0 |
 
 | Date | Channel and public URL | Submission/review status | Downloads since baseline | Voluntary tester reports | Useful follow-up |

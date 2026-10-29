@@ -140,7 +140,7 @@ has not been run with a real certificate yet; check the first signed release's f
 ## Download sites and directories
 
 These list free utilities and bring steady search traffic, but editors test what they list.
-Submit after signing and the P0 stability work, so a reviewer's first run is a good one.
+The P0 stability work shipped in 0.6.0; submit after signing, so a reviewer's first run is a good one.
 
 - **AlternativeTo:** [approved](https://alternativeto.net/software/winthunar/), confirmed by
   the maintainer on 26 October 2026. Update its screenshot to the 0.5.15

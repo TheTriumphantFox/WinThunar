@@ -56,7 +56,9 @@ public partial class MainPageViewModel : ObservableObject, IDisposable
         if (_gitTimer is null)
         {
             _gitTimer = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread().CreateTimer();
-            _gitTimer.Interval = TimeSpan.FromSeconds(10);
+            // Navigation, F5 and the folder watcher already refresh badges. The timer only catches
+            // commits or staging done elsewhere; each refresh starts up to three Git processes.
+            _gitTimer.Interval = TimeSpan.FromHours(2);
             _gitTimer.Tick += async (_, _) => await RefreshGitStatusAsync();
             _gitTimer.Start();
         }

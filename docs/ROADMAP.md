@@ -199,8 +199,9 @@ The checklist and evidence trail that used to be here are kept in the
 ### P0 — Stability under sustained use
 
 The one-hour Files and Menu workloads both pass the resource gate with no crash (27 October,
-final source, mains power), and a 24-hour soak completes with no crash (28 October). Three
-UI-thread stalls of 24–53 seconds in that soak are not yet explained. See the
+final source, mains power), and a 24-hour soak completes with no crash (28 October). Its three
+UI-thread stalls of 24–53 seconds came from starting Git on the UI thread while Windows held
+the file lookup; Git status now runs in the background (28 October). See the
 [stability status and evidence](STABILITY.md).
 
 - [x] Close the native `0xC000027B` termination in `Microsoft.UI.Xaml.dll` (28 October). An
@@ -224,6 +225,10 @@ UI-thread stalls of 24–53 seconds in that soak are not yet explained. See the
   (27 October). Container-name tracking (`FileContainerNameRegistry`), preview loading
   (`FilePreviewLoader`), shell thumbnails (`ShellThumbnailReader`) and per-view list binding
   (`MainPageViewModel`) now live outside the page.
+- [x] Keep the UI responsive when Windows delays a Git start (28 October). Dumps of two
+  53–62 second freezes show the UI thread in `Process.Start` for the Git badge query. Git
+  status now runs on the thread pool, refreshes once a minute, and can be turned off in
+  Preferences.
 
 ### P0 — Real users
 

@@ -12,13 +12,14 @@ One launch in about 100 of the earlier source hit a WinUI virtualization access 
 (`0xC0000005`). Each hidden file view is now unbound from the entries collection. The trigger
 is unproven, but 100 launches of the changed source are clean. **A 24-hour soak of the final
 source completes with no crash**, past the point where the historical `0xC000027B` failure
-happened. Handles stay flat, and private memory grows 12.3 MiB over the day. Three UI-thread
-stalls of 24–53 seconds during the soak are not explained. The retained dumps and sample
-histories are preserved.
+happened. Handles stay flat, and private memory grows 12.3 MiB over the day. Three UI-thread stalls of 24–53 seconds during the soak came from WinThunar starting `git.exe`
+on the UI thread while Windows held the file lookup that process creation does. Git status now
+runs entirely on the thread pool, refreshes once a minute instead of every 10 seconds, and can
+be turned off in Preferences. See [UI freezes from Git process
+starts](#ui-freezes-from-git-process-starts-28-october).
 
 This is source work following published 0.5.15. It has not been published or applied to
-installed copies. P0 stability remains open until the longer workload and native-crash
-investigation below have adequate evidence.
+installed copies.
 
 ## Confirmed retained-memory cause
 
@@ -621,10 +622,9 @@ windows to the full day.
 
 **UI stalls.** The app's UI thread stalls three times: 23.6 s two minutes after a standby
 resume, 41.6 s nineteen minutes after another resume, and 53.4 s at 17:37 UTC on 28 October.
-The last one comes right after a Windows Update installation (System log, 17:36). The worst
-stall in either one-hour run is 0.3 s. The Application log records no hang or error for
-WinThunar. These are not crashes, and the cause is not established. A 50-second freeze would
-matter to a user, so it is recorded as an open question.
+The worst stall in either one-hour run is 0.3 s. The Application log records no hang or error
+for WinThunar. These are not crashes. The cause was found the next day; see [UI freezes from
+Git process starts](#ui-freezes-from-git-process-starts-28-october).
 
 This does not prove a root cause for `0xC000027B`. The crashing stacks ran through
 custom-property lookups for a reflection binding set in `FileContainer_Changing`. Typed
@@ -641,3 +641,54 @@ Before closing this priority:
   reproduction attempts and distinguishing a mitigation from a proven root cause.
 - Record remaining limits explicitly. Separate-server/physical-device and interactive UAC
   work remains deferred; this local stability investigation does not verify those paths.
+
+## UI freezes from Git process starts, 28 October
+
+**Reproduction.** The day-soak workload runs again on the same source
+(`artifacts/stability-hang-repro-20261028/`), with the laptop put into standby and woken
+several times. A watchdog sends the main window `WM_NULL` through `SendMessageTimeout` every
+second. When the window has not answered for 5 seconds it writes a full dump with `cdb`, and a
+second one at 20 seconds. Two freezes occur: 62 seconds at 23:00 UTC on 28 October and 53
+seconds at 00:08 UTC on 29 October. The second overlaps a test run that also starts Git.
+
+**Cause.** In all four dumps the UI thread is inside `Process.Start`, called from
+`GitStatusService.RunAsync` for `MainPageViewModel.RefreshGitStatusAsync`. `CreateProcessW`
+searches `PATH` for `git` (`SearchPathW`), and its `ZwQueryAttributesFile` call on `C:\Program
+Files\Git\cmd\git.exe` has not returned. The badge timer ran this every 10 seconds, and each
+refresh starts up to three `git.exe` processes. A timeout also killed the Git process tree on
+the UI thread, which opens every process on the system.
+
+**The block is in Windows, not in WinThunar.** A separate logger process starts the same
+`git.exe` throughout the run (`stability-hang-repro-20261028-startlog.ndjson`). Two of its
+starts block for 58.8 and 41.9 seconds, at 23:05 and 23:19 UTC, with WinThunar not involved.
+Normally a Git start takes 82 ms (median; at most 159 ms) and a tree kill 26 ms. The component
+that holds the file query is not identified. Each of the soak's three stalls starts within
+minutes of a Windows app-package installation or cleanup in the event logs. The soak kept no
+dumps, so its stalls are matched to this cause by their signature, not by stacks.
+
+**Fix.** `GitStatusService.ReadAsync` now runs the whole query on the thread pool, including
+the process start, output reads and the tree kill on timeout. The view model still applies the
+result on the UI thread. A regression test (`SlowProcessStartDoesNotBlockTheCaller`) injects a
+process start that blocks for 1.5 seconds and requires `ReadAsync` to return within 0.5 seconds
+on another thread. It fails on the previous code.
+
+**Fewer Git starts.** The badge timer now runs once a minute instead of every 10 seconds.
+Navigation, F5 and changes in the open folder still refresh badges at once. A new **Show Git
+status badges** preference (on by default) stops all Git starts when turned off. Desktop smoke
+checks cover turning it off and back on.
+
+**Verification.** The same three-hour Alternate workload runs on the fix (`d0712d2`, still on
+the 10-second timer) with the watchdog and the logger
+(`artifacts/stability-hang-fixed-20261029/`), on mains power with no standby. The logger
+catches Windows holding a Git start for 68.4 seconds at 01:54 UTC on 29 October. WinThunar
+keeps sampling every 7–8 seconds through it, the watchdog never sees the window stop answering,
+and the longest gap between UI-thread ticks over the whole run is 0.61 seconds. The run
+completes 15,526 cycles, 46,578 searches and 31,052 previews. It passes 200 desktop checks and
+2 restart checks, both processes exit zero, and compiled-source verification passes. Between
+minutes 20–30 and the last 10 minutes, median handles change by −8.5 and private memory by +4.1
+MiB. The later commits change only the timer and add the preference; on `9c73f20` the FileOps
+suite passes 213 tests with 1 skipped, and the full desktop suite passes 198 checks and 2
+restart checks with the display held on
+(`artifacts/smoke-git-preference-20261029c/`). Two earlier attempts ran just after the long run
+released its display hold. Their 198 checks pass, but the theme restart times out. Launched by
+hand, that restart passes both visible and hidden.

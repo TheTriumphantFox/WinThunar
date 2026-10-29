@@ -7,8 +7,10 @@ that a person tried the application or continued using it.
 ## Current status
 
 The initial campaign below targeted 0.5.0. The current release is [WinThunar
-0.6.0](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.6.0), published 29 October
-2026. It closes the roadmap's P0 stability work, which was the hold on Show HN and press
+0.6.1](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.6.1), published 29 October
+2026, which adds an optional System colors theme.
+[0.6.0](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.6.0), published earlier
+that day, closes the roadmap's P0 stability work, which was the hold on Show HN and press
 pitches. As of 29 October no outside tester reports have arrived; see the [29 October
 counts](#baseline-and-results). A second round is prepared but not posted: a [0.6.0 follow-up
 post](PROMOTION.md#follow-up-post-for-060), a [Linux and Xfce

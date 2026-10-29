@@ -9,10 +9,12 @@ listing was [submitted](https://alternativeto.net/software/winthunar/) on 19 Oct
 
 This launch kit was first prepared for 0.5.0. On 26 October 2026 the media were recaptured from
 [0.5.15](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.5.15). The current
-public release is [0.6.0](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.6.0)
-(29 October 2026), which closes the stability work; its only visible change is a **Show Git
-status badges** preference, so the 0.5.15 media still show the app accurately. The copy below
-is updated for 0.6.0. The [0.6.0 follow-up post](#follow-up-post-for-060) and the [Linux and
+public release is [0.6.1](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.6.1)
+(29 October 2026), which adds an optional System colors theme.
+[0.6.0](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.6.0), earlier that day,
+closed the stability work; its only visible change is a **Show Git status badges** preference.
+The default themes look as before, so the 0.5.15 media still show the app accurately. The copy
+below is updated for 0.6.0. The [0.6.0 follow-up post](#follow-up-post-for-060) and the [Linux and
 Xfce post](#linux-and-xfce-communities) are drafts; neither has been posted. See [distribution
 channels](DISTRIBUTION.md) for WinGet, Scoop, code signing and download-site submissions.
 

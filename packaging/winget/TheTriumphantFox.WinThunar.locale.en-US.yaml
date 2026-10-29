@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.28.0.schema.json
 
 PackageIdentifier: TheTriumphantFox.WinThunar
-PackageVersion: 0.6.0
+PackageVersion: 0.6.1
 PackageLocale: en-US
 Publisher: TheTriumphantFox
 PublisherUrl: https://github.com/TheTriumphantFox
@@ -31,6 +31,6 @@ Tags:
 - tabs
 - thunar
 - winui3
-ReleaseNotesUrl: https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.6.0
+ReleaseNotesUrl: https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.6.1
 ManifestType: defaultLocale
 ManifestVersion: 1.28.0

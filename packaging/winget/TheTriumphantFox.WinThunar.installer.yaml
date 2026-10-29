@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.28.0.schema.json
 
 PackageIdentifier: TheTriumphantFox.WinThunar
-PackageVersion: 0.6.0
+PackageVersion: 0.6.1
 MinimumOSVersion: 10.0.22000.0
 InstallerType: msi
 # The MSI's quiet default is a per-user install (ALLUSERS=2, MSIINSTALLPERUSER=1).
@@ -22,8 +22,8 @@ AppsAndFeaturesEntries:
   UpgradeCode: '{31804CE9-95B4-5685-89F0-20B2157CAD52}'
 Installers:
 - Architecture: x64
-  InstallerUrl: https://github.com/TheTriumphantFox/WinThunar/releases/download/v0.6.0/WinThunar.App-win.msi
-  InstallerSha256: E951BA8BE12F36B7360B432CB90F4C08DBE44B689F0E8392F40E0DEF7D7E1265
+  InstallerUrl: https://github.com/TheTriumphantFox/WinThunar/releases/download/v0.6.1/WinThunar.App-win.msi
+  InstallerSha256: ED0B50E350226DD72C0579EE728680B1F68D855B322DBB301F954F9514376DEA
   # The visible entry's key, not the hidden MSI's per-release {GUID}: WinGet looks up the
   # installed app by this value, and it stays the same from release to release.
   ProductCode: MSI:WinThunar.App

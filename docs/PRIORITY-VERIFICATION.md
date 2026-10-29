@@ -585,3 +585,19 @@ fix and its runs are in
 
 Installed upgrade to 0.6.0, manual accessibility, notifications and slow-network coverage
 remain open. Hardware/network and interactive UAC remain deferred.
+
+## 0.6.1 publication verification, 29 October 2026
+
+[0.6.1](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.6.1) is published from
+clean merged `main` (`19a55e2`, PR #46) using `Publish-Release.ps1 -Version 0.6.1`. The release
+source passes 215 service tests, 219 desktop checks and two theme-restart checks, including the
+System colors surface and selection-brush checks and What's New in Light, Dark and System colors.
+Packaged application assemblies agree, checked test hooks are absent, both MSI copies carry
+0.6.1.0 with their policies and native guard, the 706,427-byte delta from 0.6.0 reconstructs all
+528 entries, and 27 historical packages keep their hashes. All five public digests, both feeds,
+latest stable and the tag match. See `artifacts/verification-0.6.1/` and
+[release notes](RELEASE-0.6.1.md).
+
+Installed upgrade to 0.6.1, live accent changes, on-screen light-mode review, manual
+accessibility, notifications and slow-network coverage remain open. Hardware/network and
+interactive UAC remain deferred.

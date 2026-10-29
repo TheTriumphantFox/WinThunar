@@ -164,6 +164,16 @@ public static class Program
                 return false;
             }
 
+            // The registered instance may be closing, as when Restart Now or a quick relaunch follows
+            // the last window closing. Redirecting to it then never completes, so the wait below also
+            // ends when it exits, and after a bound; this launch then opens its own window.
+            var target = OpenProcess(Synchronize, false, keyInstance.ProcessId);
+            if (target == IntPtr.Zero)
+            {
+                OwnInstanceKeyIfFree();
+                return false;
+            }
+
             var activation = AppInstance.GetCurrent().GetActivatedEventArgs();
             // Let the running instance bring its new window to the foreground.
             _ = AllowSetForegroundWindow(keyInstance.ProcessId);
@@ -188,14 +198,21 @@ public static class Program
                     }
                 });
                 // Pump COM while waiting; a plain Wait on the STA thread can deadlock the redirect.
-                _ = CoWaitForMultipleObjects(0, 0xFFFFFFFF, 1, [done], out _);
+                _ = CoWaitForMultipleObjects(0, RedirectTimeoutMilliseconds, 2, [done, target], out _);
             }
             finally
             {
                 CloseHandle(done);
+                CloseHandle(target);
             }
 
-            return redirected;
+            if (Volatile.Read(ref redirected))
+            {
+                return true;
+            }
+
+            OwnInstanceKeyIfFree();
+            return false;
         }
         catch (COMException)
         {
@@ -203,6 +220,32 @@ public static class Program
             return false;
         }
     }
+
+    /// <summary>
+    /// After a redirect to a closing instance is abandoned, takes over the key if it is free, so later
+    /// launches reach this window.
+    /// </summary>
+    private static void OwnInstanceKeyIfFree()
+    {
+        try
+        {
+            var keyInstance = AppInstance.FindOrRegisterForKey(InstanceKey);
+            if (keyInstance.IsCurrent)
+            {
+                keyInstance.Activated += App.OnRedirectedActivation;
+            }
+        }
+        catch (COMException)
+        {
+            // Run standalone without the key.
+        }
+    }
+
+    private const uint Synchronize = 0x00100000;
+    private const uint RedirectTimeoutMilliseconds = 10_000;
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern IntPtr OpenProcess(uint access, bool inheritHandle, uint processId);
 
     [DllImport("user32.dll")]
     private static extern bool AllowSetForegroundWindow(uint processId);

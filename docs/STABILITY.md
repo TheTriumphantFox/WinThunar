@@ -692,3 +692,21 @@ restart checks with the display held on
 (`artifacts/smoke-git-preference-20261029c/`). Two earlier attempts ran just after the long run
 released its display hold. Their 198 checks pass, but the theme restart times out. Launched by
 hand, that restart passes both visible and hidden.
+
+## Launch hang after an instance exits, 29 October
+
+The theme-restart check, which relaunches the app a second after the smoke run exits, timed out
+in four of eight scripted runs on the 0.6.0 source; earlier timeouts also occurred on `c4a655d`.
+A watcher dumped one hung launch (`artifacts/smoke-0.6.0-restartwatch-20261029-3/`). Its main
+thread waits without a bound in `Program.TryRedirectToRunningInstance`, and a thread-pool
+thread waits in `RedirectActivationToAsync` for the instance registered under the app's key,
+which had already exited. Users could hit the same wait after Restart Now or by reopening
+WinThunar right after closing it: a background process with no window.
+
+The redirect now opens the registered process first and runs standalone if it is gone.
+Otherwise the wait also ends when that process exits, or after 10 seconds. A launch that does
+not redirect takes over the key when it is free. In five consecutive full runs afterwards
+(`smoke-0.6.0-redirectfix-20261029-2` to `-6`), every check and restart passes, and each
+restart takes about 2 seconds. Six manual relaunches before the fix all passed, so the race is
+timing-dependent; these runs show the hang no longer occurs in the harness, not which exit each
+launch took.

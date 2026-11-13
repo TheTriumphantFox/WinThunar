@@ -514,10 +514,23 @@ public sealed partial class MainPage
                 Require(App.ThemePreference == AppThemePreference.Dark && ActualTheme == ElementTheme.Dark && ViewModel.StatusText.Contains("Could not save the color theme"),
                     "A failed theme save reports the error and preserves the active and stored choice", checks);
             }
+            // A window that closes under an open dialog never raises the dialog's Closed event.
+            var orphan = new ThemedContentDialog { Title = "Closing window", CloseButtonText = "Close", XamlRoot = otherWindow!.Page!.XamlRoot };
+            _ = orphan.ShowAsync();
+            await Task.Delay(150);
+            Require(ThemeListeners().Contains(orphan), "An open dialog keeps listening for theme changes after WinUI unloads it", checks);
+            otherWindow.Close();
+            otherWindow = null;
+            await Task.Delay(150);
+            Require(!ThemeListeners().Contains(orphan), "Closing a window under an open dialog ends that dialog's theme subscription", checks);
             App.SetThemePreference(AppThemePreference.System);
         }
         finally { otherWindow?.Close(); }
     }
+
+    private static object?[] ThemeListeners() =>
+        ((Delegate?)typeof(App).GetField(nameof(App.ThemeChanged), System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)
+            ?.GetValue(null))?.GetInvocationList().Select(handler => handler.Target).ToArray() ?? [];
 
     private static bool UsesSystemColors(MainWindow window) =>
         window.SystemBackdrop is MicaBackdrop &&

@@ -30,8 +30,18 @@ public partial class App : Application
     public static UpdateService Updates { get; private set; } = null!;
 
     public static AppThemePreference ThemePreference { get; private set; } = AppThemePreference.System;
+    public static bool NavigationAnimations { get; private set; } = true;
     private static AppearanceSettingsStore _appearanceStore = null!;
     internal static event EventHandler? ThemeChanged;
+    internal static event EventHandler? NavigationAnimationsChanged;
+
+    public static void SetNavigationAnimations(bool enabled)
+    {
+        if (enabled == NavigationAnimations) return;
+        _appearanceStore.Save(new AppearanceSettings { Theme = ThemePreference, NavigationAnimations = enabled });
+        NavigationAnimations = enabled;
+        NavigationAnimationsChanged?.Invoke(null, EventArgs.Empty);
+    }
 
     internal static ElementTheme GetElementTheme(AppThemePreference preference) => preference switch
     {
@@ -45,7 +55,7 @@ public partial class App : Application
         if (!Enum.IsDefined(preference)) throw new ArgumentOutOfRangeException(nameof(preference));
         if (preference == ThemePreference) return;
         // Persist first: a failed save leaves both the visible and stored choice unchanged.
-        _appearanceStore.Save(new AppearanceSettings { Theme = preference });
+        _appearanceStore.Save(new AppearanceSettings { Theme = preference, NavigationAnimations = NavigationAnimations });
         ThemePreference = preference;
         SystemColorsTheme.Apply(preference == AppThemePreference.SystemColors);
         foreach (var window in OpenWindows.OfType<MainWindow>()) window.ApplyTheme(preference);
@@ -110,7 +120,9 @@ public partial class App : Application
 #else
         _appearanceStore = new AppearanceSettingsStore();
 #endif
-        ThemePreference = _appearanceStore.Load().Theme;
+        var appearance = _appearanceStore.Load();
+        ThemePreference = appearance.Theme;
+        NavigationAnimations = appearance.NavigationAnimations;
         SystemColorsTheme.Apply(ThemePreference == AppThemePreference.SystemColors);
         Updates = new UpdateService();
         TaskbarService.Initialize();

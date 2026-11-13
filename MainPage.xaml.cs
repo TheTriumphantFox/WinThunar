@@ -3,6 +3,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Navigation;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
@@ -103,6 +104,8 @@ public sealed partial class MainPage : Page
         _transferQueue.StateChanged += TransferQueue_StateChanged;
         _history.Changed += History_Changed;
         InitializeComponent();
+        ApplyNavigationAnimations();
+        App.NavigationAnimationsChanged += NavigationAnimations_Changed;
         foreach (var element in new FrameworkElement[] { FileList, IconFileList, CompactFileList, SecondaryFileList, DirectoryTree, BrowserTabs })
         {
             SystemColorsTheme.Attach(element);
@@ -119,6 +122,18 @@ public sealed partial class MainPage : Page
     {
         base.OnNavigatedTo(e);
         _launchRequest = e.Parameter as LaunchRequest ?? LaunchRequest.Empty;
+    }
+
+    private void NavigationAnimations_Changed(object? sender, EventArgs e) => ApplyNavigationAnimations();
+
+    private void ApplyNavigationAnimations()
+    {
+        foreach (var list in new ListViewBase[] { FileList, IconFileList, CompactFileList, SecondaryFileList })
+        {
+            // Clear the local value to restore the control's native transitions when enabled.
+            if (App.NavigationAnimations) list.ClearValue(ListViewBase.ItemContainerTransitionsProperty);
+            else list.ItemContainerTransitions = new TransitionCollection();
+        }
     }
 
     private async void Page_Loaded(object sender, RoutedEventArgs e)
@@ -260,6 +275,7 @@ public sealed partial class MainPage : Page
         }
 
         _disposed = true;
+        App.NavigationAnimationsChanged -= NavigationAnimations_Changed;
         _containerNames.Dispose();
         _searchInputDelay?.Cancel();
         _searchInputDelay?.Dispose();
@@ -2134,6 +2150,8 @@ public sealed partial class MainPage : Page
     {
         if (_preferencesDialog is not null) return;
         var originalTheme = App.ThemePreference;
+        var originalAnimations = App.NavigationAnimations;
+        var animations = new CheckBox { Content = "Animate folder navigation", IsChecked = originalAnimations };
         var theme = new ComboBox
         {
             Header = "Theme",
@@ -2218,6 +2236,7 @@ public sealed partial class MainPage : Page
             MaxWidth = 430
         });
         content.Children.Add(defaultView);
+        content.Children.Add(animations);
         content.Children.Add(thumbnails);
         content.Children.Add(gitStatus);
         content.Children.Add(foldersFirst);
@@ -2292,6 +2311,12 @@ public sealed partial class MainPage : Page
             try { App.SetThemePreference((AppThemePreference)theme.SelectedIndex); }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             { ViewModel.StatusText = $"Could not save the color theme: {ex.Message}"; }
+        }
+        if ((animations.IsChecked == true) != originalAnimations)
+        {
+            try { App.SetNavigationAnimations(animations.IsChecked == true); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            { ViewModel.StatusText = $"Could not save navigation animations: {ex.Message}"; }
         }
     }
 
@@ -4665,6 +4690,7 @@ public sealed partial class MainPage : Page
         ViewModel.ActiveTransferTitle = active?.Title ?? string.Empty;
         ViewModel.ActiveTransferDetail = active?.StatusText ?? string.Empty;
         ViewModel.ActiveTransferProgress = active?.ProgressPercent ?? 0;
+        ViewModel.IsTransferProgressIndeterminate = active?.IsProgressIndeterminate ?? true;
         ViewModel.QueuedTransferText = _transferQueue.QueuedCount > 0
             ? $"{_transferQueue.QueuedCount} queued"
             : string.Empty;

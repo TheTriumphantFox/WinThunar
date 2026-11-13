@@ -39,6 +39,21 @@ public sealed class AppearanceSettingsTests : IDisposable
     }
 
     [Fact]
+    public void NavigationAnimationsDefaultOnAndRoundTripOffAlongsideTheme()
+    {
+        Directory.CreateDirectory(_root);
+        File.WriteAllText(SettingsPath, "{\"Theme\":\"Dark\"}");
+        var store = new AppearanceSettingsStore(SettingsPath);
+        var settings = store.Load();
+        Assert.True(settings.NavigationAnimations);
+        settings.NavigationAnimations = false;
+        store.Save(settings);
+        var reloaded = store.Load();
+        Assert.False(reloaded.NavigationAnimations);
+        Assert.Equal(AppThemePreference.Dark, reloaded.Theme);
+    }
+
+    [Fact]
     public void FailedReplacementPreservesTheExistingChoiceAndRemovesTemporaryFile()
     {
         var store = new AppearanceSettingsStore(SettingsPath);

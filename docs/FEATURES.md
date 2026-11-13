@@ -18,7 +18,8 @@ latest changes see [What's new](WHATS-NEW.md).
 - Delete moves to the Windows Recycle Bin; `Shift+Delete` requires permanent-delete confirmation
 - Destination-side staged copies and rollback-safe replacement, so a failed incoming transfer cannot destroy the existing item
 - Native Windows cross-volume copies that preserve file attributes, security metadata, extended attributes, and NTFS alternate data streams
-- Sequential transfer queue with byte progress, throughput, ETA, queued-job count, and active-job cancellation
+- Sequential background transfer queue per window with current-file byte progress, throughput and ETA, queued-job count, and active-job cancellation; separate windows have independent queues
+- Optional folder navigation animations in Preferences, shared across windows and remembered between launches
 - Persistent recovery records for interrupted staged copies and replacements
 - Ten-action Undo/Redo history for create, template/archive creation, rename, ordinary copy, move, and duplicate operations, guarded by destination-state verification
 - Drag-and-drop into the current folder or a visible child folder

@@ -3,6 +3,14 @@
 Release-by-release summaries moved here from the README on 26 October 2026. Each release
 also has its own notes in this folder; the [roadmap](ROADMAP.md) lists what remains open.
 
+## 0.6.2
+
+Opening a folder can no longer make WinThunar run programs that came with it: Git status badges
+switch off the programs a repository's own settings name, and helper programs start from where
+they are installed. File transfers run in the background so the window stays responsive, and
+**Animate folder navigation** in Preferences turns navigation animations off.
+See the [0.6.2 release notes](RELEASE-0.6.2.md).
+
 ## Published in 0.6.1
 
 **System colors** joins System, Light and Dark under **Edit > Preferences > Display > Theme**. It

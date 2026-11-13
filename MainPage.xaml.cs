@@ -2362,6 +2362,10 @@ public sealed partial class MainPage : Page
             IsTextSelectionEnabled = true
         });
 
+        AddHeading("Version 0.6.2: safer browsing and smoother transfers");
+        AddParagraph("Opening a folder can no longer make WinThunar run programs that came with it. Git status badges switch off the programs a downloaded repository's own settings name, and WinThunar starts Git, PowerShell, Explorer and Windows Terminal from where they are installed, never from the folder it was opened in.");
+        AddParagraph("A plugin you added whose command is a program name runs the program found on your PATH. WinThunar refuses to start a program that only the browsed folder holds.");
+        AddParagraph("File transfers run in the background, so the window stays responsive during large copies, and the transfer panel shows progress for the current file. Turn off Animate folder navigation in Preferences to stop folder navigation animations; the choice applies to every window and is remembered.");
         AddHeading("Version 0.6.1 — System colors theme");
         AddParagraph("Preferences has a fourth color theme, System colors. It follows your Windows light or dark setting, shows the Windows 11 Mica backdrop behind the toolbar and side pane, and tints selected files, folders in the tree and the selected tab with your Windows accent color.");
         AddParagraph("System, Light and Dark look as before. Windows High Contrast keeps its own colors in every theme.");

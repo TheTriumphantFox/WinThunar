@@ -8,8 +8,8 @@ each release, after the GitHub release is public.
 | --- | --- | --- |
 | GitHub Releases | Published | MSI or portable ZIP from the README |
 | Scoop (this repository's bucket) | Live on `main`; install, launch and uninstall tested 26 October 2026 | `scoop bucket add winthunar https://github.com/TheTriumphantFox/WinThunar`, then `scoop install winthunar` |
-| WinGet | Install, match, launch and uninstall tested 26 October 2026; not submitted | `winget install TheTriumphantFox.WinThunar` once accepted |
-| Scoop Extras | Not submitted | `scoop install extras/winthunar` |
+| WinGet | 0.6.2 submitted 13 November 2026 in [microsoft/winget-pkgs#479634](https://github.com/microsoft/winget-pkgs/pull/479634), awaiting CLA and review; install, match, launch and uninstall tested 26 October 2026 | `winget install TheTriumphantFox.WinThunar` once accepted |
+| Scoop Extras | Not eligible yet: Extras asks for at least 100 GitHub stars or 50 forks | `scoop install extras/winthunar` |
 | Microsoft Store | Not started; needs a signed installer | Store listing |
 | Code signing | Not set up; the release script accepts `-SignParams` | Removes the SmartScreen "unknown publisher" warning over time |
 
@@ -31,6 +31,11 @@ Details worth knowing before submitting:
   the `AppsAndFeaturesEntries` entry both use the stable key.
 - The manifest declares the MSI's quiet default, a per-user install. Machine-wide installs
   through WinGet were not tested and are not offered.
+
+0.6.2 was submitted as a new package on 13 November 2026 in
+[microsoft/winget-pkgs#479634](https://github.com/microsoft/winget-pkgs/pull/479634), from the
+fork `TheTriumphantFox/winget-pkgs`. The maintainer signs Microsoft's CLA on the pull request;
+a moderator then reviews new packages.
 
 To submit, either use [wingetcreate](https://github.com/microsoft/winget-create) with a
 GitHub token:
@@ -104,7 +109,10 @@ from a Scoop path.
 
 [Scoop Extras](https://github.com/ScoopInstaller/Extras) is the bucket most Scoop users already
 have. It takes apps that don't fit the main bucket, which is limited to well-known command-line
-tools. The in-repository install now passes, so WinThunar can be submitted there.
+tools. Its package-request form requires a project to be "reasonably well-known and widely used",
+which for a GitHub project means at least 100 stars and/or 50 forks, and asks for a request issue
+before any pull request. WinThunar had 1 star and no forks when checked on 13 November 2026, so it
+is not submitted yet; this repository's bucket remains the Scoop route until then.
 
 ## Code signing
 

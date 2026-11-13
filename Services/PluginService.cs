@@ -104,7 +104,8 @@ public sealed class PluginService
     {
         var startInfo = new ProcessStartInfo
         {
-            FileName = invocation.Command,
+            // Shell execute looks for a bare name in the working folder first, which is the browsed folder.
+            FileName = ExecutableLocator.ResolveShellCommand(invocation.Command, invocation.WorkingDirectory),
             WorkingDirectory = invocation.WorkingDirectory,
             UseShellExecute = true
         };

@@ -1,0 +1,66 @@
+# WinThunar 0.6.2
+
+Prepared for Windows 11 x64. Project, assembly/file, manifest and release-script versions are
+aligned at 0.6.2 (four-part version 0.6.2.0). Publication details are added once the release is
+public.
+
+## Changes
+
+**Browsing a folder no longer runs its programs** ([#49](https://github.com/TheTriumphantFox/WinThunar/pull/49)).
+An audit on 10 November 2026 found that a folder the user only opens, such as an extracted ZIP or
+a USB stick, could make WinThunar run a program it carried:
+
+- **Git status badges.** WinThunar runs `git status` on each folder it opens, and a crafted
+  `.git/config` could name a clean or process filter for Git to run. Git now runs with every
+  filter defined in the repository's own config switched off. Filters from the system or user Git
+  config, such as Git LFS, keep working. A repository whose filter name cannot be switched off
+  gets no badges. Status skips submodules, whose settings are not checked, and Git may not fetch
+  or contact a remote while reading badges.
+- **Helper programs.** Git, PowerShell, Explorer and Windows Terminal were started by bare name,
+  which Windows looks up in the current folder first. They now start from fixed Windows locations
+  or from fully qualified PATH entries, and WinThunar switches its current folder to the Windows
+  system folder once it has read its launch arguments. Starting `WinThunar.exe .` while another
+  window is open now opens a new window rather than handing the path to the running one, which
+  would have read it against its own current folder.
+- **Git plugin.** Git Status, Git Diff and Git Log use the same protections. Git Diff no longer
+  runs a repository's external diff or text conversion programs, and Git Log no longer runs a
+  repository's signature verifier.
+- **User plugins.** A plugin command given as a bare name was looked up in the browsed folder
+  before PATH. It now runs the program found on PATH; a relative path, or a name only the browsed
+  folder holds, is refused with a message.
+
+**Responsive transfers.** Queued copies and moves run on a background worker while conflict
+prompts stay on the window, so the window keeps responding during large transfers. Progress
+updates are throttled, and the transfer panel shows progress for the current file with an
+indicator while a transfer prepares. Each window keeps its own queue.
+
+**Optional navigation animations.** **Animate folder navigation** in Preferences turns folder
+navigation animations off. The choice applies to every open window and is remembered between
+launches.
+
+Help > What's New summarizes the release.
+
+## Verification
+
+The service tests pass, including tests whose fixtures run plain Git afterward to show the
+planted program would otherwise run: clean, process and required filters, a filter from an
+included config file, an unoverridable filter name, the plugin's diff with an external diff
+program and its log with a forged signed commit. Locator tests show relative and drive-relative
+PATH entries are skipped and that a program planted in the browsed folder is not chosen for a
+plugin. A probe showed shell execute choosing a planted `ping.exe` in the working folder over the
+system one before the change.
+
+The desktop smoke suite passes its Git badge, transfer and navigation checks. One theme check,
+an open Preferences dialog following a theme change from another window, fails the same way on
+the source before these changes (`f119e8f`) and is being investigated separately.
+
+## Limits
+
+The working folder Explorer passes to the **Open in WinThunar** verb was not checked; the change
+does not depend on it. The partial-clone fetch protection is a precaution, not a reproduced
+issue. Git older than 2.26 cannot list filters by scope, so badges are skipped there. Installed
+upgrade to 0.6.2, slow-network stability, notification delivery and manual screen-reader,
+contrast and scaling review remain unverified.
+
+An automatic app update does not replace an older cached MSI. Use the latest MSI for installer
+safeguards. Legacy all-users migration remains refused.

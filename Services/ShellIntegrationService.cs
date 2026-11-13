@@ -96,7 +96,7 @@ public static class ShellIntegrationService
     {
         Process.Start(new ProcessStartInfo
         {
-            FileName = "explorer.exe",
+            FileName = ExecutableLocator.Explorer,
             Arguments = shellLocation,
             UseShellExecute = true
         });
@@ -109,7 +109,12 @@ public static class ShellIntegrationService
     {
         try
         {
-            var terminal = new ProcessStartInfo { FileName = "wt.exe", UseShellExecute = true };
+            var terminal = new ProcessStartInfo
+            {
+                FileName = ExecutableLocator.WindowsTerminal
+                    ?? throw new System.ComponentModel.Win32Exception(2, "Windows Terminal is not installed."),
+                UseShellExecute = true
+            };
             terminal.ArgumentList.Add("-d");
             terminal.ArgumentList.Add(workingDirectory);
             Process.Start(terminal);
@@ -118,7 +123,7 @@ public static class ShellIntegrationService
         {
             Process.Start(new ProcessStartInfo
             {
-                FileName = "powershell.exe",
+                FileName = ExecutableLocator.PowerShell,
                 WorkingDirectory = workingDirectory,
                 UseShellExecute = true
             });

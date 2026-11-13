@@ -480,6 +480,8 @@ public sealed partial class MainPage
                     var whatsNew = CreateWhatsNewDialog();
                     var showingWhatsNew = whatsNew.ShowAsync();
                     await Task.Delay(150);
+                    Require(FindSmokeText(whatsNew.Content as DependencyObject, "Version 0.6.2: safer browsing and smoother transfers") is not null,
+                        $"What's New describes the 0.6.2 security and transfer release in {theme}", checks);
                     Require(FindSmokeText(whatsNew.Content as DependencyObject, "Version 0.6.1 — System colors theme") is not null,
                         $"What's New describes the 0.6.1 System colors release in {theme}", checks);
                     Require(FindSmokeText(whatsNew.Content as DependencyObject, "Version 0.6.0 — stability under sustained use") is not null,

@@ -32,6 +32,46 @@ public sealed record LaunchRequest(string? FolderPath, string? SelectPath)
 
     public static LaunchRequest Parse(IEnumerable<string> arguments)
     {
+        var (target, select) = ReadTargets(arguments);
+        return Resolve(target, select);
+    }
+
+    /// <summary>
+    /// True when a path in <paramref name="arguments"/> would be resolved against the current
+    /// folder. Such a launch must not be handed to a running instance, which has its own current
+    /// folder and receives only the raw command line.
+    /// </summary>
+    public static bool HasRelativePath(IEnumerable<string> arguments)
+    {
+        var (target, select) = ReadTargets(arguments);
+        return IsRelative(target) || IsRelative(select);
+    }
+
+    private static bool IsRelative(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        value = value.Trim().Trim('"');
+        if (value.Length == 2 && char.IsAsciiLetter(value[0]) && value[1] == ':')
+        {
+            return false;
+        }
+
+        if (value.StartsWith("::", StringComparison.Ordinal) ||
+            value.StartsWith("shell:", StringComparison.OrdinalIgnoreCase) ||
+            (Uri.TryCreate(value, UriKind.Absolute, out var uri) && uri.IsFile))
+        {
+            return false;
+        }
+
+        return !Path.IsPathFullyQualified(Environment.ExpandEnvironmentVariables(value));
+    }
+
+    private static (string? Target, string? Select) ReadTargets(IEnumerable<string> arguments)
+    {
         string? target = null;
         string? select = null;
         var tokens = arguments.ToList();
@@ -106,7 +146,7 @@ public sealed record LaunchRequest(string? FolderPath, string? SelectPath)
             target = token;
         }
 
-        return Resolve(target, select);
+        return (target, select);
     }
 
     /// <summary>

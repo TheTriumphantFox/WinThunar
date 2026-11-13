@@ -51,7 +51,7 @@ public static class Program
 #endif
 
         NotificationService.Initialize();
-        if (TryRedirectToRunningInstance())
+        if (TryRedirectToRunningInstance(mayRedirect: !LaunchRequest.HasRelativePath(args)))
         {
             NotificationService.Shutdown();
             return 0;
@@ -72,6 +72,10 @@ public static class Program
 
 #endif
         var request = LaunchRequest.Parse(args);
+        // Relative launch paths are resolved now. Windows looks for a bare program name in the
+        // current folder first, which may be an untrusted folder WinThunar was started from; the
+        // system folder is trusted, and this also stops WinThunar locking the folder it started in.
+        Environment.CurrentDirectory = Environment.SystemDirectory;
         try
         {
             var activation = AppInstance.GetCurrent().GetActivatedEventArgs();
@@ -153,7 +157,11 @@ public static class Program
         }
     }
 
-    private static bool TryRedirectToRunningInstance()
+    /// <param name="mayRedirect">
+    /// False when the launch has a relative path: the running instance would resolve it against its
+    /// own current folder, so this launch opens its own window instead.
+    /// </param>
+    private static bool TryRedirectToRunningInstance(bool mayRedirect)
     {
         try
         {
@@ -161,6 +169,11 @@ public static class Program
             if (keyInstance.IsCurrent)
             {
                 keyInstance.Activated += App.OnRedirectedActivation;
+                return false;
+            }
+
+            if (!mayRedirect)
+            {
                 return false;
             }
 

@@ -1,8 +1,10 @@
 # WinThunar 0.6.2
 
-Prepared for Windows 11 x64. Project, assembly/file, manifest and release-script versions are
-aligned at 0.6.2 (four-part version 0.6.2.0). Publication details are added once the release is
-public.
+Published [13 November 2026](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.6.2)
+for Windows 11 x64 from source `ed64527be00899c3e5c765b3a27242e7a0f7c631` (PRs #49, #50 and #51).
+All five public binary digests, both updater feeds and the source tag match the verified build.
+Project, assembly/file, manifest and release-script versions are aligned at 0.6.2 (four-part
+version 0.6.2.0).
 
 ## Changes
 
@@ -47,7 +49,10 @@ Help > What's New summarizes the release.
 
 ## Verification
 
-The service tests pass, including tests whose fixtures run plain Git afterward to show the
+The release source on `main` passes **241 service tests**, **233 desktop checks** and **two
+theme-restart checks**, with no checks bypassed.
+
+The service tests include tests whose fixtures run plain Git afterward to show the
 planted program would otherwise run: clean, process and required filters, a filter from an
 included config file, an unoverridable filter name, the plugin's diff with an external diff
 program and its log with a forged signed commit. Locator tests show relative and drive-relative
@@ -60,6 +65,31 @@ checks, including its Git badge, transfer and navigation checks. Its theme check
 Preferences dialog following a theme change from another window had failed since before these
 changes (`f119e8f`); #50 fixed the cause and added checks that a dialog keeps its theme
 subscription while open and drops it when its window closes.
+
+## Package and publication verification
+
+The release build ran from clean merged `main` using `Publish-Release.ps1 -Version 0.6.2`.
+Application assemblies match across the versioned ZIP, public portable ZIP and full package, the
+new Git, helper-program and dialog-theme code is present, and checked smoke, fault and theme-check
+test hooks are absent. Both MSI copies match, carry version 0.6.2.0, retain scope/shortcut choices
+and repair/migration safeguards, and embed the native guard from the release build.
+
+The **844,956-byte** 0.6.1-to-0.6.2 delta reconstructs all **528 archive entries** with matching
+names, lengths and SHA-256 digests. All **29 historical update packages** retain their hashes.
+All five public binary sizes and SHA-256 digests match the verified build. The modern feed offers
+matching 0.6.2 full/delta entries, the compatibility feed offers the matching full package,
+latest stable resolves to 0.6.2 and the tag points to the source commit above.
+
+Evidence is in `artifacts/verification-0.6.2/`. These are source/package checks; an installed
+upgrade to 0.6.2 remains unverified.
+
+| GitHub binary | Bytes | SHA-256 |
+| --- | ---: | --- |
+| `WinThunar.App-win.msi` | 93,495,296 | `139c2a099bda46867fda4de39b6e8eabe360aabb0db79dce9b9659bb1466cf45` |
+| `WinThunar.App-win-Setup.exe` | 119,550,342 | `399ea894cc0a7c46a03a558071cd3906b96ccabf6ac4ec8e5163bb5261bc0612` |
+| `WinThunar.App-0.6.2-delta.nupkg` | 844,956 | `c48f8bc2f7ddd543e54d5a3da82b236245e057f134f46349c6be6c072a29a524` |
+| `WinThunar.App-win-Portable.zip` | 112,002,217 | `a65fb88dbf44c90a0501b5ccf539600f52a8a51e825b0245cef675be3950601c` |
+| `WinThunar.App-0.6.2-full.nupkg` | 112,018,822 | `266f6e16fd700b90490d49fb83ae96bad555644e70c6e39fd7bebda83ccf23ba` |
 
 ## Limits
 

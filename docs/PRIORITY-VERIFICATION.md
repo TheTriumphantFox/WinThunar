@@ -601,3 +601,19 @@ latest stable and the tag match. See `artifacts/verification-0.6.1/` and
 Installed upgrade to 0.6.1, live accent changes, on-screen light-mode review, manual
 accessibility, notifications and slow-network coverage remain open. Hardware/network and
 interactive UAC remain deferred.
+
+## 0.6.2 publication verification, 13 November 2026
+
+[0.6.2](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.6.2) is published from
+clean merged `main` (`ed64527`, PRs #49, #50 and #51) using `Publish-Release.ps1 -Version 0.6.2`.
+The release source passes 241 service tests, 233 desktop checks and two theme-restart checks with
+no checks bypassed, including the Git badge filter checks and the open-dialog theme checks.
+Packaged application assemblies agree, checked test hooks are absent, both MSI copies carry
+0.6.2.0 with their policies and native guard, the 844,956-byte delta from 0.6.1 reconstructs all
+528 entries, and 29 historical packages keep their hashes. All five public digests, both feeds,
+latest stable and the tag match. See `artifacts/verification-0.6.2/` and
+[release notes](RELEASE-0.6.2.md).
+
+Installed upgrade to 0.6.2, the Explorer verb's working folder, manual accessibility,
+notifications and slow-network coverage remain open. Hardware/network and interactive UAC remain
+deferred.

@@ -48,10 +48,13 @@ public sealed class GitStatusService(Func<ProcessStartInfo, Process>? startProce
         timeout.CancelAfter(TimeSpan.FromSeconds(8));
         try
         {
-            var root = (await RunAsync(directory, ["rev-parse", "--show-toplevel"], timeout.Token))?.TrimEnd('\r', '\n');
+            var root = (await RunAsync(directory, ["rev-parse", "--show-toplevel"], [], timeout.Token))?.TrimEnd('\r', '\n');
             if (string.IsNullOrEmpty(root)) return null;
-            var tracked = await RunAsync(root, ["ls-files", "-z"], timeout.Token);
-            var changed = await RunAsync(root, ["status", "--porcelain=v1", "-z", "--untracked-files=normal", "--ignored=matching"], timeout.Token);
+            var filters = await ReadRepositoryFiltersCoreAsync(root, timeout.Token);
+            if (filters is null) return null;
+            var tracked = await RunAsync(root, ["ls-files", "-z"], filters, timeout.Token);
+            // A submodule has its own config, whose filters the list above does not cover.
+            var changed = await RunAsync(root, ["status", "--porcelain=v1", "-z", "--untracked-files=normal", "--ignored=matching", "--ignore-submodules=all"], filters, timeout.Token);
             if (tracked is null || changed is null) return null;
             return new GitStatusSnapshot(root, Parse(tracked, changed));
         }
@@ -89,20 +92,42 @@ public sealed class GitStatusService(Func<ProcessStartInfo, Process>? startProce
         return result;
     }
 
-    private async Task<string?> RunAsync(string directory, string[] arguments, CancellationToken token)
+    /// <summary>
+    /// Names of the filters <paramref name="root"/>'s own config defines, to switch off with
+    /// <see cref="GitCommand.CreateStartInfo"/>; null when Git fails or a filter cannot be switched off.
+    /// Runs on the thread pool, like <see cref="ReadAsync"/>.
+    /// </summary>
+    public Task<IReadOnlyList<string>?> ReadRepositoryFiltersAsync(string root, CancellationToken cancellationToken = default) =>
+        Task.Run(async () =>
+        {
+            try { return await ReadRepositoryFiltersCoreAsync(root, cancellationToken); }
+            catch (System.ComponentModel.Win32Exception) { return null; }
+            catch (IOException) { return null; }
+        }, CancellationToken.None);
+
+    private async Task<IReadOnlyList<string>?> ReadRepositoryFiltersCoreAsync(string root, CancellationToken token)
     {
-        var start = new ProcessStartInfo("git") { WorkingDirectory = directory, UseShellExecute = false,
-            CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true,
-            StandardOutputEncoding = System.Text.Encoding.UTF8 };
-        start.ArgumentList.Add("--no-optional-locks");
-        start.ArgumentList.Add("-c");
-        start.ArgumentList.Add("core.fsmonitor=false");
-        foreach (var argument in arguments) start.ArgumentList.Add(argument);
-        // A caller's repository environment must not redirect this browser's Git commands.
-        foreach (var key in start.Environment.Keys.Where(key => key.StartsWith("GIT_", StringComparison.OrdinalIgnoreCase)).ToArray())
-            start.Environment.Remove(key);
-        start.Environment["GIT_TERMINAL_PROMPT"] = "0";
-        using var process = _startProcess(start);
+        var (exitCode, output) = await ExecuteAsync(root, GitCommand.ListFilterArguments, [], token);
+        // git config --get-regexp exits 1 when nothing matches.
+        return exitCode switch
+        {
+            0 => GitCommand.RepositoryFilterNames(output),
+            1 when output.Length == 0 => [],
+            _ => null
+        };
+    }
+
+    private async Task<string?> RunAsync(string directory, string[] arguments, IReadOnlyCollection<string> filters, CancellationToken token)
+    {
+        var (exitCode, output) = await ExecuteAsync(directory, arguments, filters, token);
+        return exitCode == 0 ? output : null;
+    }
+
+    private async Task<(int ExitCode, string Output)> ExecuteAsync(string directory, string[] arguments, IReadOnlyCollection<string> filters, CancellationToken token)
+    {
+        // Never a bare name: Windows would look in this process's current folder first.
+        var git = ExecutableLocator.Git ?? throw new System.ComponentModel.Win32Exception(2);
+        using var process = _startProcess(GitCommand.CreateStartInfo(git, directory, arguments, filters));
         try
         {
             var output = process.StandardOutput.ReadToEndAsync(token);
@@ -110,7 +135,7 @@ public sealed class GitStatusService(Func<ProcessStartInfo, Process>? startProce
             await process.WaitForExitAsync(token);
             var text = await output;
             await error;
-            return process.ExitCode == 0 ? text : null;
+            return (process.ExitCode, text);
         }
         finally
         {

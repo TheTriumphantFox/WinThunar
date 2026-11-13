@@ -11,6 +11,8 @@
   <ItemGroup>
     <Compile Include="..\Fixtures\DocxFixture.cs" Link="Fixtures\DocxFixture.cs" />
     <Compile Include="..\..\Services\GitStatusService.cs" Link="Services\GitStatusService.cs" />
+    <Compile Include="..\..\Services\GitCommand.cs" Link="Services\GitCommand.cs" />
+    <Compile Include="..\..\Services\ExecutableLocator.cs" Link="Services\ExecutableLocator.cs" />
     <Compile Include="..\..\Services\LinkFileSystem.cs" Link="Services\LinkFileSystem.cs" />
     <Compile Include="..\..\Services\FileOperationService.cs" Link="Services\FileOperationService.cs" />
     <Compile Include="..\..\Services\DragDropPolicy.cs" Link="Services\DragDropPolicy.cs" />

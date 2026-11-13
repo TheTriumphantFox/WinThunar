@@ -113,6 +113,41 @@ public sealed class LaunchRequestTests : IDisposable
         Assert.True(LaunchRequest.ParseCommandLine($"\"{executable}\"", executable).IsEmpty);
     }
 
+    [Theory]
+    [InlineData(".")]
+    [InlineData("..")]
+    [InlineData("subfolder")]
+    [InlineData(@"\rooted\on\current\drive")]
+    [InlineData("C:drive-relative")]
+    [InlineData("/select,report.txt")]
+    [InlineData("--select=report.txt")]
+    public void RelativeLaunchPathsAreNotHandedToARunningInstance(string argument)
+    {
+        // The running instance would resolve these against its own current folder.
+        Assert.True(LaunchRequest.HasRelativePath([argument]));
+    }
+
+    [Fact]
+    public void AbsoluteLaunchPathsMayBeHandedToARunningInstance()
+    {
+        Assert.False(LaunchRequest.HasRelativePath([]));
+        Assert.False(LaunchRequest.HasRelativePath([_root]));
+        Assert.False(LaunchRequest.HasRelativePath(["C:"]));
+        Assert.False(LaunchRequest.HasRelativePath(["/select,", _file]));
+        Assert.False(LaunchRequest.HasRelativePath([new Uri(_root).AbsoluteUri]));
+        Assert.False(LaunchRequest.HasRelativePath([LaunchRequest.RecycleBinPath]));
+        Assert.False(LaunchRequest.HasRelativePath(["::{20D04FE0-3AEA-1069-A2D8-08002B30309D}"]));
+        Assert.False(LaunchRequest.HasRelativePath([@"%SystemRoot%\System32"]));
+    }
+
+    [Fact]
+    public void RelativeLaunchPathResolvesAgainstTheLaunchFolder()
+    {
+        // Program.Main parses before switching the current folder, so "WinThunar.exe ." opens where it was started.
+        var current = Path.TrimEndingDirectorySeparator(Path.GetFullPath(Environment.CurrentDirectory));
+        Assert.Equal(new LaunchRequest(current, null), LaunchRequest.Parse(["."]));
+    }
+
     public void Dispose()
     {
         var testRoot = Path.GetDirectoryName(_root)!;

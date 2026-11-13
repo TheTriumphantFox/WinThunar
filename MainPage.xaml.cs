@@ -643,7 +643,7 @@ public sealed partial class MainPage : Page
         {
             var startInfo = new ProcessStartInfo
             {
-                FileName = "powershell.exe",
+                FileName = ExecutableLocator.PowerShell,
                 WorkingDirectory = workingDirectory,
                 UseShellExecute = false,
                 CreateNoWindow = true,
@@ -3208,40 +3208,15 @@ public sealed partial class MainPage : Page
     {
         var repository = FindGitRepository(ActiveBrowser.CurrentPath)
             ?? throw new InvalidOperationException("The current folder is not inside a Git repository.");
-        var startInfo = new ProcessStartInfo
-        {
-            FileName = "git.exe",
-            WorkingDirectory = repository,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true
-        };
-        switch (operation)
-        {
-            case "status":
-                startInfo.ArgumentList.Add("status");
-                startInfo.ArgumentList.Add("--short");
-                break;
-            case "diff":
-                startInfo.ArgumentList.Add("diff");
-                startInfo.ArgumentList.Add("--");
-                foreach (var entry in selected)
-                {
-                    startInfo.ArgumentList.Add(Path.GetRelativePath(repository, entry.FullPath));
-                }
-                break;
-            case "log":
-                startInfo.ArgumentList.Add("log");
-                startInfo.ArgumentList.Add("--oneline");
-                startInfo.ArgumentList.Add("-20");
-                startInfo.ArgumentList.Add("--");
-                foreach (var entry in selected)
-                {
-                    startInfo.ArgumentList.Add(Path.GetRelativePath(repository, entry.FullPath));
-                }
-                break;
-        }
+        var git = ExecutableLocator.Git
+            ?? throw new InvalidOperationException("Git could not be found. Install Git for Windows and ensure git.exe is on PATH.");
+        var filters = await new GitStatusService().ReadRepositoryFiltersAsync(repository)
+            ?? throw new InvalidOperationException("Git could not read this repository's settings safely, so it was not run.");
+        var startInfo = GitCommand.CreateStartInfo(
+            git,
+            repository,
+            GitCommand.PluginArguments(operation, selected.Select(entry => Path.GetRelativePath(repository, entry.FullPath))),
+            filters);
 
         _showTerminalPanel = true;
         ApplyTerminalPanel();

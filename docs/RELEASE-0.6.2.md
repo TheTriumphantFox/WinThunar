@@ -38,6 +38,11 @@ indicator while a transfer prepares. Each window keeps its own queue.
 navigation animations off. The choice applies to every open window and is remembered between
 launches.
 
+**Open dialogs follow theme changes** ([#50](https://github.com/TheTriumphantFox/WinThunar/pull/50)).
+A dialog open in one window, such as Preferences or a rename, kept its old theme when the theme was
+changed from another window. WinUI unloads a dialog shortly after showing it, and that ended the
+dialog's theme subscription. The subscription now ends only when the dialog or its window closes.
+
 Help > What's New summarizes the release.
 
 ## Verification
@@ -50,9 +55,11 @@ PATH entries are skipped and that a program planted in the browsed folder is not
 plugin. A probe showed shell execute choosing a planted `ping.exe` in the working folder over the
 system one before the change.
 
-The desktop smoke suite passes its Git badge, transfer and navigation checks. One theme check,
-an open Preferences dialog following a theme change from another window, fails the same way on
-the source before these changes (`f119e8f`) and is being investigated separately.
+The desktop smoke suite passes on `dc6776b` with no checks bypassed: 233 checks and two restart
+checks, including its Git badge, transfer and navigation checks. Its theme check for an open
+Preferences dialog following a theme change from another window had failed since before these
+changes (`f119e8f`); #50 fixed the cause and added checks that a dialog keeps its theme
+subscription while open and drops it when its window closes.
 
 ## Limits
 

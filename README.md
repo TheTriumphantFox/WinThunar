@@ -30,6 +30,9 @@ or [open the animated walkthrough (GIF)](docs/media/winthunar-demo.gif).
   file contents, for example `name:"annual report" type:pdf modified:last7days size:>1MB`.
 - **Undo for file operations.** Create, rename, copy, move, replace and merge can be undone,
   up to ten actions per window.
+- **Background transfers.** Copy and move jobs run one at a time in each window; additional
+  jobs queue automatically. A progress panel shows the current file's bytes, speed and time
+  estimate, the queued-job count, and a Cancel button. Separate windows have independent queues.
 - **Classic menus and keyboard-first navigation.** A real menu bar, a pathbar or editable
   location bar, bookmarks, a tree side pane, and `F6` to move between areas of the window.
 
@@ -37,6 +40,8 @@ It also has tabs (`Ctrl+T`), detail, icon and compact views (`Ctrl+1`–`Ctrl+3`
 and an image/text/PDF preview pane, Git status badges, the full Windows context menu, archive
 create and extract, Recycle Bin browsing, network shares, light, dark and Mica system-color themes, and plugins
 for custom actions. See the [full feature list](docs/FEATURES.md).
+
+Folder navigation animations can be turned off in **Edit > Preferences > Animate folder navigation**.
 
 ### Coming from Linux?
 

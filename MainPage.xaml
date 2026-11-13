@@ -911,11 +911,12 @@
                 </Grid.ColumnDefinitions>
                 <StackPanel Spacing="3">
                     <TextBlock Text="{x:Bind ViewModel.ActiveTransferTitle, Mode=OneWay}" FontWeight="SemiBold" />
-                    <TextBlock Text="{x:Bind ViewModel.ActiveTransferDetail, Mode=OneWay}" FontSize="12" Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" />
-                    <ProgressBar AutomationProperties.Name="Transfer progress"
+                    <TextBlock Text="{x:Bind ViewModel.ActiveTransferDetail, Mode=OneWay}" TextTrimming="CharacterEllipsis" FontSize="12" Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" />
+                    <ProgressBar AutomationProperties.Name="Current file progress"
                         Height="4"
                         Minimum="0"
                         Maximum="100"
+                        IsIndeterminate="{x:Bind ViewModel.IsTransferProgressIndeterminate, Mode=OneWay}"
                         Value="{x:Bind ViewModel.ActiveTransferProgress, Mode=OneWay}" />
                 </StackPanel>
                 <TextBlock

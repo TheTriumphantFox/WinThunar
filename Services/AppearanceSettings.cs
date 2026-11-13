@@ -15,6 +15,7 @@ public enum AppThemePreference
 public sealed class AppearanceSettings
 {
     public AppThemePreference Theme { get; set; } = AppThemePreference.System;
+    public bool NavigationAnimations { get; set; } = true;
 }
 
 /// <summary>Shared appearance preferences stay separate from each window's session snapshot.</summary>

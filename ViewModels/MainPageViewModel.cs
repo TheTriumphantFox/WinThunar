@@ -165,6 +165,9 @@ public partial class MainPageViewModel : ObservableObject, IDisposable
     public partial double ActiveTransferProgress { get; set; }
 
     [ObservableProperty]
+    public partial bool IsTransferProgressIndeterminate { get; set; } = true;
+
+    [ObservableProperty]
     public partial string QueuedTransferText { get; set; } = string.Empty;
 
     public bool CanGoBack => _historyIndex > 0;

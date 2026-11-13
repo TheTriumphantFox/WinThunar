@@ -97,14 +97,14 @@ public sealed class FileTransferQueue : IDisposable
                 string? progressItem = null;
                 var progress = new Progress<FileOperationProgress>(current =>
                 {
-                    var total = Math.Max(1, current.TotalItems);
-                    var itemFraction = current.TotalBytes > 0
-                        ? Math.Clamp((double)current.BytesTransferred / current.TotalBytes, 0, 1)
+                    // Reports already posted to the UI must not revive a finished job.
+                    if (!ReferenceEquals(ActiveJob, job) || job.State != FileTransferJobState.Running) return;
+                    // Byte counts describe the current file, including files inside a selected folder.
+                    // They cannot be used as a fraction of the selected top-level items.
+                    job.IsProgressIndeterminate = current.TotalBytes <= 0;
+                    job.ProgressPercent = current.TotalBytes > 0
+                        ? Math.Clamp(current.BytesTransferred * 100d / current.TotalBytes, 0, 100)
                         : 0;
-                    job.ProgressPercent = Math.Clamp(
-                        (current.CompletedItems + itemFraction) * 100d / total,
-                        0,
-                        100);
                     if (current.TotalBytes > 0)
                     {
                         if (!string.Equals(progressItem, current.ItemName, StringComparison.Ordinal))
@@ -119,11 +119,13 @@ public sealed class FileTransferQueue : IDisposable
                             ? (current.TotalBytes - current.BytesTransferred) / bytesPerSecond
                             : 0;
                         job.StatusText = $"{current.ItemName} — {FormatBytes(current.BytesTransferred)} of {FormatBytes(current.TotalBytes)} — {FormatBytes((long)bytesPerSecond)}/s" +
-                            (remainingSeconds >= 1 ? $" — {FormatDuration(remainingSeconds)} remaining" : string.Empty);
+                            (remainingSeconds >= 1 ? $" — {FormatDuration(remainingSeconds)} remaining for this file" : string.Empty);
                     }
                     else
                     {
-                        job.StatusText = $"{current.ItemName} ({current.CompletedItems} of {current.TotalItems})";
+                        job.StatusText = current.TotalItems > 0
+                            ? $"{current.ItemName} ({current.CompletedItems} of {current.TotalItems} items finished)"
+                            : current.ItemName;
                     }
                     OnStateChanged();
                 });
@@ -131,14 +133,17 @@ public sealed class FileTransferQueue : IDisposable
                 FileOperationResult result;
                 try
                 {
-                    result = await _fileOperations.TransferAsync(
+                    var context = SynchronizationContext.Current;
+                    // Run the whole operation on a worker: metadata checks, directory enumeration,
+                    // renames and recovery bookkeeping can block just as the byte copy can.
+                    result = await Task.Run(() => _fileOperations.TransferAsync(
                         job.SourcePaths,
                         job.DestinationDirectory,
                         job.Mode,
-                        job.ConflictResolver,
-                        progress,
+                        conflict => ResolveConflictAsync(job, conflict, context),
+                        new ThrottledProgress(progress),
                         job.Cancellation.Token,
-                        retainReplacedItems: true);
+                        retainReplacedItems: true));
                 }
                 catch (Exception ex)
                 {
@@ -177,6 +182,42 @@ public sealed class FileTransferQueue : IDisposable
             ActiveJob = null;
             _isProcessing = false;
             OnStateChanged();
+        }
+    }
+
+    private static Task<ConflictResolution> ResolveConflictAsync(
+        FileTransferJob job, FileConflict conflict, SynchronizationContext? context)
+    {
+        if (context is null) return job.ConflictResolver(conflict);
+        var completion = new TaskCompletionSource<ConflictResolution>(TaskCreationOptions.RunContinuationsAsynchronously);
+        context.Post(async _ =>
+        {
+            try
+            {
+                job.Cancellation.Token.ThrowIfCancellationRequested();
+                completion.TrySetResult(await job.ConflictResolver(conflict));
+            }
+            catch (OperationCanceledException) { completion.TrySetCanceled(); }
+            catch (Exception ex) { completion.TrySetException(ex); }
+        }, null);
+        return completion.Task;
+    }
+
+    // Native copies can report every chunk. Limit dispatches before posting them to the UI,
+    // so a fast disk cannot fill the message queue with progress updates.
+    private sealed class ThrottledProgress(IProgress<FileOperationProgress> target) : IProgress<FileOperationProgress>
+    {
+        private readonly Stopwatch _clock = Stopwatch.StartNew();
+        private bool _reported;
+
+        public void Report(FileOperationProgress value)
+        {
+            // Completion is published separately by the queue; even tiny files must respect
+            // the limit, otherwise a directory full of them can still swamp the dispatcher.
+            if (_reported && _clock.ElapsedMilliseconds < 100) return;
+            _reported = true;
+            _clock.Restart();
+            target.Report(value);
         }
     }
 

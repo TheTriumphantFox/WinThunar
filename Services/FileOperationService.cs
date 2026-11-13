@@ -354,6 +354,7 @@ public sealed class FileOperationService
     {
         ArgumentNullException.ThrowIfNull(sourcePaths);
         ArgumentNullException.ThrowIfNull(conflictResolver);
+        progress?.Report(new FileOperationProgress("Preparing transfer...", 0, 0));
         EnsureDirectoryExists(destinationDirectory);
 
         var sources = RemoveNestedSelections(sourcePaths);
@@ -372,6 +373,9 @@ public sealed class FileOperationService
             try
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                progress?.Report(new FileOperationProgress(
+                    Path.GetFileName(Path.TrimEndingDirectorySeparator(sourcePath)),
+                    completed + skipped, sources.Count));
                 EnsurePathExists(sourcePath);
 
                 if (Directory.Exists(sourcePath) && LinkFileSystem.ReadLink(sourcePath) is null && IsSameOrDescendantPath(destinationDirectory, sourcePath))

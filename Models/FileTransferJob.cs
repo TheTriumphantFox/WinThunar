@@ -54,5 +54,8 @@ public partial class FileTransferJob : ObservableObject
     [ObservableProperty]
     public partial double ProgressPercent { get; set; }
 
+    [ObservableProperty]
+    public partial bool IsProgressIndeterminate { get; set; } = true;
+
     public FileOperationResult? Result { get; internal set; }
 }

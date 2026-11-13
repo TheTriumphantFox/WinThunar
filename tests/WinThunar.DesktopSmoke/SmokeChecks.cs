@@ -96,6 +96,7 @@ public sealed partial class MainPage
             _showTerminalPanel = true;
             ApplyTerminalPanel();
             await CheckThemePreferencesAsync(directory, checks);
+            await CheckNavigationAnimationsAsync(directory, checks);
             await CheckGitStatusPreferenceAsync(checks);
             _showTerminalPanel = false;
             ApplyTerminalPanel();
@@ -112,8 +113,14 @@ public sealed partial class MainPage
             var destinationPath = Path.Combine(outgoing, "replace.txt");
             File.WriteAllText(sourcePath, "incoming");
             File.WriteAllText(destinationPath, "old destination");
-            var transfer = await RunTransferAsync([sourcePath], outgoing, FileTransferMode.Copy,
-                _ => Task.FromResult(new ConflictResolution(ConflictAction.Replace)));
+            var transferTask = RunTransferAsync([sourcePath], outgoing, FileTransferMode.Copy, _ =>
+            {
+                Require(DispatcherQueue.HasThreadAccess, "Background transfers resolve conflicts on the UI thread", checks);
+                return Task.FromResult(new ConflictResolution(ConflictAction.Replace));
+            });
+            Require(ViewModel.TransferPanelVisibility == Visibility.Visible && ViewModel.IsTransferProgressIndeterminate,
+                "Transfer progress appears immediately while background work starts", checks);
+            var transfer = await transferTask;
             Require(transfer?.Succeeded == true && _history.CanUndo, "Queued replacement is added to window Undo history", checks);
             await _history.UndoAsync();
             Require(File.ReadAllText(destinationPath) == "old destination", "Window Undo restores the displaced file", checks);
@@ -318,6 +325,48 @@ public sealed partial class MainPage
 
     private ComboBox FindThemeSelector() => FindSmokeElement<ComboBox>(_preferencesDialog,
         combo => AutomationProperties.GetName(combo) == "Color theme") ?? throw new InvalidOperationException("Theme selector is missing.");
+
+    private async Task CheckNavigationAnimationsAsync(string directory, List<string> checks)
+    {
+        CheckBox FindToggle() => FindSmokeElement<CheckBox>(_preferencesDialog, box => box.Content is "Animate folder navigation")
+            ?? throw new InvalidOperationException("Navigation animation preference is missing.");
+        var preferences = ShowPreferencesAsync();
+        await Task.Delay(150);
+        FindToggle().IsChecked = false;
+        await FinishSmokePreferencesAsync(preferences, apply: false);
+        Require(App.NavigationAnimations, "Cancel preserves navigation animations", checks);
+
+        var otherWindow = (MainWindow)App.OpenWindow(new LaunchRequest(directory, null));
+        try
+        {
+            await Task.Delay(250);
+            preferences = ShowPreferencesAsync();
+            await Task.Delay(150);
+            FindToggle().IsChecked = false;
+            await FinishSmokePreferencesAsync(preferences, apply: true);
+            Require(!App.NavigationAnimations && !new AppearanceSettingsStore(Path.Combine(directory, "appearance.json")).Load().NavigationAnimations,
+                "Navigation animation preference persists", checks);
+            foreach (var page in new[] { this, otherWindow.Page! })
+            {
+                Require(new ListViewBase[] { page.FileList, page.IconFileList, page.CompactFileList, page.SecondaryFileList }
+                    .All(list => list.ItemContainerTransitions is { Count: 0 }), "Navigation animations turn off in every pane and window", checks);
+            }
+            // Theme changes must preserve the animation choice.
+            App.SetThemePreference(AppThemePreference.Dark);
+            Require(!new AppearanceSettingsStore(Path.Combine(directory, "appearance.json")).Load().NavigationAnimations,
+                "Changing theme preserves navigation preference", checks);
+            App.SetThemePreference(AppThemePreference.System);
+            preferences = ShowPreferencesAsync();
+            await Task.Delay(150);
+            Require(FindToggle().IsChecked == false, "Preferences restores the saved animation choice", checks);
+            FindToggle().IsChecked = true;
+            await FinishSmokePreferencesAsync(preferences, apply: true);
+            Require(FileList.ReadLocalValue(ListViewBase.ItemContainerTransitionsProperty) == DependencyProperty.UnsetValue &&
+                otherWindow.Page!.FileList.ReadLocalValue(ListViewBase.ItemContainerTransitionsProperty) == DependencyProperty.UnsetValue,
+                "Re-enabling navigation animations restores native transitions in both windows", checks);
+        }
+        finally { otherWindow.Close(); }
+    }
 
     private async Task FinishSmokePreferencesAsync(Task preferences, bool apply)
     {

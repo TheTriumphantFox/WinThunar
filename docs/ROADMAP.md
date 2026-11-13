@@ -2,11 +2,22 @@
 
 ## Release and source status
 
-Checked 29 October 2026. The latest published application is
-[0.6.1](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.6.1), published 29
-October 2026. The changes are merged into `main` through PR #46 (source `19a55e2`), and the
-GitHub updater feed offers 0.6.1. Documentation-only commits do not distribute an application
-version. See [release notes](RELEASE-0.6.1.md) for package verification and remaining limits.
+Checked 13 November 2026. The latest published application is
+[0.6.2](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.6.2), published 13
+November 2026. The changes are merged into `main` through PRs #49, #50 and #51 (source
+`ed64527`), and the GitHub updater feed offers 0.6.2. Documentation-only commits do not
+distribute an application version. See [release notes](RELEASE-0.6.2.md) for package
+verification and remaining limits.
+
+Release **[0.6.2](RELEASE-0.6.2.md)** stops a folder the user only opens from making WinThunar
+run a program it carries: Git status badges switch off filters from the repository's own config,
+and Git, PowerShell, Explorer, Windows Terminal and plugin commands start from fixed or fully
+qualified locations. It also keeps transfers responsive, adds an option to turn navigation
+animations off, and keeps open dialogs following a theme change from another window. The release
+source passes 241 service tests, 233 desktop checks and two restart checks. Five public binary
+digests, both MSI policies and embedded guard, source tag/feeds, all 528 reconstructed delta
+entries and 29 historical packages are verified. Installed upgrade to this version remains
+unverified.
 
 Release **[0.6.1](RELEASE-0.6.1.md)** adds a fourth theme, System colors, from
 [#42](https://github.com/TheTriumphantFox/WinThunar/issues/42): a Mica backdrop, translucent
@@ -136,7 +147,7 @@ below are now in published 0.5.3; test harnesses are source tools excluded from 
 - [x] Storage-error/process-termination stress harness and recovery fixes for overlapping history records and concurrent restart recovery.
 - [x] Disposable NTFS VHD verification of cross-volume history and actual disk-full allocation failures; native long-path copy/stream/history fixes.
 
-Installed copies can discover 0.6.1 through GitHub Releases. See [release publishing](RELEASES.md)
+Installed copies can discover 0.6.2 through GitHub Releases. See [release publishing](RELEASES.md)
 and [accessibility status](ACCESSIBILITY.md) for package behavior and remaining checks.
 
 ## 1. Browser foundation

@@ -1,15 +1,16 @@
 # Building and publishing releases
 
-Checked 29 October 2026. The latest published application is
-**[0.6.1](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.6.1)**, released 29
-October 2026 from source `19a55e2` (PR #46). It adds the System colors theme: a Mica backdrop,
-translucent panes and accent-tinted selections. Project, manifest, release defaults, public
-packages and updater feed are aligned at 0.6.1.
+Checked 13 November 2026. The latest published application is
+**[0.6.2](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.6.2)**, released 13
+November 2026 from source `ed64527` (PRs #49, #50 and #51). It stops browsed folders from
+running programs they carry, keeps transfers responsive, makes navigation animations optional,
+and keeps open dialogs following theme changes. Project, manifest, release defaults, public
+packages and updater feed are aligned at 0.6.2.
 
 All five public binary digests, both MSI policies and embedded guard, both feeds, source tag,
-all 528 reconstructed 0.6.0-to-0.6.1 delta entries and 27 historical packages are verified.
-See [release notes](RELEASE-0.6.1.md) and [priority verification](PRIORITY-VERIFICATION.md).
-Installed upgrade to 0.6.1 and manual accessibility remain unverified.
+all 528 reconstructed 0.6.1-to-0.6.2 delta entries and 29 historical packages are verified.
+See [release notes](RELEASE-0.6.2.md) and [priority verification](PRIORITY-VERIFICATION.md).
+Installed upgrade to 0.6.2 and manual accessibility remain unverified.
 
 Automatic app updates do not replace an older cached MSI. Use the latest MSI for installer
 safeguards. Legacy per-user migration requires actual same-account elevation; legacy all-users
@@ -43,17 +44,17 @@ After the GitHub release is public, update the WinGet manifests in `packaging/wi
 Scoop manifest in `bucket/winthunar.json` with the new version, URLs and SHA-256 digests; see
 [distribution channels](DISTRIBUTION.md).
 
-The current published version is **0.6.1**; see its
-[release notes](RELEASE-0.6.1.md). For example, a release `X.Y.Z` uses assembly/file/manifest version `X.Y.Z.0`.
+The current published version is **0.6.2**; see its
+[release notes](RELEASE-0.6.2.md). For example, a release `X.Y.Z` uses assembly/file/manifest version `X.Y.Z.0`.
 Documentation-only changes do not require a new application version.
 
 ## Build and local outputs
 
-Run from the main checkout. This example uses 0.6.1;
+Run from the main checkout. This example uses 0.6.2;
 existing output paths are deliberately not overwritten:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.6.1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish-Release.ps1 -Version 0.6.2
 ```
 
 For version `X.Y.Z`, the script writes:
@@ -106,7 +107,7 @@ releases and upload assets for this repository. Keep it out of source, command h
 and logs. With the token already supplied, run:
 
 ```powershell
-$releaseVersion = '0.6.1' # Published-release example; choose an unused version for the next release.
+$releaseVersion = '0.6.2' # Published-release example; choose an unused version for the next release.
 try {
     vpk upload github --outputDir .\artifacts\installer --repoUrl https://github.com/TheTriumphantFox/WinThunar --token $env:GITHUB_TOKEN --publish --releaseName "WinThunar $releaseVersion" --tag "v$releaseVersion"
     if ($LASTEXITCODE -ne 0) { throw 'GitHub release upload failed.' }

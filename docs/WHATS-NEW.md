@@ -3,13 +3,14 @@
 Release-by-release summaries moved here from the README on 26 October 2026. Each release
 also has its own notes in this folder; the [roadmap](ROADMAP.md) lists what remains open.
 
-## 0.6.2
+## Published in 0.6.2
 
 Opening a folder can no longer make WinThunar run programs that came with it: Git status badges
 switch off the programs a repository's own settings name, and helper programs start from where
 they are installed. File transfers run in the background so the window stays responsive, and
 **Animate folder navigation** in Preferences turns navigation animations off.
 See the [0.6.2 release notes](RELEASE-0.6.2.md).
+The public packages, source tag and GitHub update feed are verified.
 
 ## Published in 0.6.1
 
@@ -83,11 +84,11 @@ installer; use the latest MSI to get these safeguards. See the
 ## Release and source status
 
 The latest published application release is
-**[0.6.1](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.6.1)** (29 October
-2026), from source `19a55e2` (PR #46). Its changes are merged into `main`, and the GitHub
-updater feed offers 0.6.1 to installed copies. Use **Help > Check for Updates...** to check
-immediately; portable copies are updated manually. Documentation-only updates do not update the
-app. See the [0.6.1 release notes](RELEASE-0.6.1.md) for verified packages and remaining
+**[0.6.2](https://github.com/TheTriumphantFox/WinThunar/releases/tag/v0.6.2)** (13 November
+2026), from source `ed64527` (PRs #49, #50 and #51). Its changes are merged into `main`, and the
+GitHub updater feed offers 0.6.2 to installed copies. Use **Help > Check for Updates...** to
+check immediately; portable copies are updated manually. Documentation-only updates do not update
+the app. See the [0.6.2 release notes](RELEASE-0.6.2.md) for verified packages and remaining
 limits.
 The version string alone does not establish that a local build matches published binaries.
 

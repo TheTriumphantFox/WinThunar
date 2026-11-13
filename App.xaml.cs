@@ -62,6 +62,13 @@ public partial class App : Application
         ThemeChanged?.Invoke(null, EventArgs.Empty);
     }
 
+    /// <summary>The open window that hosts <paramref name="root"/>, or null once that window has closed.</summary>
+    internal static Window? FindWindow(XamlRoot? root)
+    {
+        if (root?.ContentIslandEnvironment is not { } environment) return null;
+        return OpenWindows.FirstOrDefault(window => window.AppWindow.Id == environment.AppWindowId);
+    }
+
     /// <summary>True while any window is copying or moving files, which a restart would cancel.</summary>
     public static bool HasPendingTransfers =>
         OpenWindows.OfType<MainWindow>().Any(window => window.Page?.HasPendingTransfers == true);
